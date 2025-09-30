@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.enity.User;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.service.AuthenticationService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@SecurityRequirement(name = "api")
 public class AuthenticationController {
     //điều hướng
 
     @Autowired
     AuthenticationService authenticationService;
 
-    @PostMapping("/register")
+    @PostMapping("/api/register")
     public ResponseEntity register(@Valid @RequestBody User user){
         //nhận yêu cầu từ FE
         //Đẩy qua authenticationService
@@ -30,17 +32,22 @@ public class AuthenticationController {
         return ResponseEntity.ok(newuser);
     }
 
-    @GetMapping("/getall")
+    @GetMapping("/api/getall")
     public ResponseEntity getAllUser(){
         List<User> users = authenticationService.getAllUser();
         return ResponseEntity.ok(users);
     }
 
-    @PostMapping("/login")
+    @PostMapping("/api/login")
     public ResponseEntity login(@Valid @RequestBody LoginRequest loginRequest){
             UserResponse  user = authenticationService.login(loginRequest);
             return ResponseEntity.ok(user);
 
+    }
+
+    @GetMapping("/api/Current")
+    public ResponseEntity getCurrentUser(){
+        return ResponseEntity.ok(authenticationService.getCurrentUser());
     }
 
 }

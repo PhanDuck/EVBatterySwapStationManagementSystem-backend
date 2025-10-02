@@ -1,5 +1,6 @@
 -- =====================================
 -- Database Script for EV Battery Swap System (SQL Server 2019)
+-- Sau khi xóa DriverProfile, StaffProfile, AdminReport
 -- =====================================
 
 IF DB_ID('EVBatterySwap') IS NOT NULL
@@ -25,16 +26,7 @@ CREATE TABLE Users (
 );
 
 -- ========================
--- 2. DRIVER PROFILE
--- ========================
-CREATE TABLE DriverProfile (
-    DriverID INT PRIMARY KEY,
-    DrivingLicense NVARCHAR(100) NOT NULL,
-    CONSTRAINT FK_DriverProfile_User FOREIGN KEY (DriverID) REFERENCES Users(UserID)
-);
-
--- ========================
--- 3. STATION
+-- 2. STATION
 -- ========================
 CREATE TABLE Station (
     StationID INT IDENTITY(1,1) PRIMARY KEY,
@@ -46,37 +38,25 @@ CREATE TABLE Station (
 );
 
 -- ========================
--- 4. STAFF PROFILE
--- ========================
-CREATE TABLE StaffProfile (
-    StaffID INT PRIMARY KEY,
-    StationID INT,
-    Position NVARCHAR(100),
-    WorkShift NVARCHAR(100),
-    CONSTRAINT FK_StaffProfile_User FOREIGN KEY (StaffID) REFERENCES Users(UserID),
-    CONSTRAINT FK_StaffProfile_Station FOREIGN KEY (StationID) REFERENCES Station(StationID)
-);
-
--- ========================
--- 5. VEHICLE
+-- 3. VEHICLE
 -- ========================
 CREATE TABLE Vehicle (
     VehicleID INT IDENTITY(1,1) PRIMARY KEY,
     VIN NVARCHAR(100) NOT NULL UNIQUE,
     PlateNumber NVARCHAR(50) NOT NULL UNIQUE,
     Model NVARCHAR(100),
-    DriverID INT,
-    CONSTRAINT FK_Vehicle_Driver FOREIGN KEY (DriverID) REFERENCES DriverProfile(DriverID)
+    DriverID INT NOT NULL,
+    CONSTRAINT FK_Vehicle_Driver FOREIGN KEY (DriverID) REFERENCES Users(UserID)
 );
 
 -- ========================
--- 6. BATTERY
+-- 4. BATTERY
 -- ========================
 CREATE TABLE Battery (
     BatteryID INT IDENTITY(1,1) PRIMARY KEY,
     Model NVARCHAR(100),
-    Capacity FLOAT,
-    StateOfHealth INT,
+    Capacity DECIMAL(10,2),
+    StateOfHealth DECIMAL(5,2),
     Status NVARCHAR(50) DEFAULT 'Available'
         CHECK (Status IN ('Available','Charging','InUse','Maintenance','Faulty')),
     CurrentStationID INT,
@@ -84,7 +64,7 @@ CREATE TABLE Battery (
 );
 
 -- ========================
--- 7. BATTERY HISTORY
+-- 5. BATTERY HISTORY
 -- ========================
 CREATE TABLE BatteryHistory (
     HistoryID INT IDENTITY(1,1) PRIMARY KEY,
@@ -97,11 +77,11 @@ CREATE TABLE BatteryHistory (
     StaffID INT,
     CONSTRAINT FK_BatteryHistory_Battery FOREIGN KEY (BatteryID) REFERENCES Battery(BatteryID),
     CONSTRAINT FK_BatteryHistory_Vehicle FOREIGN KEY (RelatedVehicleID) REFERENCES Vehicle(VehicleID),
-    CONSTRAINT FK_BatteryHistory_Staff FOREIGN KEY (StaffID) REFERENCES StaffProfile(StaffID)
+    CONSTRAINT FK_BatteryHistory_Staff FOREIGN KEY (StaffID) REFERENCES Users(UserID)
 );
 
 -- ========================
--- 8. STATION INVENTORY
+-- 6. STATION INVENTORY
 -- ========================
 CREATE TABLE StationInventory (
     StationInventoryID INT IDENTITY(1,1) PRIMARY KEY,
@@ -115,7 +95,7 @@ CREATE TABLE StationInventory (
 );
 
 -- ========================
--- 9. BOOKING
+-- 7. BOOKING
 -- ========================
 CREATE TABLE Booking (
     BookingID INT IDENTITY(1,1) PRIMARY KEY,
@@ -125,13 +105,13 @@ CREATE TABLE Booking (
     BookingTime DATETIME NOT NULL,
     Status NVARCHAR(50) DEFAULT 'Pending'
         CHECK (Status IN ('Pending','Confirmed','Completed','Cancelled')),
-    CONSTRAINT FK_Booking_Driver FOREIGN KEY (DriverID) REFERENCES DriverProfile(DriverID),
+    CONSTRAINT FK_Booking_Driver FOREIGN KEY (DriverID) REFERENCES Users(UserID),
     CONSTRAINT FK_Booking_Vehicle FOREIGN KEY (VehicleID) REFERENCES Vehicle(VehicleID),
     CONSTRAINT FK_Booking_Station FOREIGN KEY (StationID) REFERENCES Station(StationID)
 );
 
 -- ========================
--- 10. SWAP TRANSACTION
+-- 8. SWAP TRANSACTION
 -- ========================
 CREATE TABLE SwapTransaction (
     TransactionID INT IDENTITY(1,1) PRIMARY KEY,
@@ -146,16 +126,16 @@ CREATE TABLE SwapTransaction (
     Cost DECIMAL(12,2),
     Status NVARCHAR(50) DEFAULT 'PendingPayment'
         CHECK (Status IN ('Success','Failed','PendingPayment')),
-    CONSTRAINT FK_SwapTransaction_Driver FOREIGN KEY (DriverID) REFERENCES DriverProfile(DriverID),
+    CONSTRAINT FK_SwapTransaction_Driver FOREIGN KEY (DriverID) REFERENCES Users(UserID),
     CONSTRAINT FK_SwapTransaction_Vehicle FOREIGN KEY (VehicleID) REFERENCES Vehicle(VehicleID),
     CONSTRAINT FK_SwapTransaction_Station FOREIGN KEY (StationID) REFERENCES Station(StationID),
-    CONSTRAINT FK_SwapTransaction_Staff FOREIGN KEY (StaffID) REFERENCES StaffProfile(StaffID),
+    CONSTRAINT FK_SwapTransaction_Staff FOREIGN KEY (StaffID) REFERENCES Users(UserID),
     CONSTRAINT FK_SwapTransaction_SwapOut FOREIGN KEY (SwapOutBatteryID) REFERENCES Battery(BatteryID),
     CONSTRAINT FK_SwapTransaction_SwapIn FOREIGN KEY (SwapInBatteryID) REFERENCES Battery(BatteryID)
 );
 
 -- ========================
--- 11. SERVICE PACKAGE
+-- 9. SERVICE PACKAGE
 -- ========================
 CREATE TABLE ServicePackage (
     PackageID INT IDENTITY(1,1) PRIMARY KEY,
@@ -167,7 +147,7 @@ CREATE TABLE ServicePackage (
 );
 
 -- ========================
--- 12. DRIVER SUBSCRIPTION
+-- 10. DRIVER SUBSCRIPTION
 -- ========================
 CREATE TABLE DriverSubscription (
     SubscriptionID INT IDENTITY(1,1) PRIMARY KEY,
@@ -176,12 +156,12 @@ CREATE TABLE DriverSubscription (
     StartDate DATE NOT NULL,
     EndDate DATE NOT NULL,
     Status NVARCHAR(50) DEFAULT 'Active',
-    CONSTRAINT FK_DriverSubscription_Driver FOREIGN KEY (DriverID) REFERENCES DriverProfile(DriverID),
+    CONSTRAINT FK_DriverSubscription_Driver FOREIGN KEY (DriverID) REFERENCES Users(UserID),
     CONSTRAINT FK_DriverSubscription_Package FOREIGN KEY (PackageID) REFERENCES ServicePackage(PackageID)
 );
 
 -- ========================
--- 13. PAYMENT
+-- 11. PAYMENT
 -- ========================
 CREATE TABLE Payment (
     PaymentID INT IDENTITY(1,1) PRIMARY KEY,
@@ -196,7 +176,7 @@ CREATE TABLE Payment (
 );
 
 -- ========================
--- 14. SUPPORT TICKET
+-- 12. SUPPORT TICKET
 -- ========================
 CREATE TABLE SupportTicket (
     TicketID INT IDENTITY(1,1) PRIMARY KEY,
@@ -207,12 +187,12 @@ CREATE TABLE SupportTicket (
     Status NVARCHAR(50) DEFAULT 'Open'
         CHECK (Status IN ('Open','InProgress','Resolved','Closed')),
     CreatedAt DATETIME DEFAULT GETDATE(),
-    CONSTRAINT FK_SupportTicket_Driver FOREIGN KEY (DriverID) REFERENCES DriverProfile(DriverID),
+    CONSTRAINT FK_SupportTicket_Driver FOREIGN KEY (DriverID) REFERENCES Users(UserID),
     CONSTRAINT FK_SupportTicket_Station FOREIGN KEY (StationID) REFERENCES Station(StationID)
 );
 
 -- ========================
--- 15. TICKET RESPONSE
+-- 13. TICKET RESPONSE
 -- ========================
 CREATE TABLE TicketResponse (
     ResponseID INT IDENTITY(1,1) PRIMARY KEY,
@@ -221,17 +201,5 @@ CREATE TABLE TicketResponse (
     Message NVARCHAR(MAX) NOT NULL,
     ResponseTime DATETIME DEFAULT GETDATE(),
     CONSTRAINT FK_TicketResponse_Ticket FOREIGN KEY (TicketID) REFERENCES SupportTicket(TicketID),
-    CONSTRAINT FK_TicketResponse_Staff FOREIGN KEY (StaffID) REFERENCES StaffProfile(StaffID)
-);
-
--- ========================
--- 16. ADMIN REPORT
--- ========================
-CREATE TABLE AdminReport (
-    ReportID INT IDENTITY(1,1) PRIMARY KEY,
-    ReportType NVARCHAR(100) NOT NULL,
-    GeneratedBy INT NOT NULL,
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    ReportData NVARCHAR(MAX),
-    CONSTRAINT FK_AdminReport_User FOREIGN KEY (GeneratedBy) REFERENCES Users(UserID)
+    CONSTRAINT FK_TicketResponse_Staff FOREIGN KEY (StaffID) REFERENCES Users(UserID)
 );

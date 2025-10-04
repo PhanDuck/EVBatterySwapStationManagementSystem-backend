@@ -91,7 +91,7 @@ public class AdminUserController {
     }
 
     /**
-     * Lấy danh sách user theo role (Admin only)
+     * Lấy danh sách user theo role (Admin only) để tham khảo thêm chưa chắc thêm
      */
 //    @GetMapping("/role/{role}")
 //    @PreAuthorize("hasRole('ADMIN')")

@@ -102,6 +102,7 @@
     </dependencies>
 
     <build>
+        <finalName>be</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -1,6 +1,6 @@
 -- =====================================
 -- Database Script for EV Battery Swap System (SQL Server 2019)
--- Sau khi xóa DriverProfile, StaffProfile, AdminReport
+-- Sau khi xï¿½a DriverProfile, StaffProfile, AdminReport
 -- =====================================
 
 IF DB_ID('EVBatterySwap') IS NOT NULL

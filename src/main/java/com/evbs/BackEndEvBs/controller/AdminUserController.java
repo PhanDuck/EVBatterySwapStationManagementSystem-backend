@@ -27,7 +27,7 @@ import java.util.HashMap;
 public class AdminUserController {
 
     @Autowired
-    private UserService userService;
+    UserService userService;
 
     /**
      * Lấy danh sách tất cả user (Admin only)
@@ -40,9 +40,9 @@ public class AdminUserController {
         return ResponseEntity.ok(users);
     }
 
-    /**
-     * Lấy thông tin user theo ID (Admin only)
-     */
+
+     //Lấy thông tin user theo ID (Admin only)
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get user by ID", description = "Get user details by ID (Admin only)")
@@ -52,9 +52,9 @@ public class AdminUserController {
         return ResponseEntity.ok(user);
     }
 
-    /**
-     * Tạo user mới (Admin only)
-     */
+
+    // Tạo user mới (Admin only)
+
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create new user", description = "Create a new user (Admin only)")
@@ -63,9 +63,7 @@ public class AdminUserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
-    /**
-     * Cập nhật thông tin user (Admin only)
-     */
+//    Cập nhật thông tin user (Admin only)
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update user", description = "Update user information (Admin only)")
@@ -76,9 +74,7 @@ public class AdminUserController {
         return ResponseEntity.ok(user);
     }
 
-    /**
-     * Xóa user (Admin only)
-     */
+//    Xóa user (Admin only)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete user", description = "Delete user by changing status to inactive (Admin only)")
@@ -90,9 +86,7 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Lấy danh sách user theo role (Admin only) để tham khảo thêm chưa chắc thêm
-     */
+
 //    @GetMapping("/role/{role}")
 //    @PreAuthorize("hasRole('ADMIN')")
 //    @Operation(summary = "Get users by role", description = "Get list of users by role (Admin only)")

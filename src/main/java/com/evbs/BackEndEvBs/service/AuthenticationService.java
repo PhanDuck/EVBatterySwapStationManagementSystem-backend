@@ -47,7 +47,7 @@ public class AuthenticationService implements UserDetailsService {
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
 
         //lưu vô database
-         return userRepository.save(user);  // Fix: dùng userRepository thay vì authenticationRepository
+        return authenticationRepository.save(user);
     }
 
 
@@ -78,8 +78,7 @@ public class AuthenticationService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String phoneNumber) throws UsernameNotFoundException {
-        return userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with phone number: " + phoneNumber));
+        return authenticationRepository.findUserByPhoneNumber(phoneNumber);
     }
 
     public User getCurrentUser(){

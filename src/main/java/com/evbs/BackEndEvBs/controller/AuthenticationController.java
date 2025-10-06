@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 
 
@@ -24,7 +25,7 @@ public class AuthenticationController {
     AuthenticationService authenticationService;
 
     @PostMapping("/api/register")
-    public ResponseEntity<User> register(@Valid @RequestBody User user){
+    public ResponseEntity register(@Valid @RequestBody User user){
         //nhận yêu cầu từ FE
         //Đẩy qua authenticationService
 
@@ -41,13 +42,13 @@ public class AuthenticationController {
 //    }
 
     @PostMapping("/api/login")
-    public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest){
+    public ResponseEntity login(@Valid @RequestBody LoginRequest loginRequest){
             UserResponse user = authenticationService.login(loginRequest);
             return ResponseEntity.ok(user);
     }
 
     @GetMapping("/api/Current")
-    public ResponseEntity<User> getCurrentUser(){
+    public ResponseEntity getCurrentUser(){
         return ResponseEntity.ok(authenticationService.getCurrentUser());
     }
 

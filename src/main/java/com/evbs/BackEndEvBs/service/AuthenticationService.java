@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.enity.User;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.AuthenticationRepository;
+import com.evbs.BackEndEvBs.repository.UserRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,7 +17,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+
 
 @Service
 public class AuthenticationService implements UserDetailsService {
@@ -25,6 +26,9 @@ public class AuthenticationService implements UserDetailsService {
     //xử lí lgic của controller đưa qua
     @Autowired
     AuthenticationRepository authenticationRepository;
+
+    @Autowired
+    UserRepository userRepository;
 
     @Autowired
     PasswordEncoder passwordEncoder;
@@ -42,9 +46,8 @@ public class AuthenticationService implements UserDetailsService {
         //xử lí logic cho register
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
 
-
         //lưu vô database
-         return authenticationRepository.save(user);
+         return userRepository.save(user);  // Fix: dùng userRepository thay vì authenticationRepository
     }
 
 
@@ -68,15 +71,15 @@ public class AuthenticationService implements UserDetailsService {
 
 
 
-    public List<User> getAllUser(){
-        List<User> users = authenticationRepository.findAll();
-        return users;
-    }
+//    public List<User> getAllUser(){
+//        List<User> users = authenticationRepository.findAll();
+//        return users;
+//    }
 
     @Override
     public UserDetails loadUserByUsername(String phoneNumber) throws UsernameNotFoundException {
-        return authenticationRepository.findUserByPhoneNumber(phoneNumber);
-
+        return userRepository.findByPhoneNumber(phoneNumber)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with phone number: " + phoneNumber));
     }
 
     public User getCurrentUser(){

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+
 
 @RestController
 @SecurityRequirement(name = "api")
@@ -24,7 +24,7 @@ public class AuthenticationController {
     AuthenticationService authenticationService;
 
     @PostMapping("/api/register")
-    public ResponseEntity register(@Valid @RequestBody User user){
+    public ResponseEntity<User> register(@Valid @RequestBody User user){
         //nhận yêu cầu từ FE
         //Đẩy qua authenticationService
 
@@ -32,21 +32,22 @@ public class AuthenticationController {
         return ResponseEntity.ok(newuser);
     }
 
-    @GetMapping("/api/getall")
-    public ResponseEntity getAllUser(){
-        List<User> users = authenticationService.getAllUser();
-        return ResponseEntity.ok(users);
-    }
+    // Deprecated: Sử dụng /api/users thay thế
+//    @GetMapping("/api/getall")
+//    @Deprecated
+//    public ResponseEntity getAllUser(){
+//        List<User> users = authenticationService.getAllUser();
+//        return ResponseEntity.ok(users);
+//    }
 
     @PostMapping("/api/login")
-    public ResponseEntity login(@Valid @RequestBody LoginRequest loginRequest){
-            UserResponse  user = authenticationService.login(loginRequest);
+    public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest loginRequest){
+            UserResponse user = authenticationService.login(loginRequest);
             return ResponseEntity.ok(user);
-
     }
 
     @GetMapping("/api/Current")
-    public ResponseEntity getCurrentUser(){
+    public ResponseEntity<User> getCurrentUser(){
         return ResponseEntity.ok(authenticationService.getCurrentUser());
     }
 

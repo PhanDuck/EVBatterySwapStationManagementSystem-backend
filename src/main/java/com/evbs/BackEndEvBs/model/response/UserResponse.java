@@ -1,10 +1,7 @@
 package com.evbs.BackEndEvBs.model.response;
 
 import com.evbs.BackEndEvBs.enity.User;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Pattern;
+
 
 import lombok.Data;
 
@@ -15,7 +12,9 @@ public class UserResponse {
     private String email;
     private String phoneNumber;
     private User.Role role;
-    private String status = "Active";
+    private String status;
+    
+    // Token chỉ có khi login, null khi CRUD operations
     private String token;
 }
 

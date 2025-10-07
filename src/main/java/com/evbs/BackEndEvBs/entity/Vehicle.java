@@ -8,6 +8,9 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "Vehicle")
 @Getter
@@ -38,5 +41,17 @@ public class Vehicle {
     @ManyToOne
     @JoinColumn(name = "DriverID", nullable = false)
     @JsonIgnore
-    private User user;
+    private User driver;
+    
+    @OneToMany(mappedBy = "vehicle")
+    @JsonIgnore
+    private List<Booking> bookings = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "vehicle")
+    @JsonIgnore
+    private List<SwapTransaction> swapTransactions = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "relatedVehicle")
+    @JsonIgnore
+    private List<BatteryHistory> batteryHistories = new ArrayList<>();
 }

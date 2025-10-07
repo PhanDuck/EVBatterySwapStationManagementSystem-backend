@@ -27,7 +27,7 @@ public class VehicleService {
             throw new RuntimeException("Plate number already exists!");
         }
 
-        vehicle.setUser(authenticationService.getCurrentUser());
+        vehicle.setDriver(authenticationService.getCurrentUser());
         return vehicleRepository.save(vehicle);
     }
 

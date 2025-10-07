@@ -33,6 +33,13 @@ public class Station {
     @Column(name = "ContactInfo", length = 150)
     private String contactInfo;
 
+    // Tọa độ GPS
+    @Column(name = "Latitude")
+    private Double latitude;
+
+    @Column(name = "Longitude")
+    private Double longitude;
+
     @Column(name = "Status", length = 50)
     private String status = "Active";
 
@@ -56,7 +63,7 @@ public class Station {
     @OneToMany(mappedBy = "station")
     @JsonIgnore
     private List<SupportTicket> supportTickets = new ArrayList<>();
-    
+
     @OneToMany(mappedBy = "relatedStation")
     @JsonIgnore
     private List<BatteryHistory> batteryHistories = new ArrayList<>();

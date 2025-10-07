@@ -1,6 +1,8 @@
 package com.evbs.BackEndEvBs.controller;
 
-import com.evbs.BackEndEvBs.enity.User;
+
+import com.evbs.BackEndEvBs.entity.User;
+
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.service.AuthenticationService;
@@ -12,8 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
-
 
 
 @RestController

@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.config;
 
-import com.evbs.BackEndEvBs.enity.User;
+
+import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.service.TokenService;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -37,7 +38,8 @@ public class Filter extends OncePerRequestFilter {
             "POST:/api/login",
             "GET:/swagger-ui/**",
             "GET:/v3/api-docs/**",
-            "GET:/swagger-resources/**"
+            "GET:/swagger-resources/**",
+            "GET:/api/station/**"
     );
 
     public boolean isPublicAPI(String uri, String method) {

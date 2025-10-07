@@ -1,0 +1,38 @@
+package com.evbs.BackEndEvBs.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "TicketResponse")
+@Getter
+@Setter
+public class TicketResponse {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ResponseID")
+    private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "TicketID", nullable = false)
+    @JsonIgnore
+    private SupportTicket ticket;
+
+    @ManyToOne
+    @JoinColumn(name = "StaffID", nullable = false)
+    @JsonIgnore
+    private User staff;
+
+    @NotEmpty(message = "Message cannot be empty!")
+    @Column(name = "Message", nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    private String message;
+
+    @Column(name = "ResponseTime")
+    private LocalDateTime responseTime = LocalDateTime.now();
+}

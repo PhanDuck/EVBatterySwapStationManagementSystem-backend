@@ -1,6 +1,8 @@
 package com.evbs.BackEndEvBs.model.request;
 
-import com.evbs.BackEndEvBs.enity.User;
+
+import com.evbs.BackEndEvBs.entity.User;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;

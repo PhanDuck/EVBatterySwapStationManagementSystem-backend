@@ -1,5 +1,6 @@
-package com.evbs.BackEndEvBs.enity;
+package com.evbs.BackEndEvBs.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
@@ -10,6 +11,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -54,7 +56,36 @@ public class User implements UserDetails {
 
     @Column(name = "Status", length = 50)
     private String status = "Active";
-
+    
+    // Relationships
+    @OneToMany(mappedBy = "driver")
+    @JsonIgnore
+    private List<Vehicle> vehicles = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "driver")
+    @JsonIgnore
+    private List<Booking> bookings = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "driver")
+    @JsonIgnore
+    private List<SwapTransaction> driverTransactions = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "staff")
+    @JsonIgnore
+    private List<SwapTransaction> staffTransactions = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "driver")
+    @JsonIgnore
+    private List<DriverSubscription> subscriptions = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "driver")
+    @JsonIgnore
+    private List<SupportTicket> supportTickets = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "staff")
+    @JsonIgnore
+    private List<TicketResponse> ticketResponses = new ArrayList<>();
+    
     // ===============================
     // Implement UserDetails
     // ===============================

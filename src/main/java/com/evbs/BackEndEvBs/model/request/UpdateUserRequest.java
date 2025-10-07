@@ -26,4 +26,6 @@ public class UpdateUserRequest {
     private User.Role role;
     
     private String status;
+
+    private Long driverId; // Chỉ dành cho Admin có thể gán driver
 }

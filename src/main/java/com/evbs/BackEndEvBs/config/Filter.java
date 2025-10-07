@@ -37,7 +37,11 @@ public class Filter extends OncePerRequestFilter {
             "POST:/api/login",
             "GET:/swagger-ui/**",
             "GET:/v3/api-docs/**",
-            "GET:/swagger-resources/**"
+            "GET:/swagger-resources/**",
+            "GET:/api/station/**",
+            "GET:/api/stations/active",
+            "GET:/api/stations/available",
+            "GET:/api/stations/search"
     );
 
     public boolean isPublicAPI(String uri, String method) {
@@ -52,7 +56,8 @@ public class Filter extends OncePerRequestFilter {
             String allowedMethod = parts[0];
             String allowedUri = parts[1];
 
-            return matcher.match(allowedUri, uri);
+            //return matcher.match(allowedUri, uri);
+            return allowedMethod.equals(method) && matcher.match(allowedUri, uri);
         });
     }
 
@@ -76,6 +81,7 @@ public class Filter extends OncePerRequestFilter {
 
             if (token == null){
                 resolver.resolveException(request, response, null, new AuthenticationException("Empty token!"));
+                return;
             }
 
             User user = null;
@@ -84,9 +90,10 @@ public class Filter extends OncePerRequestFilter {
             } catch (ExpiredJwtException expiredJwtException) {
                 expiredJwtException.printStackTrace();
                 resolver.resolveException(request, response, null, new AuthenticationException("Expired token!"));
+                return;
             } catch (MalformedJwtException malformedJwtException) {
                 resolver.resolveException(request, response, null, new AuthenticationException("invalid token!"));
-
+                return;
             }
 
             UsernamePasswordAuthenticationToken

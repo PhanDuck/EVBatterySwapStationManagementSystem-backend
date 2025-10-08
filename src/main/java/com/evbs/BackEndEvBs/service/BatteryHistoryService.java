@@ -7,8 +7,10 @@ import com.evbs.BackEndEvBs.repository.BatteryHistoryRepository;
 import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,26 +18,30 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class BatteryHistoryService {
 
     @Autowired
-    private BatteryHistoryRepository batteryHistoryRepository;
+    private final BatteryHistoryRepository batteryHistoryRepository;
 
     @Autowired
-    private BatteryRepository batteryRepository;
+    private final BatteryRepository batteryRepository;
 
     @Autowired
-    private StationRepository stationRepository;
+    private final StationRepository stationRepository;
 
     @Autowired
-    private VehicleRepository vehicleRepository;
+    private final VehicleRepository vehicleRepository;
 
     @Autowired
-    private AuthenticationService authenticationService;
+    private final AuthenticationService authenticationService;
 
     // ==================== READ ONLY OPERATIONS ====================
 
-    // READ - Lấy tất cả battery history (Admin/Staff only)
+    /**
+     * READ - Lấy tất cả battery history (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<BatteryHistory> getAllBatteryHistory() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -44,7 +50,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findAll();
     }
 
-    // READ - Lấy battery history theo ID (Admin/Staff only)
+    /**
+     * READ - Lấy battery history theo ID (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public BatteryHistory getBatteryHistoryById(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -55,7 +64,10 @@ public class BatteryHistoryService {
                 .orElseThrow(() -> new NotFoundException("Battery history not found with id: " + id));
     }
 
-    // READ - Lấy history của battery cụ thể (Admin/Staff only)
+    /**
+     * READ - Lấy history của battery cụ thể (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<BatteryHistory> getHistoryByBattery(Long batteryId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -70,7 +82,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findByBatteryIdOrderByEventTimeDesc(batteryId);
     }
 
-    // READ - Lấy history theo event type (Admin/Staff only)
+    /**
+     * READ - Lấy history theo event type (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<BatteryHistory> getHistoryByEventType(String eventType) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -79,7 +94,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findByEventTypeOrderByEventTimeDesc(eventType);
     }
 
-    // READ - Lấy history theo station (Admin/Staff only)
+    /**
+     * READ - Lấy history theo station (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<BatteryHistory> getHistoryByStation(Long stationId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -92,7 +110,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findByRelatedStationOrderByEventTimeDesc(station);
     }
 
-    // READ - Lấy history theo vehicle (Admin/Staff only)
+    /**
+     * READ - Lấy history theo vehicle (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<BatteryHistory> getHistoryByVehicle(Long vehicleId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -105,7 +126,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findByRelatedVehicleOrderByEventTimeDesc(vehicle);
     }
 
-    // READ - Lấy history trong khoảng thời gian (Admin/Staff only)
+    /**
+     * READ - Lấy history trong khoảng thời gian (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<BatteryHistory> getHistoryByTimeRange(LocalDateTime start, LocalDateTime end) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -114,7 +138,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findByEventTimeBetweenOrderByEventTimeDesc(start, end);
     }
 
-    // READ - Lấy lịch sử gần nhất của battery (Admin/Staff only)
+    /**
+     * READ - Lấy lịch sử gần nhất của battery (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public BatteryHistory getLatestHistoryByBattery(Long batteryId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -128,7 +155,10 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findLatestByBatteryId(batteryId);
     }
 
-    // READ - Thống kê event types (Admin/Staff only)
+    /**
+     * READ - Thống kê event types (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public Map<String, Long> getEventTypeStatistics() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -145,7 +175,10 @@ public class BatteryHistoryService {
 
     // ==================== AUTO CREATE OPERATIONS ====================
 
-    // AUTO CREATE - Tạo history record khi có sự kiện (System)
+    /**
+     * AUTO CREATE - Tạo history record khi có sự kiện (System)
+     */
+    @Transactional
     public BatteryHistory createBatteryHistory(Long batteryId, String eventType,
                                                Long stationId, Long vehicleId, Long staffId) {
         Battery battery = batteryRepository.findById(batteryId)
@@ -170,51 +203,68 @@ public class BatteryHistoryService {
             history.setRelatedVehicle(vehicle);
         }
 
-        // Set staff if provided
-        if (staffId != null) {
-            // Note: You might need UserRepository here
-            // For now, we'll skip staff assignment or you can implement it
-        }
-
         return batteryHistoryRepository.save(history);
     }
 
-    // AUTO CREATE - Khi battery được swap
+    /**
+     * AUTO CREATE - Khi battery được swap
+     */
+    @Transactional
     public BatteryHistory logBatterySwap(Long batteryId, Long fromStationId, Long toVehicleId, Long staffId) {
         return createBatteryHistory(batteryId, "SWAP_OUT", fromStationId, toVehicleId, staffId);
     }
 
-    // AUTO CREATE - Khi battery được trả về station
+    /**
+     * AUTO CREATE - Khi battery được trả về station
+     */
+    @Transactional
     public BatteryHistory logBatteryReturn(Long batteryId, Long toStationId, Long fromVehicleId, Long staffId) {
         return createBatteryHistory(batteryId, "SWAP_IN", toStationId, fromVehicleId, staffId);
     }
 
-    // AUTO CREATE - Khi battery bắt đầu sạc
+    /**
+     * AUTO CREATE - Khi battery bắt đầu sạc
+     */
+    @Transactional
     public BatteryHistory logBatteryChargingStart(Long batteryId, Long stationId, Long staffId) {
         return createBatteryHistory(batteryId, "CHARGING_START", stationId, null, staffId);
     }
 
-    // AUTO CREATE - Khi battery kết thúc sạc
+    /**
+     * AUTO CREATE - Khi battery kết thúc sạc
+     */
+    @Transactional
     public BatteryHistory logBatteryChargingEnd(Long batteryId, Long stationId, Long staffId) {
         return createBatteryHistory(batteryId, "CHARGING_END", stationId, null, staffId);
     }
 
-    // AUTO CREATE - Khi battery được bảo trì
+    /**
+     * AUTO CREATE - Khi battery được bảo trì
+     */
+    @Transactional
     public BatteryHistory logBatteryMaintenance(Long batteryId, Long stationId, Long staffId) {
         return createBatteryHistory(batteryId, "MAINTENANCE", stationId, null, staffId);
     }
 
-    // AUTO CREATE - Khi battery được kiểm tra SOH
+    /**
+     * AUTO CREATE - Khi battery được kiểm tra SOH
+     */
+    @Transactional
     public BatteryHistory logBatteryHealthCheck(Long batteryId, Long stationId, Long staffId) {
         return createBatteryHistory(batteryId, "HEALTH_CHECK", stationId, null, staffId);
     }
 
-    // AUTO CREATE - Khi battery được retire
+    /**
+     * AUTO CREATE - Khi battery được retire
+     */
+    @Transactional
     public BatteryHistory logBatteryRetirement(Long batteryId, Long stationId, Long staffId) {
         return createBatteryHistory(batteryId, "RETIRED", stationId, null, staffId);
     }
 
-    // Helper method kiểm tra role
+    /**
+     * Helper method kiểm tra role
+     */
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
     }

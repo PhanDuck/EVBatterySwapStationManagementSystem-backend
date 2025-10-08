@@ -3,6 +3,7 @@ package com.evbs.BackEndEvBs.model.request;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -21,6 +22,8 @@ public class BatteryRequest {
     @Digits(integer = 3, fraction = 2, message = "State of health must have max 3 integer and 2 fraction digits")
     private BigDecimal stateOfHealth;
 
+    @Pattern(regexp = "Available|InUse|Maintenance|Charging|Reserved",
+            message = "Status must be one of: Available, InUse, Maintenance, Charging, Reserved")
     private String status = "Available";
 
     private Long currentStationId;

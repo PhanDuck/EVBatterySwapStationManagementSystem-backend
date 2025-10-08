@@ -25,7 +25,9 @@ public class BatteryHistoryController {
     @Autowired
     private BatteryHistoryService batteryHistoryService;
 
-    // READ - Lấy tất cả battery history (Admin/Staff only)
+    /**
+     * GET /api/battery-history : Get all battery history (Admin/Staff only)
+     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get all battery history", description = "Get all battery history records (Admin/Staff only)")
@@ -34,7 +36,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy battery history theo ID (Admin/Staff only)
+    /**
+     * GET /api/battery-history/{id} : Get battery history by ID (Admin/Staff only)
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get battery history by ID", description = "Get battery history by ID (Admin/Staff only)")
@@ -44,7 +48,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy history của battery cụ thể (Admin/Staff only)
+    /**
+     * GET /api/battery-history/battery/{batteryId} : Get history by battery (Admin/Staff only)
+     */
     @GetMapping("/battery/{batteryId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get history by battery", description = "Get history records for specific battery (Admin/Staff only)")
@@ -54,7 +60,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy history theo event type (Admin/Staff only)
+    /**
+     * GET /api/battery-history/event-type/{eventType} : Get history by event type (Admin/Staff only)
+     */
     @GetMapping("/event-type/{eventType}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get history by event type", description = "Get history records by event type (Admin/Staff only)")
@@ -64,7 +72,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy history theo station (Admin/Staff only)
+    /**
+     * GET /api/battery-history/station/{stationId} : Get history by station (Admin/Staff only)
+     */
     @GetMapping("/station/{stationId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get history by station", description = "Get history records by station (Admin/Staff only)")
@@ -74,7 +84,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy history theo vehicle (Admin/Staff only)
+    /**
+     * GET /api/battery-history/vehicle/{vehicleId} : Get history by vehicle (Admin/Staff only)
+     */
     @GetMapping("/vehicle/{vehicleId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get history by vehicle", description = "Get history records by vehicle (Admin/Staff only)")
@@ -84,7 +96,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy history trong khoảng thời gian (Admin/Staff only)
+    /**
+     * GET /api/battery-history/time-range : Get history by time range (Admin/Staff only)
+     */
     @GetMapping("/time-range")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get history by time range", description = "Get history records within time range (Admin/Staff only)")
@@ -95,7 +109,9 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Lấy lịch sử gần nhất của battery (Admin/Staff only)
+    /**
+     * GET /api/battery-history/battery/{batteryId}/latest : Get latest history by battery (Admin/Staff only)
+     */
     @GetMapping("/battery/{batteryId}/latest")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get latest history by battery", description = "Get latest history record for battery (Admin/Staff only)")
@@ -105,25 +121,14 @@ public class BatteryHistoryController {
         return ResponseEntity.ok(history);
     }
 
-    // READ - Thống kê event types (Admin/Staff only)
+    /**
+     * GET /api/battery-history/statistics/event-types : Get event type statistics (Admin/Staff only)
+     */
     @GetMapping("/statistics/event-types")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get event type statistics", description = "Get statistics of event types (Admin/Staff only)")
     public ResponseEntity<Map<String, Long>> getEventTypeStatistics() {
         Map<String, Long> statistics = batteryHistoryService.getEventTypeStatistics();
         return ResponseEntity.ok(statistics);
-    }
-
-    // READ - Lấy history của battery trong khoảng thời gian (Admin/Staff only)
-    @GetMapping("/battery/{batteryId}/time-range")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get battery history by time range", description = "Get battery history within time range (Admin/Staff only)")
-    public ResponseEntity<List<BatteryHistory>> getBatteryHistoryByTimeRange(
-            @Parameter(description = "Battery ID") @PathVariable Long batteryId,
-            @Parameter(description = "Start time") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @Parameter(description = "End time") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
-        List<BatteryHistory> history = batteryHistoryService.getHistoryByBattery(batteryId); // You might want to add a specific method for this
-        // Filter by time range in service or create a new repository method
-        return ResponseEntity.ok(history);
     }
 }

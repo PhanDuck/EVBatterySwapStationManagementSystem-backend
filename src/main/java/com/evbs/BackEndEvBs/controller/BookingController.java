@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -26,15 +27,19 @@ public class BookingController {
 
     // ==================== FULL CRUD ENDPOINTS (Admin/Staff) ====================
 
-    // CREATE - Tạo booking mới (Admin/Staff/Driver)
+    /**
+     * POST /api/booking : Create new booking (Admin/Staff/Driver)
+     */
     @PostMapping
     @Operation(summary = "Create new booking", description = "Create a new booking (Admin/Staff/Driver)")
     public ResponseEntity<Booking> createBooking(@Valid @RequestBody BookingRequest request) {
         Booking booking = bookingService.createBooking(request);
-        return ResponseEntity.ok(booking);
+        return new ResponseEntity<>(booking, HttpStatus.CREATED);
     }
 
-    // READ - Lấy tất cả bookings (Admin/Staff only)
+    /**
+     * GET /api/booking : Get all bookings (Admin/Staff only)
+     */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get all bookings", description = "Get list of all bookings (Admin/Staff only)")
@@ -43,7 +48,9 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    // READ - Lấy booking theo ID (Admin/Staff only)
+    /**
+     * GET /api/booking/{id} : Get booking by ID (Admin/Staff only)
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get booking by ID", description = "Get booking details by ID (Admin/Staff only)")
@@ -53,7 +60,9 @@ public class BookingController {
         return ResponseEntity.ok(booking);
     }
 
-    // READ - Lấy bookings theo station (Admin/Staff only)
+    /**
+     * GET /api/booking/station/{stationId} : Get bookings by station (Admin/Staff only)
+     */
     @GetMapping("/station/{stationId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get bookings by station", description = "Get bookings by station ID (Admin/Staff only)")
@@ -63,7 +72,9 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    // READ - Lấy bookings theo status (Admin/Staff only)
+    /**
+     * GET /api/booking/status/{status} : Get bookings by status (Admin/Staff only)
+     */
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get bookings by status", description = "Get bookings by status (Admin/Staff only)")
@@ -73,28 +84,34 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    // DELETE - Xóa booking (Admin only)
+    /**
+     * DELETE /api/booking/{id} : Delete booking (Admin only)
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete booking", description = "Delete booking (Admin only)")
-    public ResponseEntity<?> deleteBooking(
+    public ResponseEntity<Void> deleteBooking(
             @Parameter(description = "Booking ID") @PathVariable Long id) {
         bookingService.deleteBooking(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     // ==================== DRIVER ENDPOINTS (Own only) ====================
 
-    // CREATE - Driver tạo booking cho mình
+    /**
+     * POST /api/booking/my-bookings : Create my booking (Driver only)
+     */
     @PostMapping("/my-bookings")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Create my booking", description = "Create a new booking for current driver")
     public ResponseEntity<Booking> createMyBooking(@Valid @RequestBody BookingRequest request) {
         Booking booking = bookingService.createMyBooking(request);
-        return ResponseEntity.ok(booking);
+        return new ResponseEntity<>(booking, HttpStatus.CREATED);
     }
 
-    // READ - Driver xem booking của mình
+    /**
+     * GET /api/booking/my-bookings : Get my bookings (Driver only)
+     */
     @GetMapping("/my-bookings")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Get my bookings", description = "Get bookings for current driver")
@@ -103,7 +120,9 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    // READ - Driver xem booking cụ thể của mình
+    /**
+     * GET /api/booking/my-bookings/{id} : Get my booking by ID (Driver only)
+     */
     @GetMapping("/my-bookings/{id}")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Get my booking by ID", description = "Get specific booking for current driver")
@@ -113,7 +132,9 @@ public class BookingController {
         return ResponseEntity.ok(booking);
     }
 
-    // READ - Driver xem booking sắp tới của mình
+    /**
+     * GET /api/booking/my-bookings/upcoming : Get my upcoming bookings (Driver only)
+     */
     @GetMapping("/my-bookings/upcoming")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Get my upcoming bookings", description = "Get upcoming bookings for current driver")
@@ -122,7 +143,9 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    // UPDATE - Driver cập nhật booking của mình
+    /**
+     * PUT /api/booking/my-bookings/{id} : Update my booking (Driver only)
+     */
     @PutMapping("/my-bookings/{id}")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Update my booking", description = "Update booking for current driver")
@@ -133,7 +156,9 @@ public class BookingController {
         return ResponseEntity.ok(booking);
     }
 
-    // CANCEL - Driver hủy booking của mình
+    /**
+     * PATCH /api/booking/my-bookings/{id}/cancel : Cancel my booking (Driver only)
+     */
     @PatchMapping("/my-bookings/{id}/cancel")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Cancel my booking", description = "Cancel booking for current driver")
@@ -145,7 +170,9 @@ public class BookingController {
 
     // ==================== STATUS FLOW ENDPOINTS ====================
 
-    // UPDATE STATUS - Staff cập nhật status
+    /**
+     * PATCH /api/booking/{id}/status : Update booking status (Admin/Staff only)
+     */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Update booking status", description = "Update booking status (Admin/Staff only)")
@@ -156,7 +183,9 @@ public class BookingController {
         return ResponseEntity.ok(booking);
     }
 
-    // FORCE CANCEL - Admin force cancel booking
+    /**
+     * PATCH /api/booking/{id}/force-cancel : Force cancel booking (Admin only)
+     */
     @PatchMapping("/{id}/force-cancel")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Force cancel booking", description = "Force cancel booking (Admin only)")
@@ -168,7 +197,9 @@ public class BookingController {
 
     // ==================== UTILITY ENDPOINTS ====================
 
-    // Lấy current bookings tại station (cho staff)
+    /**
+     * GET /api/booking/station/{stationId}/current : Get current bookings by station (Admin/Staff only)
+     */
     @GetMapping("/station/{stationId}/current")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get current bookings by station", description = "Get current bookings at station (Admin/Staff only)")
@@ -178,7 +209,9 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    // Lấy pending bookings tại station (cho staff)
+    /**
+     * GET /api/booking/station/{stationId}/pending : Get pending bookings by station (Admin/Staff only)
+     */
     @GetMapping("/station/{stationId}/pending")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get pending bookings by station", description = "Get pending bookings at station (Admin/Staff only)")

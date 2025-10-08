@@ -8,39 +8,42 @@ import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
 import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
-import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Service
-@Validated
+@RequiredArgsConstructor
 public class BatteryService {
 
     @Autowired
-    private BatteryRepository batteryRepository;
+    private final BatteryRepository batteryRepository;
 
     @Autowired
-    private StationRepository stationRepository;
+    private final StationRepository stationRepository;
 
     @Autowired
-    private AuthenticationService authenticationService;
+    private final AuthenticationService authenticationService;
 
-    // CREATE - Tạo battery mới (Admin/Staff only)
-    public Battery createBattery(@Valid BatteryRequest request) {
+    @Autowired
+    private final ModelMapper modelMapper;
+
+    /**
+     * CREATE - Tạo battery mới (Admin/Staff only)
+     */
+    @Transactional
+    public Battery createBattery(BatteryRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");
         }
 
-        Battery battery = new Battery();
-        battery.setModel(request.getModel());
-        battery.setCapacity(request.getCapacity());
-        battery.setStateOfHealth(request.getStateOfHealth());
-        battery.setStatus(request.getStatus());
+        Battery battery = modelMapper.map(request, Battery.class);
 
         // Set current station nếu có
         if (request.getCurrentStationId() != null) {
@@ -52,7 +55,10 @@ public class BatteryService {
         return batteryRepository.save(battery);
     }
 
-    // READ - Lấy tất cả batteries (Admin/Staff only)
+    /**
+     * READ - Lấy tất cả batteries (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Battery> getAllBatteries() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -61,7 +67,10 @@ public class BatteryService {
         return batteryRepository.findAll();
     }
 
-    // READ - Lấy battery theo ID (Admin/Staff only)
+    /**
+     * READ - Lấy battery theo ID (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public Battery getBatteryById(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -72,7 +81,10 @@ public class BatteryService {
                 .orElseThrow(() -> new NotFoundException("Battery not found with id: " + id));
     }
 
-    // READ - Lấy batteries theo station (Admin/Staff only)
+    /**
+     * READ - Lấy batteries theo station (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Battery> getBatteriesByStation(Long stationId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -87,7 +99,10 @@ public class BatteryService {
         return batteryRepository.findByCurrentStationId(stationId);
     }
 
-    // READ - Lấy available batteries tại station (Public - Driver có thể xem)
+    /**
+     * READ - Lấy available batteries tại station (Public - Driver có thể xem)
+     */
+    @Transactional(readOnly = true)
     public List<Battery> getAvailableBatteriesAtStation(Long stationId) {
         Station station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new NotFoundException("Station not found with id: " + stationId));
@@ -95,7 +110,10 @@ public class BatteryService {
         return batteryRepository.findByCurrentStationAndStatus(station, "Available");
     }
 
-    // READ - Lấy batteries theo status (Admin/Staff only)
+    /**
+     * READ - Lấy batteries theo status (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Battery> getBatteriesByStatus(String status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -104,44 +122,39 @@ public class BatteryService {
         return batteryRepository.findByStatus(status);
     }
 
-    // UPDATE - Cập nhật battery (Admin/Staff only)
-    public Battery updateBattery(Long id, @Valid BatteryRequest request) {
+    /**
+     * UPDATE - Cập nhật battery (Admin/Staff only)
+     */
+    @Transactional
+    public Battery updateBattery(Long id, BatteryRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");
         }
 
-        Battery battery = batteryRepository.findById(id)
+        Battery existingBattery = batteryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Battery not found with id: " + id));
 
-        // Cập nhật các field
-        if (request.getModel() != null) {
-            battery.setModel(request.getModel());
-        }
-        if (request.getCapacity() != null) {
-            battery.setCapacity(request.getCapacity());
-        }
-        if (request.getStateOfHealth() != null) {
-            battery.setStateOfHealth(request.getStateOfHealth());
-        }
-        if (request.getStatus() != null) {
-            battery.setStatus(request.getStatus());
-        }
+        // Sử dụng ModelMapper để cập nhật các field
+        modelMapper.map(request, existingBattery);
 
         // Cập nhật station nếu có
         if (request.getCurrentStationId() != null) {
             Station station = stationRepository.findById(request.getCurrentStationId())
                     .orElseThrow(() -> new NotFoundException("Station not found with id: " + request.getCurrentStationId()));
-            battery.setCurrentStation(station);
-        } else if (request.getCurrentStationId() == null && battery.getCurrentStation() != null) {
+            existingBattery.setCurrentStation(station);
+        } else if (request.getCurrentStationId() == null && existingBattery.getCurrentStation() != null) {
             // Remove from station if stationId is explicitly set to null
-            battery.setCurrentStation(null);
+            existingBattery.setCurrentStation(null);
         }
 
-        return batteryRepository.save(battery);
+        return batteryRepository.save(existingBattery);
     }
 
-    // UPDATE - Chỉ cập nhật status (Staff có thể update status khi swap/charge)
+    /**
+     * UPDATE - Chỉ cập nhật status (Staff có thể update status khi swap/charge)
+     */
+    @Transactional
     public Battery updateBatteryStatus(Long id, String status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -155,7 +168,10 @@ public class BatteryService {
         return batteryRepository.save(battery);
     }
 
-    // UPDATE - Chỉ cập nhật state of health (System/Admin)
+    /**
+     * UPDATE - Chỉ cập nhật state of health (System/Admin)
+     */
+    @Transactional
     public Battery updateBatterySOH(Long id, BigDecimal stateOfHealth) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -173,27 +189,36 @@ public class BatteryService {
         return batteryRepository.save(battery);
     }
 
-    // DELETE - Xóa battery (Admin only)
+    /**
+     * DELETE - Xóa battery (Admin only)
+     */
+    @Transactional
     public void deleteBattery(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Access denied. Admin role required.");
         }
 
-        if (!batteryRepository.existsById(id)) {
-            throw new NotFoundException("Battery not found with id: " + id);
-        }
+        Battery battery = batteryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Battery not found with id: " + id));
 
-        batteryRepository.deleteById(id);
+        batteryRepository.delete(battery);
     }
 
-    // Utility methods
+    /**
+     * Utility methods - Đếm số available batteries tại station
+     */
+    @Transactional(readOnly = true)
     public long countAvailableBatteriesAtStation(Long stationId) {
         Station station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new NotFoundException("Station not found with id: " + stationId));
         return batteryRepository.countByCurrentStationAndStatus(station, "Available");
     }
 
+    /**
+     * READ - Lấy batteries với SOH tốt (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Battery> getBatteriesWithGoodHealth(BigDecimal minSoh) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -202,7 +227,9 @@ public class BatteryService {
         return batteryRepository.findByStateOfHealthGreaterThanEqual(minSoh);
     }
 
-    // Helper method kiểm tra role
+    /**
+     * Helper method kiểm tra role
+     */
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
     }

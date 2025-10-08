@@ -6,70 +6,101 @@ import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.repository.StationRepository;
-import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-@Validated
+@RequiredArgsConstructor
 public class StationService {
 
     @Autowired
-    private StationRepository stationRepository;
+    private final StationRepository stationRepository;
 
     @Autowired
-    private AuthenticationService authenticationService;
+    private final AuthenticationService authenticationService;
+
+    @Autowired
+    private final ModelMapper modelMapper;
 
     // ==================== PUBLIC READ OPERATIONS ====================
 
-    // READ - Lấy tất cả stations (Public - Anyone can view)
+    /**
+     * READ - Lấy tất cả stations (Public - Anyone can view)
+     */
+    @Transactional(readOnly = true)
     public List<Station> getAllStations() {
         return stationRepository.findAll();
     }
 
-    // READ - Lấy station theo ID (Public - Anyone can view)
+    /**
+     * READ - Lấy station theo ID (Public - Anyone can view)
+     */
+    @Transactional(readOnly = true)
     public Station getStationById(Long id) {
         return stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found with id: " + id));
     }
 
-    // READ - Lấy active stations (Public)
+    /**
+     * READ - Lấy active stations (Public)
+     */
+    @Transactional(readOnly = true)
     public List<Station> getActiveStations() {
         return stationRepository.findByStatusOrderByNameAsc("Active");
     }
 
-    // READ - Tìm stations theo name (Public)
+    /**
+     * READ - Tìm stations theo name (Public)
+     */
+    @Transactional(readOnly = true)
     public List<Station> searchStationsByName(String name) {
         return stationRepository.findByNameContainingIgnoreCase(name);
     }
 
-    // READ - Tìm stations theo location (Public)
+    /**
+     * READ - Tìm stations theo location (Public)
+     */
+    @Transactional(readOnly = true)
     public List<Station> searchStationsByLocation(String location) {
         return stationRepository.findByLocationContainingIgnoreCase(location);
     }
 
-    // READ - Lấy stations có available batteries (Public - Driver quan tâm)
+    /**
+     * READ - Lấy stations có available batteries (Public - Driver quan tâm)
+     */
+    @Transactional(readOnly = true)
     public List<Station> getStationsWithAvailableBatteries() {
         return stationRepository.findStationsWithAvailableBatteries();
     }
 
-    // READ - Lấy stations theo capacity range (Public)
+    /**
+     * READ - Lấy stations theo capacity range (Public)
+     */
+    @Transactional(readOnly = true)
     public List<Station> getStationsByCapacityRange(Integer minCapacity, Integer maxCapacity) {
         return stationRepository.findByCapacityBetween(minCapacity, maxCapacity);
     }
 
-    // READ - Lấy stations theo status (Public)
+    /**
+     * READ - Lấy stations theo status (Public)
+     */
+    @Transactional(readOnly = true)
     public List<Station> getStationsByStatus(String status) {
         return stationRepository.findByStatus(status);
     }
 
     // ==================== ADMIN/STAFF OPERATIONS ====================
 
-    // CREATE - Tạo station mới (Admin/Staff only)
-    public Station createStation(@Valid StationRequest request) {
+    /**
+     * CREATE - Tạo station mới (Admin/Staff only)
+     */
+    @Transactional
+    public Station createStation(StationRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");
@@ -80,47 +111,39 @@ public class StationService {
             throw new IllegalArgumentException("Station with name '" + request.getName() + "' already exists");
         }
 
-        Station station = new Station();
-        station.setName(request.getName());
-        station.setLocation(request.getLocation());
-        station.setCapacity(request.getCapacity());
-        station.setContactInfo(request.getContactInfo());
-        station.setStatus(request.getStatus());
-
+        Station station = modelMapper.map(request, Station.class);
         return stationRepository.save(station);
     }
 
-    // UPDATE - Cập nhật station (Admin/Staff only)
-    public Station updateStation(Long id, @Valid StationRequest request) {
+    /**
+     * UPDATE - Cập nhật station (Admin/Staff only)
+     */
+    @Transactional
+    public Station updateStation(Long id, StationRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");
         }
 
-        Station station = stationRepository.findById(id)
+        Station existingStation = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found with id: " + id));
 
         // Kiểm tra trùng tên station (nếu thay đổi tên)
-        if (!station.getName().equals(request.getName()) &&
+        if (!existingStation.getName().equals(request.getName()) &&
                 stationRepository.existsByName(request.getName())) {
             throw new IllegalArgumentException("Station with name '" + request.getName() + "' already exists");
         }
 
-        // Cập nhật các field
-        station.setName(request.getName());
-        station.setLocation(request.getLocation());
-        station.setCapacity(request.getCapacity());
-        station.setContactInfo(request.getContactInfo());
+        // Sử dụng ModelMapper để cập nhật các field
+        modelMapper.map(request, existingStation);
 
-        // Chỉ update status nếu có giá trị mới
-        if (request.getStatus() != null) {
-            station.setStatus(request.getStatus());
-        }
-
-        return stationRepository.save(station);
+        return stationRepository.save(existingStation);
     }
 
-    // UPDATE - Chỉ cập nhật status (Admin/Staff only)
+    /**
+     * UPDATE - Chỉ cập nhật status (Admin/Staff only)
+     */
+    @Transactional
     public Station updateStationStatus(Long id, String status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -134,7 +157,10 @@ public class StationService {
         return stationRepository.save(station);
     }
 
-    // UPDATE - Chỉ cập nhật capacity (Admin/Staff only)
+    /**
+     * UPDATE - Chỉ cập nhật capacity (Admin/Staff only)
+     */
+    @Transactional
     public Station updateStationCapacity(Long id, Integer capacity) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -152,7 +178,10 @@ public class StationService {
         return stationRepository.save(station);
     }
 
-    // DELETE - Xóa station (Admin only)
+    /**
+     * DELETE - Xóa station (Admin only)
+     */
+    @Transactional
     public void deleteStation(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
@@ -178,7 +207,10 @@ public class StationService {
         stationRepository.delete(station);
     }
 
-    // SOFT DELETE - Deactivate station (Admin/Staff only)
+    /**
+     * SOFT DELETE - Deactivate station (Admin/Staff only)
+     */
+    @Transactional
     public Station deactivateStation(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -194,7 +226,10 @@ public class StationService {
 
     // ==================== UTILITY METHODS ====================
 
-    // Đếm số stations theo status (Admin/Staff only)
+    /**
+     * Đếm số stations theo status (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public long countStationsByStatus(String status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -203,12 +238,18 @@ public class StationService {
         return stationRepository.countByStatus(status);
     }
 
-    // Kiểm tra station có tồn tại không
+    /**
+     * Kiểm tra station có tồn tại không
+     */
+    @Transactional(readOnly = true)
     public boolean stationExists(Long id) {
         return stationRepository.existsById(id);
     }
 
-    // Lấy station statistics (Admin/Staff only)
+    /**
+     * Lấy station statistics (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public StationStatistics getStationStatistics() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -223,12 +264,16 @@ public class StationService {
         return new StationStatistics(totalStations, activeStations, inactiveStations, maintenanceStations);
     }
 
-    // Helper method kiểm tra role
+    /**
+     * Helper method kiểm tra role
+     */
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
     }
 
-    // Inner class for statistics
+    /**
+     * Inner class for statistics
+     */
     public static class StationStatistics {
         private final long totalStations;
         private final long activeStations;

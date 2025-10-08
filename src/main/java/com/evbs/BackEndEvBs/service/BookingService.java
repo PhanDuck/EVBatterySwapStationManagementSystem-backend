@@ -7,34 +7,37 @@ import com.evbs.BackEndEvBs.model.request.BookingRequest;
 import com.evbs.BackEndEvBs.repository.BookingRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
-import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@Validated
+@RequiredArgsConstructor
 public class BookingService {
 
     @Autowired
-    private BookingRepository bookingRepository;
+    private final BookingRepository bookingRepository;
 
     @Autowired
-    private VehicleRepository vehicleRepository;
+    private final VehicleRepository vehicleRepository;
 
     @Autowired
-    private StationRepository stationRepository;
+    private final StationRepository stationRepository;
 
     @Autowired
-    private AuthenticationService authenticationService;
+    private final AuthenticationService authenticationService;
 
     // ==================== FULL CRUD (Admin/Staff) ====================
 
-    // CREATE - Tạo booking mới (Driver/Admin/Staff)
-    public Booking createBooking(@Valid BookingRequest request) {
+    /**
+     * CREATE - Tạo booking mới (Driver/Admin/Staff)
+     */
+    @Transactional
+    public Booking createBooking(BookingRequest request) {
         User currentUser = authenticationService.getCurrentUser();
 
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
@@ -53,9 +56,6 @@ public class BookingService {
             throw new IllegalArgumentException("Booking time cannot be in the past");
         }
 
-        // Kiểm tra xem station có available batteries không
-        // (Có thể thêm logic kiểm tra inventory ở đây)
-
         Booking booking = new Booking();
         booking.setDriver(currentUser.getRole() == User.Role.DRIVER ? currentUser : vehicle.getDriver());
         booking.setVehicle(vehicle);
@@ -66,7 +66,10 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // READ - Lấy tất cả bookings (Admin/Staff only)
+    /**
+     * READ - Lấy tất cả bookings (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getAllBookings() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -75,7 +78,10 @@ public class BookingService {
         return bookingRepository.findAll();
     }
 
-    // READ - Lấy booking theo ID (Admin/Staff only)
+    /**
+     * READ - Lấy booking theo ID (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public Booking getBookingById(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -86,7 +92,10 @@ public class BookingService {
                 .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
     }
 
-    // READ - Lấy bookings theo station (Admin/Staff only)
+    /**
+     * READ - Lấy bookings theo station (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getBookingsByStation(Long stationId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -99,7 +108,10 @@ public class BookingService {
         return bookingRepository.findByStationOrderByBookingTimeDesc(station);
     }
 
-    // READ - Lấy bookings theo status (Admin/Staff only)
+    /**
+     * READ - Lấy bookings theo status (Admin/Staff only)
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getBookingsByStatus(String status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -108,39 +120,29 @@ public class BookingService {
         return bookingRepository.findByStatusOrderByBookingTimeDesc(status);
     }
 
-    // UPDATE - Cập nhật booking (Admin/Staff only - status flow only)
-    public Booking updateBooking(Long id, BookingRequest request) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin/Staff role required.");
-        }
-
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
-
-        // Staff chỉ được update status, không được thay đổi thông tin khác
-        // Để thay đổi thông tin khác, cần cancel và tạo booking mới
-        throw new AuthenticationException("Staff can only update booking status. Use status update endpoints.");
-    }
-
-    // DELETE - Xóa booking (Admin only)
+    /**
+     * DELETE - Xóa booking (Admin only)
+     */
+    @Transactional
     public void deleteBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Access denied. Admin role required.");
         }
 
-        if (!bookingRepository.existsById(id)) {
-            throw new NotFoundException("Booking not found with id: " + id);
-        }
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found with id: " + id));
 
-        bookingRepository.deleteById(id);
+        bookingRepository.delete(booking);
     }
 
     // ==================== DRIVER OPERATIONS (Own only) ====================
 
-    // CREATE - Driver tạo booking cho xe của mình
-    public Booking createMyBooking(@Valid BookingRequest request) {
+    /**
+     * CREATE - Driver tạo booking cho xe của mình
+     */
+    @Transactional
+    public Booking createMyBooking(BookingRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {
             throw new AuthenticationException("Only drivers can create personal bookings");
@@ -172,7 +174,10 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // READ - Driver xem booking của mình
+    /**
+     * READ - Driver xem booking của mình
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getMyBookings() {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {
@@ -181,7 +186,10 @@ public class BookingService {
         return bookingRepository.findByDriverOrderByBookingTimeDesc(currentUser);
     }
 
-    // READ - Driver xem booking cụ thể của mình
+    /**
+     * READ - Driver xem booking cụ thể của mình
+     */
+    @Transactional(readOnly = true)
     public Booking getMyBookingById(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {
@@ -192,7 +200,10 @@ public class BookingService {
                 .orElseThrow(() -> new NotFoundException("Booking not found or access denied"));
     }
 
-    // READ - Driver xem booking sắp tới của mình
+    /**
+     * READ - Driver xem booking sắp tới của mình
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getMyUpcomingBookings() {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {
@@ -201,7 +212,10 @@ public class BookingService {
         return bookingRepository.findUpcomingByDriver(currentUser, LocalDateTime.now());
     }
 
-    // UPDATE - Driver cập nhật booking của mình (chỉ trước khi confirmed)
+    /**
+     * UPDATE - Driver cập nhật booking của mình (chỉ trước khi confirmed)
+     */
+    @Transactional
     public Booking updateMyBooking(Long id, BookingRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {
@@ -239,7 +253,10 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // CANCEL - Driver hủy booking của mình
+    /**
+     * CANCEL - Driver hủy booking của mình
+     */
+    @Transactional
     public Booking cancelMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {
@@ -260,7 +277,10 @@ public class BookingService {
 
     // ==================== STATUS FLOW OPERATIONS ====================
 
-    // UPDATE STATUS - Staff cập nhật status (pending → confirmed → completed → cancelled)
+    /**
+     * UPDATE STATUS - Staff cập nhật status (pending → confirmed → completed → cancelled)
+     */
+    @Transactional
     public Booking updateBookingStatus(Long id, String status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -279,7 +299,10 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // FORCE CANCEL - Admin có thể force cancel booking
+    /**
+     * FORCE CANCEL - Admin có thể force cancel booking
+     */
+    @Transactional
     public Booking forceCancelBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
@@ -295,7 +318,10 @@ public class BookingService {
 
     // ==================== UTILITY METHODS ====================
 
-    // Lấy current bookings tại station (cho staff)
+    /**
+     * Lấy current bookings tại station (cho staff)
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getCurrentBookingsByStation(Long stationId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -311,7 +337,10 @@ public class BookingService {
         return bookingRepository.findCurrentByStation(station, now, twoHoursLater);
     }
 
-    // Lấy pending bookings tại station (cho staff)
+    /**
+     * Lấy pending bookings tại station (cho staff)
+     */
+    @Transactional(readOnly = true)
     public List<Booking> getPendingBookingsByStation(Long stationId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
@@ -324,7 +353,9 @@ public class BookingService {
         return bookingRepository.findByStationAndStatusOrderByBookingTimeAsc(station, "Pending");
     }
 
-    // Validate status transition
+    /**
+     * Validate status transition
+     */
     private boolean isValidStatusTransition(String currentStatus, String newStatus) {
         return switch (currentStatus) {
             case "Pending" -> "Confirmed".equals(newStatus) || "Cancelled".equals(newStatus);
@@ -334,7 +365,9 @@ public class BookingService {
         };
     }
 
-    // Helper method kiểm tra role
+    /**
+     * Helper method kiểm tra role
+     */
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
     }

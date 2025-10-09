@@ -120,10 +120,8 @@ public class VehicleService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");
         }
-
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Vehicle not found with id: " + id));
-
         vehicleRepository.delete(vehicle);
     }
 

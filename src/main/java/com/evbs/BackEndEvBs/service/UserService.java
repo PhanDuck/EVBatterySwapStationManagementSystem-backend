@@ -115,34 +115,6 @@ public class UserService {
         userRepository.save(user);
     }
 
-//    /**
-//     * Xóa user hoàn toàn khỏi database
-//     */
-//    public void permanentDeleteUser(Long id) {
-//        if (!userRepository.existsById(id)) {
-//            throw new AuthenticationException("User not found with id: " + id);
-//        }
-//        userRepository.deleteById(id);
-//    }
-
-
-
-    /**
-     * Lấy danh sách user theo role
-     */
-    public List<UserResponse> getUsersByRole(User.Role role) {
-        List<User> users = userRepository.findByRole(role);
-        return users.stream()
-                .map(user -> modelMapper.map(user, UserResponse.class))
-                .collect(Collectors.toList());
-    }
-
-
-
-
-
-
-
     /**
      * Lấy danh sách tất cả user đơn giản 
      */

@@ -19,23 +19,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm booking theo driver
     List<Booking> findByDriverOrderByBookingTimeDesc(User driver);
 
-    // Tìm booking theo driver ID
-    List<Booking> findByDriverIdOrderByBookingTimeDesc(Long driverId);
-
-    // Tìm booking theo vehicle
-    List<Booking> findByVehicleOrderByBookingTimeDesc(Vehicle vehicle);
-
     // Tìm booking theo station
     List<Booking> findByStationOrderByBookingTimeDesc(Station station);
 
     // Tìm booking theo status
     List<Booking> findByStatusOrderByBookingTimeDesc(String status);
-
-    // Tìm booking theo driver và status
-    List<Booking> findByDriverAndStatusOrderByBookingTimeDesc(User driver, String status);
-
-    // Tìm booking theo thời gian
-    List<Booking> findByBookingTimeBetweenOrderByBookingTimeDesc(LocalDateTime start, LocalDateTime end);
 
     // Tìm booking sắp tới của driver
     @Query("SELECT b FROM Booking b WHERE b.driver = :driver AND b.bookingTime >= :now AND b.status IN ('Pending', 'Confirmed') ORDER BY b.bookingTime ASC")

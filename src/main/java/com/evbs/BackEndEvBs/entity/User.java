@@ -31,7 +31,7 @@ public class User implements UserDetails {
     private Long id;
 
     @NotEmpty(message = "FullName cannot be empty!")
-    @Column(name = "FullName", nullable = false, length = 150)
+    @Column(name = "FullName", nullable = false, length = 150, columnDefinition = "NVARCHAR(150)")
     private String fullName;
 
     @Email(message = "Email invalid!")

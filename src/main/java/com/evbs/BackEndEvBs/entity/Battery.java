@@ -20,7 +20,7 @@ public class Battery {
     @Column(name = "BatteryID")
     private Long id;
 
-    @Column(name = "Model", length = 100)
+    @Column(name = "Model", length = 100,columnDefinition = "NVARCHAR(100)")
     private String model;
 
     @Column(name = "Capacity", precision = 10, scale = 2)

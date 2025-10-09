@@ -23,10 +23,10 @@ public class ServicePackage {
     private Long id;
 
     @NotEmpty(message = "Name cannot be empty!")
-    @Column(name = "Name", nullable = false, length = 150)
+    @Column(name = "Name", nullable = false, length = 150,columnDefinition = "NVARCHAR(150)")
     private String name;
 
-    @Column(name = "Description", length = 255)
+    @Column(name = "Description", length = 255, columnDefinition = "NVARCHAR(255)")
     private String description;
 
     @NotNull(message = "Price cannot be null!")

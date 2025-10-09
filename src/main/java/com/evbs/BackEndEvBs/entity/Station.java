@@ -21,16 +21,16 @@ public class Station {
     private Long id;
 
     @NotEmpty(message = "Name cannot be empty!")
-    @Column(name = "Name", nullable = false, length = 150)
+    @Column(name = "Name", nullable = false, length = 150, columnDefinition = "NVARCHAR(150)")
     private String name;
 
-    @Column(name = "Location", length = 255)
+    @Column(name = "Location", length = 255, columnDefinition = "NVARCHAR(255)")
     private String location;
 
     @Column(name = "Capacity")
     private Integer capacity;
 
-    @Column(name = "ContactInfo", length = 150)
+    @Column(name = "ContactInfo", length = 150, columnDefinition = "NVARCHAR(150)")
     private String contactInfo;
     // Tọa độ GPS
     @Column(name = "Latitude")

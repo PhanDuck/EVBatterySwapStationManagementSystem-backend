@@ -101,7 +101,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return this.phoneNumber; // 👈 login bằng phone
+        return this.phoneNumber;
     }
 
     @Override

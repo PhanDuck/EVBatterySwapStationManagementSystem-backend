@@ -4,7 +4,6 @@ import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
 import com.evbs.BackEndEvBs.service.BatteryService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,18 +19,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/battery")
 @SecurityRequirement(name = "api")
-@Tag(name = "Battery Management", description = "APIs for managing batteries")
+@Tag(name = "Battery Management")
 public class BatteryController {
 
     @Autowired
     private BatteryService batteryService;
+
+    // ==================== ADMIN/STAFF ENDPOINTS ====================
 
     /**
      * POST /api/battery : Create new battery (Admin/Staff only)
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Create new battery", description = "Create a new battery (Admin/Staff only)")
+    @Operation(summary = "Create new battery")
     public ResponseEntity<Battery> createBattery(@Valid @RequestBody BatteryRequest request) {
         Battery battery = batteryService.createBattery(request);
         return new ResponseEntity<>(battery, HttpStatus.CREATED);
@@ -42,7 +43,7 @@ public class BatteryController {
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get all batteries", description = "Get list of all batteries (Admin/Staff only)")
+    @Operation(summary = "Get all batteries")
     public ResponseEntity<List<Battery>> getAllBatteries() {
         List<Battery> batteries = batteryService.getAllBatteries();
         return ResponseEntity.ok(batteries);
@@ -53,57 +54,10 @@ public class BatteryController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get battery by ID", description = "Get battery details by ID (Admin/Staff only)")
-    public ResponseEntity<Battery> getBatteryById(
-            @Parameter(description = "Battery ID") @PathVariable Long id) {
+    @Operation(summary = "Get battery by ID")
+    public ResponseEntity<Battery> getBatteryById(@PathVariable Long id) {
         Battery battery = batteryService.getBatteryById(id);
         return ResponseEntity.ok(battery);
-    }
-
-    /**
-     * GET /api/battery/station/{stationId} : Get batteries by station (Admin/Staff only)
-     */
-    @GetMapping("/station/{stationId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get batteries by station", description = "Get batteries by station ID (Admin/Staff only)")
-    public ResponseEntity<List<Battery>> getBatteriesByStation(
-            @Parameter(description = "Station ID") @PathVariable Long stationId) {
-        List<Battery> batteries = batteryService.getBatteriesByStation(stationId);
-        return ResponseEntity.ok(batteries);
-    }
-
-    /**
-     * GET /api/battery/station/{stationId}/available : Get available batteries at station (Public)
-     */
-    @GetMapping("/station/{stationId}/available")
-    @Operation(summary = "Get available batteries at station", description = "Get available batteries at specific station (Public)")
-    public ResponseEntity<List<Battery>> getAvailableBatteriesAtStation(
-            @Parameter(description = "Station ID") @PathVariable Long stationId) {
-        List<Battery> batteries = batteryService.getAvailableBatteriesAtStation(stationId);
-        return ResponseEntity.ok(batteries);
-    }
-
-    /**
-     * GET /api/battery/status/{status} : Get batteries by status (Admin/Staff only)
-     */
-    @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get batteries by status", description = "Get batteries by status (Admin/Staff only)")
-    public ResponseEntity<List<Battery>> getBatteriesByStatus(
-            @Parameter(description = "Battery status") @PathVariable String status) {
-        List<Battery> batteries = batteryService.getBatteriesByStatus(status);
-        return ResponseEntity.ok(batteries);
-    }
-
-    /**
-     * GET /api/battery/station/{stationId}/available/count : Count available batteries at station (Public)
-     */
-    @GetMapping("/station/{stationId}/available/count")
-    @Operation(summary = "Count available batteries at station", description = "Count available batteries at specific station (Public)")
-    public ResponseEntity<Long> countAvailableBatteriesAtStation(
-            @Parameter(description = "Station ID") @PathVariable Long stationId) {
-        long count = batteryService.countAvailableBatteriesAtStation(stationId);
-        return ResponseEntity.ok(count);
     }
 
     /**
@@ -111,37 +65,11 @@ public class BatteryController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update battery", description = "Update battery information (Admin/Staff only)")
+    @Operation(summary = "Update battery")
     public ResponseEntity<Battery> updateBattery(
-            @Parameter(description = "Battery ID") @PathVariable Long id,
+            @PathVariable Long id,
             @Valid @RequestBody BatteryRequest request) {
         Battery battery = batteryService.updateBattery(id, request);
-        return ResponseEntity.ok(battery);
-    }
-
-    /**
-     * PATCH /api/battery/{id}/status : Update battery status (Admin/Staff only)
-     */
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update battery status", description = "Update only battery status (Admin/Staff only)")
-    public ResponseEntity<Battery> updateBatteryStatus(
-            @Parameter(description = "Battery ID") @PathVariable Long id,
-            @RequestParam String status) {
-        Battery battery = batteryService.updateBatteryStatus(id, status);
-        return ResponseEntity.ok(battery);
-    }
-
-    /**
-     * PATCH /api/battery/{id}/soh : Update battery state of health (Admin/Staff only)
-     */
-    @PatchMapping("/{id}/soh")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update battery state of health", description = "Update battery state of health (Admin/Staff only)")
-    public ResponseEntity<Battery> updateBatterySOH(
-            @Parameter(description = "Battery ID") @PathVariable Long id,
-            @RequestParam BigDecimal stateOfHealth) {
-        Battery battery = batteryService.updateBatterySOH(id, stateOfHealth);
         return ResponseEntity.ok(battery);
     }
 
@@ -150,22 +78,60 @@ public class BatteryController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete battery", description = "Delete battery (Admin only)")
-    public ResponseEntity<Void> deleteBattery(
-            @Parameter(description = "Battery ID") @PathVariable Long id) {
+    @Operation(summary = "Delete battery")
+    public ResponseEntity<Void> deleteBattery(@PathVariable Long id) {
         batteryService.deleteBattery(id);
         return ResponseEntity.noContent().build();
     }
 
+    // ==================== PUBLIC ENDPOINTS ====================
+
     /**
-     * GET /api/battery/health/good : Get batteries with good health (Admin/Staff only)
+     * GET /api/battery/available : Get available batteries (Public)
      */
-    @GetMapping("/health/good")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get batteries with good health", description = "Get batteries with state of health >= min value (Admin/Staff only)")
-    public ResponseEntity<List<Battery>> getBatteriesWithGoodHealth(
-            @RequestParam(defaultValue = "80") BigDecimal minSoh) {
-        List<Battery> batteries = batteryService.getBatteriesWithGoodHealth(minSoh);
+    @GetMapping("/available")
+    @Operation(summary = "Get available batteries")
+    public ResponseEntity<List<Battery>> getAvailableBatteries() {
+        List<Battery> batteries = batteryService.getAvailableBatteries();
         return ResponseEntity.ok(batteries);
+    }
+
+    // ==================== UTILITY ENDPOINTS ====================
+
+    /**
+     * GET /api/battery/search/model : Search batteries by model (Admin/Staff only)
+     */
+    @GetMapping("/search/model")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Search batteries by model")
+    public ResponseEntity<List<Battery>> searchBatteriesByModel(@RequestParam String model) {
+        List<Battery> batteries = batteryService.searchBatteriesByModel(model);
+        return ResponseEntity.ok(batteries);
+    }
+
+    /**
+     * PATCH /api/battery/{id}/status : Update battery status (Admin/Staff only)
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Update battery status")
+    public ResponseEntity<Battery> updateBatteryStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        Battery battery = batteryService.updateBatteryStatus(id, status);
+        return ResponseEntity.ok(battery);
+    }
+
+    /**
+     * PATCH /api/battery/{id}/health : Update battery health (Admin/Staff only)
+     */
+    @PatchMapping("/{id}/health")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Update battery health")
+    public ResponseEntity<Battery> updateBatteryHealth(
+            @PathVariable Long id,
+            @RequestParam BigDecimal stateOfHealth) {
+        Battery battery = batteryService.updateBatteryHealth(id, stateOfHealth);
+        return ResponseEntity.ok(battery);
     }
 }

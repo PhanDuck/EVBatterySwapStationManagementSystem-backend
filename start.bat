@@ -9,7 +9,7 @@ echo.
 
 echo 🔄 Đang khởi động Spring Boot application...
 echo ⚡ Port: 8080
-echo  Database: EVBatterySwap_Test (tự động tạo dữ liệu nếu chưa có)
+echo  Database: EVBatterySwap(tự động tạo dữ liệu nếu chưa có)
 echo  Dữ liệu mẫu: 5 trạm, 75 pin, xe máy điện VN
 echo.
 

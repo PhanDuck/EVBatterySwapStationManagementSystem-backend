@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
+import com.evbs.BackEndEvBs.model.request.BatteryUpdateRequest;
 import com.evbs.BackEndEvBs.service.BatteryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -68,7 +69,7 @@ public class BatteryController {
     @Operation(summary = "Update battery")
     public ResponseEntity<Battery> updateBattery(
             @PathVariable Long id,
-            @Valid @RequestBody BatteryRequest request) {
+            @Valid @RequestBody BatteryUpdateRequest request) {
         Battery battery = batteryService.updateBattery(id, request);
         return ResponseEntity.ok(battery);
     }

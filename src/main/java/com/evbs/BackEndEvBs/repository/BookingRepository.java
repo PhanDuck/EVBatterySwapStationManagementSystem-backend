@@ -21,7 +21,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByStatus(String status);
 
     // Tìm booking của driver cụ thể
-
     Optional<Booking> findByIdAndDriver(Long id, User driver);
-    
+
 }

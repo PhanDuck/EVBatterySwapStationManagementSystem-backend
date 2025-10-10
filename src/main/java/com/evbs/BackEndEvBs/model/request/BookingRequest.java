@@ -1,6 +1,6 @@
 package com.evbs.BackEndEvBs.model.request;
 
-import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -16,6 +16,6 @@ public class BookingRequest {
     private Long stationId;
 
     @NotNull(message = "Booking time cannot be null!")
-    @Future(message = "Booking time must be in the future")
+    @FutureOrPresent(message = "Booking time cannot be in the past")
     private LocalDateTime bookingTime;
 }

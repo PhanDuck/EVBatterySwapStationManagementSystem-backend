@@ -39,6 +39,13 @@ public class Station {
     @Column(name = "Longitude")
     private Double longitude;
 
+    // Tọa độ GPS
+    @Column(name = "Latitude")
+    private Double latitude;
+
+    @Column(name = "Longitude")
+    private Double longitude;
+
     @Column(name = "Status", length = 50)
     private String status = "Active";
 

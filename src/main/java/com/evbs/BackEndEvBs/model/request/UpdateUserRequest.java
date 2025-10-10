@@ -1,6 +1,8 @@
 package com.evbs.BackEndEvBs.model.request;
 
+
 import com.evbs.BackEndEvBs.entity.User;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
@@ -26,6 +28,5 @@ public class UpdateUserRequest {
     private User.Role role;
     
     private String status;
-
     private Long driverId; // Chỉ dành cho Admin có thể gán driver
 }

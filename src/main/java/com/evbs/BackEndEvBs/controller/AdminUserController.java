@@ -87,14 +87,4 @@ public class AdminUserController {
         response.put("message", "User deleted successfully");
         return ResponseEntity.ok(response);
     }
-
-
-//    @GetMapping("/role/{role}")
-//    @PreAuthorize("hasRole('ADMIN')")
-//    @Operation(summary = "Get users by role", description = "Get list of users by role (Admin only)")
-//    public ResponseEntity<List<UserResponse>> getUsersByRole(
-//            @Parameter(description = "User role") @PathVariable User.Role role) {
-//        List<UserResponse> users = userService.getUsersByRole(role);
-//        return ResponseEntity.ok(users);
-//    }
 }

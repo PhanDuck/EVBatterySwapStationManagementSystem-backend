@@ -1,48 +1,123 @@
 package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.Station;
+import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
-import com.evbs.BackEndEvBs.model.request.CreateStationRequest;
+import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
+import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.repository.StationRepository;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class StationService {
 
     @Autowired
-    StationRepository stationRepository;
+    private final StationRepository stationRepository;
 
-    // READ - Lấy tất cả trạm (Public)
+    @Autowired
+    private final AuthenticationService authenticationService;
+
+    @Autowired
+    private final ModelMapper modelMapper;
+
+    /**
+     * CREATE - Tạo station mới (Admin/Staff only)
+     */
+    @Transactional
+    public Station createStation(StationRequest request) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Access denied");
+        }
+
+        // Kiểm tra trùng tên station
+        if (stationRepository.existsByName(request.getName())) {
+            throw new AuthenticationException("Station name already exists");
+        }
+
+        Station station = modelMapper.map(request, Station.class);
+        return stationRepository.save(station);
+    }
+
+    /**
+     * READ - Lấy tất cả stations (Public)
+     */
+    @Transactional(readOnly = true)
     public List<Station> getAllStations() {
         return stationRepository.findAll();
     }
 
-    // READ - Lấy trạm theo ID (Public)
+    /**
+     * READ - Lấy station theo ID (Public)
+     */
+    @Transactional(readOnly = true)
     public Station getStationById(Long id) {
         return stationRepository.findById(id)
-                .orElseThrow(() -> new AuthenticationException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Station not found"));
     }
 
-    public CreateStationRequest createStation(CreateStationRequest request) {
-        if (stationRepository.existsByName(request.getName())) {
-            throw new AuthenticationException("Station name already exists!");
+    @Transactional
+    public Station updateStation(Long id, StationRequest request) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Access denied");
         }
 
-        Station station = new Station();
-        station.setName(request.getName());
-        station.setLocation(request.getLocation());
-        station.setCapacity(request.getCapacity());
-        station.setContactInfo(request.getContactInfo());
-        station.setLatitude(request.getLatitude());
-        station.setLongitude(request.getLongitude());
-        station.setStatus(request.getStatus());
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        stationRepository.save(station);
+        // Kiểm tra trùng tên station (nếu thay đổi tên)
+        if (!station.getName().equals(request.getName()) &&
+                stationRepository.existsByName(request.getName())) {
+            throw new AuthenticationException("Station name already exists");
+        }
 
-        // Trả về request như user muốn
-        return request;
+        modelMapper.map(request, station);
+        return stationRepository.save(station);
+    }
+
+    /**
+     * DELETE - Xóa station (Admin only)
+     */
+    @Transactional
+    public void deleteStation(Long id) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (currentUser.getRole() != User.Role.ADMIN) {
+            throw new AuthenticationException("Access denied");
+        }
+
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Station not found"));
+        stationRepository.delete(station);
+    }
+
+    /**
+     * UPDATE - Cập nhật status station (Admin/Staff only)
+     */
+    @Transactional
+    public Station updateStationStatus(Long id, String status) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Access denied");
+        }
+
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Station not found"));
+
+        station.setStatus(status);
+        return stationRepository.save(station);
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    private boolean isAdminOrStaff(User user) {
+        return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
     }
 }

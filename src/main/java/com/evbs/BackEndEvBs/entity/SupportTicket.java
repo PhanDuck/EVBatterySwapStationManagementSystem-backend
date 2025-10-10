@@ -32,7 +32,7 @@ public class SupportTicket {
     private Station station;
 
     @NotEmpty(message = "Subject cannot be empty!")
-    @Column(name = "Subject", nullable = false, length = 200)
+    @Column(name = "Subject", nullable = false, length = 200, columnDefinition = "NVARCHAR(200)")
     private String subject;
 
     @Column(name = "Description", columnDefinition = "NVARCHAR(MAX)")

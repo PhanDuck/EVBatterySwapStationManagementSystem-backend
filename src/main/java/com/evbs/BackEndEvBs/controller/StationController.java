@@ -1,10 +1,11 @@
 package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.Station;
-import com.evbs.BackEndEvBs.model.request.CreateStationRequest;
+import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.service.StationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,36 +16,85 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-//@SecurityRequirement(name = "api")
 @RequestMapping("/api/station")
+@SecurityRequirement(name = "api")
+@Tag(name = "Station Management")
 public class StationController {
 
     @Autowired
-    StationService stationService;
+    private StationService stationService;
 
-    // 🔹 Lấy tất cả trạm (Admin/Staff only)
+    // ==================== PUBLIC ENDPOINTS ====================
+
+    /**
+     * GET /api/station : Get all stations (Public)
+     */
     @GetMapping
-//    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get all stations")
     public ResponseEntity<List<Station>> getAllStations() {
         List<Station> stations = stationService.getAllStations();
         return ResponseEntity.ok(stations);
     }
 
-    // 🔹 Lấy trạm theo ID (Admin/Staff only)
+    /**
+     * GET /api/station/{id} : Get station by ID (Public)
+     */
     @GetMapping("/{id}")
-//    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get station by ID")
     public ResponseEntity<Station> getStationById(@PathVariable Long id) {
         Station station = stationService.getStationById(id);
         return ResponseEntity.ok(station);
     }
 
+    /**
+
+    // ==================== ADMIN/STAFF ENDPOINTS ====================
+
+    /**
+     * POST /api/station : Create new station (Admin/Staff only)
+     */
     @PostMapping
-//    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Create new station")
-    public ResponseEntity<CreateStationRequest> createStation(@Valid @RequestBody CreateStationRequest request) {
-        CreateStationRequest created = stationService.createStation(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<Station> createStation(@Valid @RequestBody StationRequest request) {
+        Station station = stationService.createStation(request);
+        return new ResponseEntity<>(station, HttpStatus.CREATED);
+    }
+
+    /**
+     * PUT /api/station/{id} : Update station (Admin/Staff only)
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Update station")
+    public ResponseEntity<Station> updateStation(
+            @PathVariable Long id,
+            @Valid @RequestBody StationRequest request) {
+        Station station = stationService.updateStation(id, request);
+        return ResponseEntity.ok(station);
+    }
+
+    /**
+     * DELETE /api/station/{id} : Delete station (Admin only)
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete station")
+    public ResponseEntity<Void> deleteStation(@PathVariable Long id) {
+        stationService.deleteStation(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * PATCH /api/station/{id}/status : Update station status (Admin/Staff only)
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Update station status")
+    public ResponseEntity<Station> updateStationStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        Station station = stationService.updateStationStatus(id, status);
+        return ResponseEntity.ok(station);
     }
 }

@@ -71,13 +71,6 @@ public class AuthenticationService implements UserDetailsService {
     }
 
 
-
-
-//    public List<User> getAllUser(){
-//        List<User> users = authenticationRepository.findAll();
-//        return users;
-//    }
-
     @Override
     public UserDetails loadUserByUsername(String phoneNumber) throws UsernameNotFoundException {
         return authenticationRepository.findUserByPhoneNumber(phoneNumber);
@@ -86,9 +79,4 @@ public class AuthenticationService implements UserDetailsService {
     public User getCurrentUser(){
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
-
-    //cơ chế
-    //b1 lấy phone người dụng nhập
-    //b2: tìm trong db xem có user nào trùng với phone đó không
-    //b4 authenticationManager => compare tk password dưới db <=> pass người dùng nhập
 }

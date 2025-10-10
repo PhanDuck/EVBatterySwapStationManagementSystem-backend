@@ -33,6 +33,8 @@ CREATE TABLE Station (
     Location NVARCHAR(255),
     Capacity INT,
     ContactInfo NVARCHAR(150),
+    Latitude FLOAT,
+    Longitude FLOAT,
     Status NVARCHAR(50) DEFAULT 'Active'
 );
 

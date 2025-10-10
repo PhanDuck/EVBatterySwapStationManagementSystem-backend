@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.ServicePackage;
 import com.evbs.BackEndEvBs.model.request.ServicePackageRequest;
+import com.evbs.BackEndEvBs.model.request.ServicePackageUpdateRequest;
 import com.evbs.BackEndEvBs.service.ServicePackageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,7 +19,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/service-package")
-@SecurityRequirement(name = "api")
 @Tag(name = "Service Package Management", description = "APIs for managing service packages")
 public class ServicePackageController {
 
@@ -27,6 +27,7 @@ public class ServicePackageController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Create service package", description = "Create new service package (Admin only)")
     public ResponseEntity<ServicePackage> createServicePackage(@Valid @RequestBody ServicePackageRequest request) {
         ServicePackage servicePackage = servicePackageService.createServicePackage(request);
@@ -50,16 +51,18 @@ public class ServicePackageController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Update service package", description = "Update service package information (Admin only)")
     public ResponseEntity<ServicePackage> updateServicePackage(
             @Parameter(description = "Service Package ID") @PathVariable Long id,
-            @Valid @RequestBody ServicePackageRequest request) {
+            @Valid @RequestBody ServicePackageUpdateRequest request) {
         ServicePackage servicePackage = servicePackageService.updateServicePackage(id, request);
         return ResponseEntity.ok(servicePackage);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Delete service package", description = "Delete service package (Admin only)")
     public ResponseEntity<Void> deleteServicePackage(
             @Parameter(description = "Service Package ID") @PathVariable Long id) {

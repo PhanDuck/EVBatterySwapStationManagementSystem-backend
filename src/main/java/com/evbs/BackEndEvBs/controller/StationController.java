@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
+import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
 import com.evbs.BackEndEvBs.service.StationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -17,7 +18,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/station")
-@SecurityRequirement(name = "api")
 @Tag(name = "Station Management")
 public class StationController {
 
@@ -55,6 +55,7 @@ public class StationController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Create new station")
     public ResponseEntity<Station> createStation(@Valid @RequestBody StationRequest request) {
         Station station = stationService.createStation(request);
@@ -66,10 +67,11 @@ public class StationController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Update station")
     public ResponseEntity<Station> updateStation(
             @PathVariable Long id,
-            @Valid @RequestBody StationRequest request) {
+            @Valid @RequestBody StationUpdateRequest request) {
         Station station = stationService.updateStation(id, request);
         return ResponseEntity.ok(station);
     }
@@ -79,6 +81,7 @@ public class StationController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Delete station")
     public ResponseEntity<Void> deleteStation(@PathVariable Long id) {
         stationService.deleteStation(id);
@@ -90,6 +93,7 @@ public class StationController {
      */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Update station status")
     public ResponseEntity<Station> updateStationStatus(
             @PathVariable Long id,

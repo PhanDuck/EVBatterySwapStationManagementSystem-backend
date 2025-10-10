@@ -173,18 +173,28 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private List<Station> createStations() {
         return List.of(
-            createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", 15, "028-1234-5678", 10.7769, 106.7009, "Active"),
-            createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", 15, "028-2345-6789", 10.7867, 106.6837, "Active"),
-            createStation("Trạm Đổi Pin Quận 7", "789 Đường Nguyễn Thị Thập, Quận 7, TP.HCM", 15, "028-3456-7890", 10.7307, 106.7218, "Active"),
-            createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", 15, "028-4567-8901", 10.8015, 106.7181, "Active"),
-            createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", 15, "028-5678-9012", 10.8494, 106.7719, "Active")
+            // Trạm ở TP.HCM
+            createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", "TP.HCM", "Quận 1", 15, "0901234567", 10.7769, 106.7009, "Active"),
+            createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", "TP.HCM", "Quận 3", 15, "0902345678", 10.7867, 106.6837, "Active"),
+            createStation("Trạm Đổi Pin Quận 7", "789 Đường Nguyễn Thị Thập, Quận 7, TP.HCM", "TP.HCM", "Quận 7", 15, "0903456789", 10.7307, 106.7218, "Active"),
+            createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", "TP.HCM", "Quận Bình Thạnh", 15, "0904567890", 10.8015, 106.7181, "Active"),
+            createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 15, "0905678901", 10.8494, 106.7719, "Active"),
+            
+            // Trạm ở Hà Nội
+            createStation("Trạm Đổi Pin Hoàn Kiếm", "25 Phố Hàng Khay, Hoàn Kiếm, Hà Nội", "Hà Nội", "Hoàn Kiếm", 20, "0311112222", 21.0285, 105.8542, "Active"),
+            createStation("Trạm Đổi Pin Cầu Giấy", "88 Đường Cầu Giấy, Cầu Giấy, Hà Nội", "Hà Nội", "Cầu Giấy", 18, "0333334444", 21.0314, 105.7969, "Active"),
+            createStation("Trạm Đổi Pin Ba Đình", "156 Phố Nguyễn Thái Học, Ba Đình, Hà Nội", "Hà Nội", "Ba Đình", 16, "0355556666", 21.0364, 105.8325, "Active"),
+            createStation("Trạm Đổi Pin Đống Đa", "45 Phố Láng, Đống Đa, Hà Nội", "Hà Nội", "Đống Đa", 15, "0377778888", 21.0136, 105.8270, "Active"),
+            createStation("Trạm Đổi Pin Long Biên", "222 Đường Nguyễn Văn Cừ, Long Biên, Hà Nội", "Hà Nội", "Long Biên", 12, "0399990000", 21.0358, 105.8842, "Active")
         );
     }
 
-    private Station createStation(String name, String location, int capacity, String contactInfo, double lat, double lng, String status) {
+    private Station createStation(String name, String location, String city, String district, int capacity, String contactInfo, double lat, double lng, String status) {
         Station station = new Station();
         station.setName(name);
         station.setLocation(location);
+        station.setCity(city);
+        station.setDistrict(district);
         station.setCapacity(capacity);
         station.setContactInfo(contactInfo);
         station.setLatitude(lat);
@@ -198,7 +208,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             createServicePackage("Gói Sinh Viên", "Gói dành cho sinh viên với 15 lần đổi pin mỗi tháng", new BigDecimal("200000.00"), 30, 15),
             createServicePackage("Gói Cơ Bản", "Gói dịch vụ cơ bản với 30 lần đổi pin mỗi tháng", new BigDecimal("350000.00"), 30, 30),
             createServicePackage("Gói Tiêu Chuẩn", "Gói tiêu chuẩn với 60 lần đổi pin và hỗ trợ ưu tiên", new BigDecimal("600000.00"), 30, 60),
-            createServicePackage("Gói Cao Cấp", "Gói cao cấp không giới hạn số lần đổi pin và hỗ trợ 24/7", new BigDecimal("900000.00"), 30, -1)
+            createServicePackage("Gói Cao Cấp", "Gói cao cấp với 200 lần đổi pin và hỗ trợ 24/7", new BigDecimal("900000.00"), 30, 200)
         );
     }
 
@@ -243,11 +253,46 @@ public class DatabaseInitializer implements CommandLineRunner {
             batteries.add(createBattery("Dibao 60V-35Ah", new BigDecimal("2.10"), health, status, stations.get(3)));
         }
         
-        // Trạm 5 - 15 pin
+        // Trạm 5 - TP.HCM Thủ Đức - 15 pin
         for (int i = 0; i < 15; i++) {
             String status = i < 11 ? "Available" : (i < 13 ? "Charging" : "InUse");
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("VinFast 72V-30Ah", new BigDecimal("2.16"), health, status, stations.get(4)));
+        }
+        
+        // Trạm 6 - Hà Nội Hoàn Kiếm - 20 pin
+        for (int i = 0; i < 20; i++) {
+            String status = i < 15 ? "Available" : (i < 18 ? "Charging" : "InUse");
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createBattery("VinFast 60V-28Ah", new BigDecimal("1.68"), health, status, stations.get(5)));
+        }
+        
+        // Trạm 7 - Hà Nội Cầu Giấy - 18 pin
+        for (int i = 0; i < 18; i++) {
+            String status = i < 13 ? "Available" : (i < 16 ? "Charging" : "InUse");
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createBattery("Yadea 72V-35Ah", new BigDecimal("2.52"), health, status, stations.get(6)));
+        }
+        
+        // Trạm 8 - Hà Nội Ba Đình - 16 pin
+        for (int i = 0; i < 16; i++) {
+            String status = i < 12 ? "Available" : (i < 14 ? "Charging" : "InUse");
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createBattery("Pega 60V-30Ah", new BigDecimal("1.80"), health, status, stations.get(7)));
+        }
+        
+        // Trạm 9 - Hà Nội Đống Đa - 15 pin
+        for (int i = 0; i < 15; i++) {
+            String status = i < 10 ? "Available" : (i < 13 ? "Charging" : "InUse");
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createBattery("Dibao 48V-25Ah", new BigDecimal("1.20"), health, status, stations.get(8)));
+        }
+        
+        // Trạm 10 - Hà Nội Long Biên - 12 pin
+        for (int i = 0; i < 12; i++) {
+            String status = i < 8 ? "Available" : (i < 10 ? "Charging" : "InUse");
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createBattery("VinFast 48V-22Ah", new BigDecimal("1.06"), health, status, stations.get(9)));
         }
         
         return batteries;

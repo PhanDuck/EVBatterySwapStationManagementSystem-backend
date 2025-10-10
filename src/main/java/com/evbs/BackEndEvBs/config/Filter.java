@@ -42,7 +42,9 @@ public class Filter extends OncePerRequestFilter {
             "GET:/api/station/**",
             "GET:/api/stations/active",
             "GET:/api/stations/available",
-            "GET:/api/stations/search"
+            "GET:/api/stations/search",
+            "GET:/api/service-package",
+            "GET:/api/service-package/**"
     );
 
     public boolean isPublicAPI(String uri, String method) {

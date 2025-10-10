@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.Vehicle;
 import com.evbs.BackEndEvBs.model.request.VehicleRequest;
+import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
 import com.evbs.BackEndEvBs.service.VehicleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,7 +38,7 @@ public class VehicleController {
      */
     @PutMapping("/my-vehicles/{id}")
     @Operation(summary = "Update vehicle's info by ID (Driver)")
-    public ResponseEntity<Vehicle> updateMyVehicle(@PathVariable Long id, @RequestBody VehicleRequest vehicleRequest) {
+    public ResponseEntity<Vehicle> updateMyVehicle(@PathVariable Long id, @RequestBody VehicleUpdateRequest vehicleRequest) {
         Vehicle updatedVehicle = vehicleService.updateMyVehicle(id, vehicleRequest);
         return ResponseEntity.ok(updatedVehicle);
     }
@@ -60,7 +61,7 @@ public class VehicleController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Update vehicle's info by ID (Admin/Staff only)")
-    public ResponseEntity<Vehicle> updateVehicle(@PathVariable Long id, @Valid @RequestBody VehicleRequest vehicleRequest) {
+    public ResponseEntity<Vehicle> updateVehicle(@PathVariable Long id, @Valid @RequestBody VehicleUpdateRequest vehicleRequest) {
         Vehicle updatedVehicle = vehicleService.updateVehicle(id, vehicleRequest);
         return ResponseEntity.ok(updatedVehicle);
     }

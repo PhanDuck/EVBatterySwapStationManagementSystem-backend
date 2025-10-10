@@ -5,7 +5,9 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
+import com.evbs.BackEndEvBs.model.request.BatteryUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryRepository;
+import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +23,9 @@ public class BatteryService {
 
     @Autowired
     private final BatteryRepository batteryRepository;
+
+    @Autowired
+    private final StationRepository stationRepository;
 
     @Autowired
     private final AuthenticationService authenticationService;
@@ -79,7 +84,7 @@ public class BatteryService {
      * UPDATE - Cập nhật battery (Admin/Staff only)
      */
     @Transactional
-    public Battery updateBattery(Long id, BatteryRequest request) {
+    public Battery updateBattery(Long id, BatteryUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -88,7 +93,26 @@ public class BatteryService {
         Battery battery = batteryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Battery not found"));
 
-        modelMapper.map(request, battery);
+        // Chỉ update những field không null
+        if (request.getModel() != null && !request.getModel().trim().isEmpty()) {
+            battery.setModel(request.getModel());
+        }
+        if (request.getCapacity() != null) {
+            battery.setCapacity(request.getCapacity());
+        }
+        if (request.getStateOfHealth() != null) {
+            battery.setStateOfHealth(request.getStateOfHealth());
+        }
+        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+            battery.setStatus(request.getStatus());
+        }
+        if (request.getCurrentStationId() != null) {
+            // Tìm station và set
+            // Có thể cần thêm logic validation station exists
+            battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
+                .orElseThrow(() -> new NotFoundException("Station not found")));
+        }
+
         return batteryRepository.save(battery);
     }
 

@@ -5,6 +5,7 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
+import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -64,7 +65,7 @@ public class StationService {
     }
 
     @Transactional
-    public Station updateStation(Long id, StationRequest request) {
+    public Station updateStation(Long id, StationUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -73,13 +74,38 @@ public class StationService {
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        // Kiểm tra trùng tên station (nếu thay đổi tên)
-        if (!station.getName().equals(request.getName()) &&
+        // Kiểm tra trùng tên station (nếu thay đổi tên) 
+        if (request.getName() != null && !station.getName().equals(request.getName()) &&
                 stationRepository.existsByName(request.getName())) {
             throw new AuthenticationException("Station name already exists");
         }
 
-        modelMapper.map(request, station);
+        // Chỉ update những field không null (giữ lại giá trị cũ nếu không nhập)
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            station.setName(request.getName());
+        }
+        if (request.getLocation() != null && !request.getLocation().trim().isEmpty()) {
+            station.setLocation(request.getLocation());
+        }
+        if (request.getCity() != null && !request.getCity().trim().isEmpty()) {
+            station.setCity(request.getCity());
+        }
+        if (request.getDistrict() != null && !request.getDistrict().trim().isEmpty()) {
+            station.setDistrict(request.getDistrict());
+        }
+        if (request.getCapacity() != null) {
+            station.setCapacity(request.getCapacity());
+        }
+        if (request.getContactInfo() != null && !request.getContactInfo().trim().isEmpty()) {
+            station.setContactInfo(request.getContactInfo());
+        }
+        if (request.getLatitude() != null) {
+            station.setLatitude(request.getLatitude());
+        }
+        if (request.getLongitude() != null) {
+            station.setLongitude(request.getLongitude());
+        }
+
         return stationRepository.save(station);
     }
 

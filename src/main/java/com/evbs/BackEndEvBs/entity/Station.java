@@ -3,6 +3,7 @@ package com.evbs.BackEndEvBs.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -30,8 +31,20 @@ public class Station {
     @Column(name = "Capacity")
     private Integer capacity;
 
-    @Column(name = "ContactInfo", length = 150, columnDefinition = "NVARCHAR(150)")
+    @Pattern(
+            regexp = "^(03|05|07|08|09)[0-9]{8}$",
+            message = "Contact phone number invalid! Must be Vietnamese phone number format."
+    )
+    @Column(name = "ContactInfo", length = 12)
     private String contactInfo;
+
+    // Thông tin địa chỉ chi tiết
+    @Column(name = "City", length = 100, columnDefinition = "NVARCHAR(100)")
+    private String city;
+
+    @Column(name = "District", length = 100, columnDefinition = "NVARCHAR(100)")
+    private String district;
+
     // Tọa độ GPS
     @Column(name = "Latitude")
     private Double latitude;

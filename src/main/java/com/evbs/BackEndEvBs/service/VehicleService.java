@@ -5,6 +5,8 @@ import com.evbs.BackEndEvBs.entity.Vehicle;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.VehicleRequest;
+import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
+import com.evbs.BackEndEvBs.repository.UserRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -61,7 +63,7 @@ public class VehicleService {
      * UPDATE - Cập nhật thông tin không quan trọng (Driver)
      */
     @Transactional
-    public Vehicle updateMyVehicle(Long id, VehicleRequest vehicleRequest) {
+    public Vehicle updateMyVehicle(Long id, VehicleUpdateRequest vehicleRequest) {
         User currentUser = authenticationService.getCurrentUser();
         Vehicle existingVehicle = vehicleRepository.findByIdAndDriver(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Vehicle not found or access denied"));
@@ -78,7 +80,7 @@ public class VehicleService {
      * UPDATE - Cập nhật đầy đủ (Admin/Staff only)
      */
     @Transactional
-    public Vehicle updateVehicle(Long id, VehicleRequest vehicleRequest) {
+    public Vehicle updateVehicle(Long id, VehicleUpdateRequest vehicleRequest) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");

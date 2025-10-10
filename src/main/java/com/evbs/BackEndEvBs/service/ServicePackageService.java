@@ -5,6 +5,7 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.ServicePackageRequest;
+import com.evbs.BackEndEvBs.model.request.ServicePackageUpdateRequest;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -54,7 +55,7 @@ public class ServicePackageService {
     }
 
     @Transactional
-    public ServicePackage updateServicePackage(Long id, ServicePackageRequest request) {
+    public ServicePackage updateServicePackage(Long id, ServicePackageUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Access denied. Admin role required.");

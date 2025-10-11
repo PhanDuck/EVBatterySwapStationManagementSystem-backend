@@ -20,17 +20,14 @@ public class Booking {
 
     @ManyToOne
     @JoinColumn(name = "DriverID", nullable = false)
-    @JsonIgnore
     private User driver;
 
     @ManyToOne
     @JoinColumn(name = "VehicleID", nullable = false)
-    @JsonIgnore
     private Vehicle vehicle;
 
     @ManyToOne
     @JoinColumn(name = "StationID", nullable = false)
-    @JsonIgnore
     private Station station;
 
     @Column(name = "BookingTime", nullable = false)

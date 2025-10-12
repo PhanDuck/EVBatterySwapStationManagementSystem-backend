@@ -11,7 +11,6 @@ import com.evbs.BackEndEvBs.repository.BookingRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +33,6 @@ public class BookingService {
     @Autowired
     private final AuthenticationService authenticationService;
 
-    @Autowired
-    private final ModelMapper modelMapper;
-
     /**
      * CREATE - Tạo booking mới (Driver)
      */
@@ -56,10 +52,12 @@ public class BookingService {
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        Booking booking = modelMapper.map(request, Booking.class);
+        // Tạo booking thủ công thay vì dùng ModelMapper để tránh conflict
+        Booking booking = new Booking();
         booking.setDriver(currentUser);
         booking.setVehicle(vehicle);
         booking.setStation(station);
+        booking.setBookingTime(request.getBookingTime());
 
         return bookingRepository.save(booking);
     }
@@ -92,7 +90,7 @@ public class BookingService {
         Booking booking = bookingRepository.findByIdAndDriver(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Booking not found"));
 
-        booking.setStatus("Cancelled");
+        booking.setStatus(Booking.Status.CANCELLED);
         return bookingRepository.save(booking);
     }
 
@@ -112,7 +110,7 @@ public class BookingService {
      * UPDATE - Cập nhật booking status (Admin/Staff only)
      */
     @Transactional
-    public Booking updateBookingStatus(Long id, String status) {
+    public Booking updateBookingStatus(Long id, Booking.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -156,7 +154,7 @@ public class BookingService {
      * READ - Lấy bookings theo status (Admin/Staff only)
      */
     @Transactional(readOnly = true)
-    public List<Booking> getBookingsByStatus(String status) {
+    public List<Booking> getBookingsByStatus(Booking.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");

@@ -128,7 +128,7 @@ public class StationService {
      * UPDATE - Cập nhật status station (Admin/Staff only)
      */
     @Transactional
-    public Station updateStationStatus(Long id, String status) {
+    public Station updateStationStatus(Long id, Station.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");

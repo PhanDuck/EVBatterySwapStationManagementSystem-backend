@@ -120,7 +120,7 @@ public class SwapTransactionService {
         SwapTransaction transaction = swapTransactionRepository.findByIdAndDriver(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Transaction not found"));
 
-        transaction.setStatus("Completed");
+        transaction.setStatus(SwapTransaction.Status.COMPLETED);
         transaction.setEndTime(LocalDateTime.now());
 
         return swapTransactionRepository.save(transaction);
@@ -181,7 +181,7 @@ public class SwapTransactionService {
      * UPDATE - Cập nhật status transaction (Admin/Staff only)
      */
     @Transactional
-    public SwapTransaction updateTransactionStatus(Long id, String status) {
+    public SwapTransaction updateTransactionStatus(Long id, SwapTransaction.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -192,7 +192,7 @@ public class SwapTransactionService {
 
         transaction.setStatus(status);
 
-        if ("Completed".equals(status) && transaction.getEndTime() == null) {
+        if (SwapTransaction.Status.COMPLETED.equals(status) && transaction.getEndTime() == null) {
             transaction.setEndTime(LocalDateTime.now());
         }
 

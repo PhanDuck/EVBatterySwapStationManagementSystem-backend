@@ -52,8 +52,8 @@ public class TicketResponseService {
         response.setStaff(currentUser);
         response.setResponseTime(LocalDateTime.now());
 
-        // Cập nhật status của ticket thành "InProgress"
-        ticket.setStatus("InProgress");
+        // Cập nhật status của ticket thành "IN_PROGRESS"
+        ticket.setStatus(SupportTicket.Status.IN_PROGRESS);
         supportTicketRepository.save(ticket);
 
         return ticketResponseRepository.save(response);

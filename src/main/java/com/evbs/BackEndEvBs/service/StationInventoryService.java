@@ -93,14 +93,14 @@ public class StationInventoryService {
      */
     @Transactional(readOnly = true)
     public List<StationInventory> getAvailableBatteries(Long stationId) {
-        return stationInventoryRepository.findByStationIdAndStatus(stationId, "Available");
+        return stationInventoryRepository.findByStationIdAndStatus(stationId, StationInventory.Status.AVAILABLE);
     }
 
     /**
      * UPDATE - Cập nhật battery status (Admin/Staff only)
      */
     @Transactional
-    public StationInventory updateBatteryStatus(Long id, String status) {
+    public StationInventory updateBatteryStatus(Long id, StationInventory.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");

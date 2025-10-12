@@ -29,6 +29,9 @@ public class UserService {
     ModelMapper modelMapper;
 
     @Autowired
+    AuthenticationService authenticationService;
+
+    @Autowired
     PasswordEncoder passwordEncoder;
 
     /**
@@ -99,7 +102,7 @@ public class UserService {
             user.setRole(request.getRole());
         }
 
-        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+        if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
         }
 
@@ -114,7 +117,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AuthenticationException("User not found with id: " + id));
         
-        user.setStatus("Deleted");
+        user.setStatus(User.Status.INACTIVE); // Có thể tạo thêm DELETED status nếu cần
         userRepository.save(user);
     }
 

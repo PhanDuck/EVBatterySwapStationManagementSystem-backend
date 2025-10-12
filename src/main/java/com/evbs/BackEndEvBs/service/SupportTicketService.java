@@ -135,7 +135,7 @@ public class SupportTicketService {
      * UPDATE - Cập nhật ticket status (Admin/Staff only)
      */
     @Transactional
-    public SupportTicket updateTicketStatus(Long id, String status) {
+    public SupportTicket updateTicketStatus(Long id, SupportTicket.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");

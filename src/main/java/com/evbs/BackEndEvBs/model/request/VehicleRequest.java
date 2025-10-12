@@ -21,6 +21,4 @@ public class VehicleRequest {
 
     @NotEmpty(message = "Vehicle model cannot be empty!")
     private String model;
-
-    private Long driverId;
 }

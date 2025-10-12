@@ -15,6 +15,10 @@ import java.util.List;
 @Setter
 public class Battery {
 
+    public enum Status {
+        AVAILABLE, IN_USE, CHARGING, MAINTENANCE, DAMAGED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "BatteryID")
@@ -29,8 +33,9 @@ public class Battery {
     @Column(name = "StateOfHealth", precision = 5, scale = 2)
     private BigDecimal stateOfHealth;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Available";
+    private Status status = Status.AVAILABLE;
 
     @ManyToOne
     @JoinColumn(name = "CurrentStationID")

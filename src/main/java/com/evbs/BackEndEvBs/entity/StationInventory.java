@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 @Setter
 public class StationInventory {
 
+    public enum Status {
+        AVAILABLE, RESERVED, MAINTENANCE
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "StationInventoryID")
@@ -28,8 +32,9 @@ public class StationInventory {
     @JsonIgnore
     private Battery battery;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Available";
+    private Status status = Status.AVAILABLE;
 
     @Column(name = "LastUpdate")
     private LocalDateTime lastUpdate = LocalDateTime.now();

@@ -100,7 +100,7 @@ public class SwapTransactionController {
     @Operation(summary = "Update transaction status")
     public ResponseEntity<SwapTransaction> updateTransactionStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam SwapTransaction.Status status) {
         SwapTransaction transaction = swapTransactionService.updateTransactionStatus(id, status);
         return ResponseEntity.ok(transaction);
     }

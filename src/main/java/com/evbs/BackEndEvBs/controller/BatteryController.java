@@ -118,7 +118,7 @@ public class BatteryController {
     @Operation(summary = "Update battery status")
     public ResponseEntity<Battery> updateBatteryStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam Battery.Status status) {
         Battery battery = batteryService.updateBatteryStatus(id, status);
         return ResponseEntity.ok(battery);
     }

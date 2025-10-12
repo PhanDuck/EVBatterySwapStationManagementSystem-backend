@@ -52,8 +52,13 @@ public class Station {
     @Column(name = "Longitude")
     private Double longitude;
 
+    public enum Status {
+        ACTIVE, INACTIVE, MAINTENANCE, UNDER_CONSTRUCTION
+    }
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Active";
+    private Status status = Status.ACTIVE;
 
     // Relationships
     @OneToMany(mappedBy = "currentStation")

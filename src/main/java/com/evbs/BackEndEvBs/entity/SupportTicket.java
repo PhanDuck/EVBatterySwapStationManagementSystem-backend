@@ -16,6 +16,10 @@ import java.util.List;
 @Setter
 public class SupportTicket {
 
+    public enum Status {
+        OPEN, IN_PROGRESS, RESOLVED, CLOSED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "TicketID")
@@ -38,8 +42,9 @@ public class SupportTicket {
     @Column(name = "Description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Open";
+    private Status status = Status.OPEN;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt = LocalDateTime.now();

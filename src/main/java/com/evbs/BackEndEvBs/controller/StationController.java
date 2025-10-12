@@ -97,7 +97,7 @@ public class StationController {
     @Operation(summary = "Update station status")
     public ResponseEntity<Station> updateStationStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam Station.Status status) {
         Station station = stationService.updateStationStatus(id, status);
         return ResponseEntity.ok(station);
     }

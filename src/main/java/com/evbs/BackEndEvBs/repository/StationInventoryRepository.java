@@ -17,7 +17,7 @@ public interface StationInventoryRepository extends JpaRepository<StationInvento
     Optional<StationInventory> findByBatteryId(Long batteryId);
 
     // Tìm available batteries trong station
-    List<StationInventory> findByStationIdAndStatus(Long stationId, String status);
+    List<StationInventory> findByStationIdAndStatus(Long stationId, com.evbs.BackEndEvBs.entity.StationInventory.Status status);
 
     // Kiểm tra battery đã tồn tại trong inventory
     boolean existsByBatteryId(Long batteryId);

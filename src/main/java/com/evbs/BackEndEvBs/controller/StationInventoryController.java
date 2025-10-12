@@ -56,7 +56,7 @@ public class StationInventoryController {
     @Operation(summary = "Update battery status")
     public ResponseEntity<StationInventory> updateBatteryStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam StationInventory.Status status) {
         StationInventory inventory = stationInventoryService.updateBatteryStatus(id, status);
         return ResponseEntity.ok(inventory);
     }

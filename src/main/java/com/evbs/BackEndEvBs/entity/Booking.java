@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 @Setter
 public class Booking {
 
+    public enum Status {
+        PENDING, CONFIRMED, COMPLETED, CANCELLED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "BookingID")
@@ -23,19 +27,41 @@ public class Booking {
     @JsonIgnore
     private User driver;
 
+    @Transient
+    private Long driverId;
+
     @ManyToOne
     @JoinColumn(name = "VehicleID", nullable = false)
     @JsonIgnore
     private Vehicle vehicle;
+
+    @Transient
+    private Long vehicleId;
 
     @ManyToOne
     @JoinColumn(name = "StationID", nullable = false)
     @JsonIgnore
     private Station station;
 
+    @Transient
+    private Long stationId;
+
     @Column(name = "BookingTime", nullable = false)
     private LocalDateTime bookingTime;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Pending";
+    private Status status = Status.PENDING;
+
+    public Long getDriverId() {
+        return this.driver != null ? this.driver.getId() : null;
+    }
+
+    public Long getVehicleId() {
+        return this.vehicle != null ? this.vehicle.getId() : null;
+    }
+
+    public Long getStationId() {
+        return this.station != null ? this.station.getId() : null;
+    }
 }

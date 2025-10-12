@@ -53,6 +53,8 @@ public class Booking {
     @Column(name = "Status", length = 50)
     private Status status = Status.PENDING;
 
+
+
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
     }

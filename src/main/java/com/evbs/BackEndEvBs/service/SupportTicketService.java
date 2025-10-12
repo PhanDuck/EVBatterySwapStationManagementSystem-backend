@@ -84,7 +84,7 @@ public class SupportTicketService {
                 .orElseThrow(() -> new NotFoundException("Ticket not found"));
 
         // Chỉ cho phép update khi ticket chưa được trả lời
-        if (!ticket.getStatus().equals("Open")) {
+        if (!SupportTicket.Status.OPEN.equals(ticket.getStatus())) {
             throw new AuthenticationException("Cannot update ticket that is already being processed");
         }
 

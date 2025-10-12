@@ -21,7 +21,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     List<Booking> findByStationId(@Param("stationId") Long stationId);
 
     // Tìm bookings theo status
-    List<Booking> findByStatus(com.evbs.BackEndEvBs.entity.Booking.Status status);
+    List<Booking> findByStatus(Booking.Status status);
 
     // Tìm booking của driver cụ thể
     Optional<Booking> findByIdAndDriver(Long id, User driver);

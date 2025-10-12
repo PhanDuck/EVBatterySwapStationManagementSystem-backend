@@ -16,7 +16,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
     List<Station> findByLocationContainingIgnoreCase(String location);
 
     // Tìm station theo status
-    List<Station> findByStatus(com.evbs.BackEndEvBs.entity.Station.Status status);
+    List<Station> findByStatus(Station.Status status);
 
     // Kiểm tra trùng tên station
     boolean existsByName(String name);

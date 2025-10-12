@@ -1,5 +1,6 @@
 package com.evbs.BackEndEvBs.model.request;
 
+import com.evbs.BackEndEvBs.entity.SupportTicket;
 import lombok.Data;
 
 @Data
@@ -11,5 +12,5 @@ public class SupportTicketUpdateRequest {
 
     private String description;
 
-    private String status;
+    private SupportTicket.Status status;
 }

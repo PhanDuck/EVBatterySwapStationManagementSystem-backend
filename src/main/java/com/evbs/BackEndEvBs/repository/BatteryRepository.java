@@ -13,11 +13,11 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
     List<Battery> findByModelContainingIgnoreCase(String model);
 
     // Tìm batteries theo status
-    List<Battery> findByStatus(com.evbs.BackEndEvBs.entity.Battery.Status status);
+    List<Battery> findByStatus(Battery.Status status);
 
     // Tìm batteries theo station
     List<Battery> findByCurrentStationId(Long stationId);
 
     // Tìm available batteries
-    List<Battery> findByStatusAndCurrentStationIsNotNull(com.evbs.BackEndEvBs.entity.Battery.Status status);
+    List<Battery> findByStatusAndCurrentStationIsNotNull(Battery.Status status);
 }

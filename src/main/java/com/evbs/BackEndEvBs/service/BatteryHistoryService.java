@@ -228,7 +228,7 @@ public class BatteryHistoryService {
      * Tạo history khi battery status thay đổi
      */
     @Transactional
-    public BatteryHistory logBatteryStatusChange(Long batteryId, Long staffId, String oldStatus, String newStatus) {
+    public BatteryHistory logBatteryStatusChange(Long batteryId, Long staffId, Battery.Status oldStatus, Battery.Status newStatus) {
         Battery battery = batteryRepository.findById(batteryId)
                 .orElseThrow(() -> new NotFoundException("Battery not found"));
 

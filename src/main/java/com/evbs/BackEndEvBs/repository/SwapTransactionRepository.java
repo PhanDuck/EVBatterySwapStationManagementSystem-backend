@@ -18,7 +18,7 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
     List<SwapTransaction> findByStationId(Long stationId);
 
     // Tìm transactions theo status
-    List<SwapTransaction> findByStatus(com.evbs.BackEndEvBs.entity.SwapTransaction.Status status);
+    List<SwapTransaction> findByStatus(SwapTransaction.Status status);
 
     // Tìm transaction của driver cụ thể
     Optional<SwapTransaction> findByIdAndDriver(Long id, User driver);

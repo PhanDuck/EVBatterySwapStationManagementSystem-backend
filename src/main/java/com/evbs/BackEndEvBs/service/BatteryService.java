@@ -81,6 +81,18 @@ public class BatteryService {
     }
 
     /**
+     * READ - Lấy tất cả batteries trong station (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Battery> getBatteriesByStation(Long stationId) {
+        // Kiểm tra station có tồn tại không
+        if (!stationRepository.existsById(stationId)) {
+            throw new NotFoundException("Station not found");
+        }
+        return batteryRepository.findByCurrentStation_Id(stationId);
+    }
+
+    /**
      * UPDATE - Cập nhật battery (Admin/Staff only)
      */
     @Transactional

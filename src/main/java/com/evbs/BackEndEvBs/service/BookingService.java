@@ -90,6 +90,13 @@ public class BookingService {
         Booking booking = bookingRepository.findByIdAndDriver(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Booking not found"));
 
+        // Kiểm tra trạng thái booking - chỉ cho phép hủy khi status là PENDING
+        if (booking.getStatus() != Booking.Status.PENDING) {
+            String message = String.format("Cannot cancel booking with status '%s'. Only PENDING bookings can be cancelled by driver.", 
+                    booking.getStatus());
+            throw new AuthenticationException(message);
+        }
+
         booking.setStatus(Booking.Status.CANCELLED);
         return bookingRepository.save(booking);
     }

@@ -180,12 +180,12 @@ public class DatabaseInitializer implements CommandLineRunner {
             createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", "TP.HCM", "Quận Bình Thạnh", 15, "0904567890", 10.8015, 106.7181, Station.Status.ACTIVE),
             createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 15, "0905678901", 10.8494, 106.7719, Station.Status.ACTIVE),
             
-            // Trạm ở Hà Nội
-            createStation("Trạm Đổi Pin Hoàn Kiếm", "25 Phố Hàng Khay, Hoàn Kiếm, Hà Nội", "Hà Nội", "Hoàn Kiếm", 20, "0311112222", 21.0285, 105.8542, Station.Status.ACTIVE),
-            createStation("Trạm Đổi Pin Cầu Giấy", "88 Đường Cầu Giấy, Cầu Giấy, Hà Nội", "Hà Nội", "Cầu Giấy", 18, "0333334444", 21.0314, 105.7969, Station.Status.ACTIVE),
-            createStation("Trạm Đổi Pin Ba Đình", "156 Phố Nguyễn Thái Học, Ba Đình, Hà Nội", "Hà Nội", "Ba Đình", 16, "0355556666", 21.0364, 105.8325, Station.Status.ACTIVE),
+            // Trạm ở Hà Nội - TẤT CẢ ĐỀU CAPACITY = 15
+            createStation("Trạm Đổi Pin Hoàn Kiếm", "25 Phố Hàng Khay, Hoàn Kiếm, Hà Nội", "Hà Nội", "Hoàn Kiếm", 15, "0311112222", 21.0285, 105.8542, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Cầu Giấy", "88 Đường Cầu Giấy, Cầu Giấy, Hà Nội", "Hà Nội", "Cầu Giấy", 15, "0333334444", 21.0314, 105.7969, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Ba Đình", "156 Phố Nguyễn Thái Học, Ba Đình, Hà Nội", "Hà Nội", "Ba Đình", 15, "0355556666", 21.0364, 105.8325, Station.Status.ACTIVE),
             createStation("Trạm Đổi Pin Đống Đa", "45 Phố Láng, Đống Đa, Hà Nội", "Hà Nội", "Đống Đa", 15, "0377778888", 21.0136, 105.8270, Station.Status.ACTIVE),
-            createStation("Trạm Đổi Pin Long Biên", "222 Đường Nguyễn Văn Cừ, Long Biên, Hà Nội", "Hà Nội", "Long Biên", 12, "0399990000", 21.0358, 105.8842, Station.Status.ACTIVE)
+            createStation("Trạm Đổi Pin Long Biên", "222 Đường Nguyễn Văn Cừ, Long Biên, Hà Nội", "Hà Nội", "Long Biên", 15, "0399990000", 21.0358, 105.8842, Station.Status.ACTIVE)
         );
     }
 
@@ -260,23 +260,23 @@ public class DatabaseInitializer implements CommandLineRunner {
             batteries.add(createBattery("VinFast 72V-30Ah", new BigDecimal("2.16"), health, status, stations.get(4)));
         }
         
-        // Trạm 6 - Hà Nội Hoàn Kiếm - 20 pin
-        for (int i = 0; i < 20; i++) {
-            Battery.Status status = i < 15 ? Battery.Status.AVAILABLE : (i < 18 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
+        // Trạm 6 - Hà Nội Hoàn Kiếm - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("VinFast 60V-28Ah", new BigDecimal("1.68"), health, status, stations.get(5)));
         }
         
-        // Trạm 7 - Hà Nội Cầu Giấy - 18 pin
-        for (int i = 0; i < 18; i++) {
-            Battery.Status status = i < 13 ? Battery.Status.AVAILABLE : (i < 16 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
+        // Trạm 7 - Hà Nội Cầu Giấy - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Yadea 72V-35Ah", new BigDecimal("2.52"), health, status, stations.get(6)));
         }
         
-        // Trạm 8 - Hà Nội Ba Đình - 16 pin
-        for (int i = 0; i < 16; i++) {
-            Battery.Status status = i < 12 ? Battery.Status.AVAILABLE : (i < 14 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
+        // Trạm 8 - Hà Nội Ba Đình - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Pega 60V-30Ah", new BigDecimal("1.80"), health, status, stations.get(7)));
         }
@@ -288,11 +288,23 @@ public class DatabaseInitializer implements CommandLineRunner {
             batteries.add(createBattery("Dibao 48V-25Ah", new BigDecimal("1.20"), health, status, stations.get(8)));
         }
         
-        // Trạm 10 - Hà Nội Long Biên - 12 pin
-        for (int i = 0; i < 12; i++) {
-            Battery.Status status = i < 8 ? Battery.Status.AVAILABLE : (i < 10 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
+        // Trạm 10 - Hà Nội Long Biên - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("VinFast 48V-22Ah", new BigDecimal("1.06"), health, status, stations.get(9)));
+        }
+        
+        // Tạo thêm 5 pin không được gán vào trạm nào để test chức năng thêm pin
+        for (int i = 0; i < 5; i++) {
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createUnassignedBattery("Available Battery " + (i + 1), new BigDecimal("2.00"), health, Battery.Status.AVAILABLE));
+        }
+        
+        // Tạo thêm 5 pin đang được sử dụng bên ngoài (currentStation = null, status = IN_USE)
+        for (int i = 0; i < 5; i++) {
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createUnassignedBattery("In-Use Battery " + (i + 1), new BigDecimal("2.00"), health, Battery.Status.IN_USE));
         }
         
         return batteries;
@@ -305,6 +317,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         battery.setStateOfHealth(stateOfHealth);
         battery.setStatus(status);
         battery.setCurrentStation(station);
+        return battery;
+    }
+
+    private Battery createUnassignedBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status) {
+        Battery battery = new Battery();
+        battery.setModel(model);
+        battery.setCapacity(capacity);
+        battery.setStateOfHealth(stateOfHealth);
+        battery.setStatus(status);
+        battery.setCurrentStation(null); // Không gán vào trạm nào
         return battery;
     }
 

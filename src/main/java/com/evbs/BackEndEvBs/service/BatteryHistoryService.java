@@ -20,18 +20,6 @@ public class BatteryHistoryService {
     private final BatteryHistoryRepository batteryHistoryRepository;
 
     @Autowired
-    private final BatteryRepository batteryRepository;
-
-    @Autowired
-    private final StationRepository stationRepository;
-
-    @Autowired
-    private final VehicleRepository vehicleRepository;
-
-    @Autowired
-    private final UserRepository userRepository;
-
-    @Autowired
     private final AuthenticationService authenticationService;
 
     /**

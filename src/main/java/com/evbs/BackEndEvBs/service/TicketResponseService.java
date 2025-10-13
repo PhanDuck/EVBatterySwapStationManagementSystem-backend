@@ -94,22 +94,22 @@ public class TicketResponseService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
         }
-        return ticketResponseRepository.findByStaffId(currentUser.getId());
+        return ticketResponseRepository.findByStaff_Id(currentUser.getId());
     }
 
     /**
-     * READ - Lấy responses cho ticket của driver (Driver)
+     * READ - Lấy responses cho ticket của driver (Driver only)
      */
     @Transactional(readOnly = true)
     public List<TicketResponse> getResponsesForMyTicket(Long ticketId) {
         User currentUser = authenticationService.getCurrentUser();
-
+        
         // Validate ticket thuộc về driver
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
                 .orElseThrow(() -> new NotFoundException("Ticket not found"));
 
         if (!ticket.getDriver().getId().equals(currentUser.getId())) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Ticket does not belong to you");
         }
 
         return ticketResponseRepository.findByTicketId(ticketId);

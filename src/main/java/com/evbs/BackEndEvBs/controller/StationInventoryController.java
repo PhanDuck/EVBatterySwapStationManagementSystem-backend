@@ -14,10 +14,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/station-inventory")
-@SecurityRequirement(name = "api")
 @Tag(name = "Station Inventory Management")
 public class StationInventoryController {
 
@@ -31,6 +31,7 @@ public class StationInventoryController {
      */
     @PostMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Add battery to station")
     public ResponseEntity<StationInventory> addBatteryToStation(@Valid @RequestBody StationInventoryRequest request) {
         StationInventory inventory = stationInventoryService.addBatteryToStation(request);
@@ -42,6 +43,7 @@ public class StationInventoryController {
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Get all inventory")
     public ResponseEntity<List<StationInventory>> getAllInventory() {
         List<StationInventory> inventory = stationInventoryService.getAllInventory();
@@ -53,6 +55,7 @@ public class StationInventoryController {
      */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Update battery status")
     public ResponseEntity<StationInventory> updateBatteryStatus(
             @PathVariable Long id,
@@ -66,7 +69,8 @@ public class StationInventoryController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Remove battery from station")
+    @SecurityRequirement(name = "api")
+    @Operation(summary = "Remove battery from station inventory")
     public ResponseEntity<Void> removeBatteryFromStation(@PathVariable Long id) {
         stationInventoryService.removeBatteryFromStation(id);
         return ResponseEntity.noContent().build();
@@ -92,5 +96,15 @@ public class StationInventoryController {
     public ResponseEntity<List<StationInventory>> getAvailableBatteries(@PathVariable Long stationId) {
         List<StationInventory> batteries = stationInventoryService.getAvailableBatteries(stationId);
         return ResponseEntity.ok(batteries);
+    }
+
+    /**
+     * GET /api/station-inventory/station/{stationId}/capacity : Get station capacity info (Public)
+     */
+    @GetMapping("/station/{stationId}/capacity")
+    @Operation(summary = "Get station capacity information")
+    public ResponseEntity<Map<String, Object>> getStationCapacityInfo(@PathVariable Long stationId) {
+        Map<String, Object> capacityInfo = stationInventoryService.getStationCapacityInfo(stationId);
+        return ResponseEntity.ok(capacityInfo);
     }
 }

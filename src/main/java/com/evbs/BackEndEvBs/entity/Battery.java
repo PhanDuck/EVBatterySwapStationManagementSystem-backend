@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -57,4 +58,10 @@ public class Battery {
     @OneToMany(mappedBy = "swapOutBattery")
     @JsonIgnore
     private List<SwapTransaction> swapOutTransactions = new ArrayList<>();
+    
+    // Getter để serialize currentStationId thay vì toàn bộ Station object
+    @JsonProperty("currentStation")
+    public Long getCurrentStationId() {
+        return currentStation != null ? currentStation.getId() : null;
+    }
 }

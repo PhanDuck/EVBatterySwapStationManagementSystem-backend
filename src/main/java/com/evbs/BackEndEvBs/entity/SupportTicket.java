@@ -1,6 +1,8 @@
 package com.evbs.BackEndEvBs.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
@@ -49,7 +51,7 @@ public class SupportTicket {
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt = LocalDateTime.now();
     
-    @OneToMany(mappedBy = "ticket")
-    @JsonIgnore
+    @OneToMany(mappedBy = "ticket", fetch = FetchType.EAGER)
+    @OrderBy("responseTime ASC")  // Sắp xếp theo thời gian từ cũ đến mới
     private List<TicketResponse> responses = new ArrayList<>();
 }

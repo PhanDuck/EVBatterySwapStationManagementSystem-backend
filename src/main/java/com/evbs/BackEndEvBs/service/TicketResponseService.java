@@ -30,9 +30,6 @@ public class TicketResponseService {
     @Autowired
     private final AuthenticationService authenticationService;
 
-    @Autowired
-    private final ModelMapper modelMapper;
-
     /**
      * CREATE - Tạo response cho ticket (Staff/Admin only)
      */
@@ -43,19 +40,24 @@ public class TicketResponseService {
             throw new AuthenticationException("Access denied");
         }
 
-        // Validate ticket
+        // Validate ticket trong cùng transaction
         SupportTicket ticket = supportTicketRepository.findById(request.getTicketId())
-                .orElseThrow(() -> new NotFoundException("Ticket not found"));
+                .orElseThrow(() -> new NotFoundException("Ticket not found with id: " + request.getTicketId()));
 
-        TicketResponse response = modelMapper.map(request, TicketResponse.class);
+        // Tạo response mới thay vì dùng modelMapper
+        TicketResponse response = new TicketResponse();
         response.setTicket(ticket);
         response.setStaff(currentUser);
+        response.setMessage(request.getMessage());
         response.setResponseTime(LocalDateTime.now());
 
-        // Cập nhật status của ticket thành "IN_PROGRESS"
+        // Cập nhật status của ticket trong cùng transaction
         ticket.setStatus(SupportTicket.Status.IN_PROGRESS);
+
+        // Lưu ticket trước
         supportTicketRepository.save(ticket);
 
+        // Sau đó lưu response
         return ticketResponseRepository.save(response);
     }
 

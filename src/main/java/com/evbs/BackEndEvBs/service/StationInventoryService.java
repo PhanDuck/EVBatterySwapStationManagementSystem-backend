@@ -56,9 +56,10 @@ public class StationInventoryService {
             throw new AuthenticationException("Battery already exists in another station");
         }
 
-        StationInventory stationInventory = modelMapper.map(request, StationInventory.class);
+        StationInventory stationInventory = new StationInventory();
         stationInventory.setStation(station);
         stationInventory.setBattery(battery);
+        stationInventory.setStatus(request.getStatus());
         stationInventory.setLastUpdate(LocalDateTime.now());
 
         // Cập nhật current station của battery

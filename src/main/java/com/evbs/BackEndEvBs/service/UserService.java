@@ -74,6 +74,12 @@ public class UserService {
      * Cập nhật thông tin user
      */
     public UserResponse updateUser(Long id, UpdateUserRequest request) {
+        // Kiểm tra user hiện tại không được cập nhật chính mình
+        User currentUser = authenticationService.getCurrentUser();
+        if (currentUser.getId().equals(id)) {
+            throw new AuthenticationException("You cannot update your own account");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AuthenticationException("User not found with id: " + id));
 
@@ -114,6 +120,12 @@ public class UserService {
      * Xóa user (soft delete bằng cách đổi status)
      */
     public void deleteUser(Long id) {
+        // Kiểm tra user hiện tại không được xóa chính mình
+        User currentUser = authenticationService.getCurrentUser();
+        if (currentUser.getId().equals(id)) {
+            throw new AuthenticationException("You cannot delete your own account");
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AuthenticationException("User not found with id: " + id));
         

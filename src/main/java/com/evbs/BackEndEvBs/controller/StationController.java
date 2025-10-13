@@ -1,8 +1,10 @@
 package com.evbs.BackEndEvBs.controller;
 
+import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
+import com.evbs.BackEndEvBs.service.BatteryService;
 import com.evbs.BackEndEvBs.service.StationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,6 +25,9 @@ public class StationController {
 
     @Autowired
     private StationService stationService;
+
+    @Autowired
+    private BatteryService batteryService;
 
     // ==================== PUBLIC ENDPOINTS ====================
 
@@ -47,6 +52,14 @@ public class StationController {
     }
 
     /**
+     * GET /api/station/{id}/batteries : Get all batteries in station (Public)
+     */
+    @GetMapping("/{id}/batteries")
+    @Operation(summary = "Get all batteries in station")
+    public ResponseEntity<List<Battery>> getBatteriesByStation(@PathVariable Long id) {
+        List<Battery> batteries = batteryService.getBatteriesByStation(id);
+        return ResponseEntity.ok(batteries);
+    }
 
     // ==================== ADMIN/STAFF ENDPOINTS ====================
 
@@ -97,7 +110,7 @@ public class StationController {
     @Operation(summary = "Update station status")
     public ResponseEntity<Station> updateStationStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam Station.Status status) {
         Station station = stationService.updateStationStatus(id, status);
         return ResponseEntity.ok(station);
     }

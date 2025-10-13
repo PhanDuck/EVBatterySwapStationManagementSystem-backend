@@ -87,7 +87,7 @@ public class BookingController {
     @Operation(summary = "Update booking status")
     public ResponseEntity<Booking> updateBookingStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam Booking.Status status) {
         Booking booking = bookingService.updateBookingStatus(id, status);
         return ResponseEntity.ok(booking);
     }
@@ -122,7 +122,7 @@ public class BookingController {
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get bookings by status")
-    public ResponseEntity<List<Booking>> getBookingsByStatus(@PathVariable String status) {
+    public ResponseEntity<List<Booking>> getBookingsByStatus(@PathVariable Booking.Status status) {
         List<Booking> bookings = bookingService.getBookingsByStatus(status);
         return ResponseEntity.ok(bookings);
     }

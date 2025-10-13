@@ -53,7 +53,7 @@ public class DriverSubscriptionService {
         subscription.setServicePackage(servicePackage);
         subscription.setStartDate(startDate);
         subscription.setEndDate(endDate);
-        subscription.setStatus("Active");
+        subscription.setStatus(DriverSubscription.Status.ACTIVE);
 
         return driverSubscriptionRepository.save(subscription);
     }

@@ -15,6 +15,10 @@ import java.util.List;
 @Setter
 public class DriverSubscription {
 
+    public enum Status {
+        ACTIVE, EXPIRED, CANCELLED, SUSPENDED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "SubscriptionID")
@@ -36,8 +40,9 @@ public class DriverSubscription {
     @Column(name = "EndDate", nullable = false)
     private LocalDate endDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Active";
+    private Status status = Status.ACTIVE;
     
     @OneToMany(mappedBy = "subscription")
     @JsonIgnore

@@ -141,26 +141,26 @@ public class DatabaseInitializer implements CommandLineRunner {
         
         return List.of(
             // Admin users
-            createUser("System Admin", "admin@evbs.com", "0901000001", encodedPassword, User.Role.ADMIN, "Active"),
-            createUser("Super Admin", "superadmin@evbs.com", "0901000002", encodedPassword, User.Role.ADMIN, "Active"),
+            createUser("System Admin", "admin@evbs.com", "0901000001", encodedPassword, User.Role.ADMIN, User.Status.ACTIVE),
+            createUser("Super Admin", "superadmin@evbs.com", "0901000002", encodedPassword, User.Role.ADMIN, User.Status.ACTIVE),
             
             // Staff users
-            createUser("Nguyễn Văn Staff", "staff1@evbs.com", "0902000001", encodedPassword, User.Role.STAFF, "Active"),
-            createUser("Trần Thị Staff", "staff2@evbs.com", "0902000002", encodedPassword, User.Role.STAFF, "Active"),
-            createUser("Lê Văn Staff", "staff3@evbs.com", "0902000003", encodedPassword, User.Role.STAFF, "Active"),
+            createUser("Nguyễn Văn Staff", "staff1@evbs.com", "0902000001", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
+            createUser("Trần Thị Staff", "staff2@evbs.com", "0902000002", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
+            createUser("Lê Văn Staff", "staff3@evbs.com", "0902000003", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
             
             // Driver users
-            createUser("Nguyễn Văn An", "driver1@gmail.com", "0903000001", encodedPassword, User.Role.DRIVER, "Active"),
-            createUser("Trần Thị Bình", "driver2@gmail.com", "0903000002", encodedPassword, User.Role.DRIVER, "Active"),
-            createUser("Lê Văn Cường", "driver3@gmail.com", "0903000003", encodedPassword, User.Role.DRIVER, "Active"),
-            createUser("Phạm Thị Dung", "driver4@gmail.com", "0903000004", encodedPassword, User.Role.DRIVER, "Active"),
-            createUser("Hoàng Văn Em", "driver5@gmail.com", "0903000005", encodedPassword, User.Role.DRIVER, "Active"),
-            createUser("Vũ Thị Phượng", "driver6@gmail.com", "0903000006", encodedPassword, User.Role.DRIVER, "Inactive"),
-            createUser("Đào Văn Giang", "driver7@gmail.com", "0903000007", encodedPassword, User.Role.DRIVER, "Active")
+            createUser("Nguyễn Văn An", "driver1@gmail.com", "0903000001", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+            createUser("Trần Thị Bình", "driver2@gmail.com", "0903000002", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+            createUser("Lê Văn Cường", "driver3@gmail.com", "0903000003", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+            createUser("Phạm Thị Dung", "driver4@gmail.com", "0903000004", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+            createUser("Hoàng Văn Em", "driver5@gmail.com", "0903000005", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+            createUser("Vũ Thị Phượng", "driver6@gmail.com", "0903000006", encodedPassword, User.Role.DRIVER, User.Status.INACTIVE),
+            createUser("Đào Văn Giang", "driver7@gmail.com", "0903000007", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE)
         );
     }
 
-    private User createUser(String fullName, String email, String phone, String password, User.Role role, String status) {
+    private User createUser(String fullName, String email, String phone, String password, User.Role role, User.Status status) {
         User user = new User();
         user.setFullName(fullName);
         user.setEmail(email);
@@ -174,22 +174,22 @@ public class DatabaseInitializer implements CommandLineRunner {
     private List<Station> createStations() {
         return List.of(
             // Trạm ở TP.HCM
-            createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", "TP.HCM", "Quận 1", 15, "0901234567", 10.7769, 106.7009, "Active"),
-            createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", "TP.HCM", "Quận 3", 15, "0902345678", 10.7867, 106.6837, "Active"),
-            createStation("Trạm Đổi Pin Quận 7", "789 Đường Nguyễn Thị Thập, Quận 7, TP.HCM", "TP.HCM", "Quận 7", 15, "0903456789", 10.7307, 106.7218, "Active"),
-            createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", "TP.HCM", "Quận Bình Thạnh", 15, "0904567890", 10.8015, 106.7181, "Active"),
-            createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 15, "0905678901", 10.8494, 106.7719, "Active"),
+            createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", "TP.HCM", "Quận 1", 15, "0901234567", 10.7769, 106.7009, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", "TP.HCM", "Quận 3", 15, "0902345678", 10.7867, 106.6837, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Quận 7", "789 Đường Nguyễn Thị Thập, Quận 7, TP.HCM", "TP.HCM", "Quận 7", 15, "0903456789", 10.7307, 106.7218, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", "TP.HCM", "Quận Bình Thạnh", 15, "0904567890", 10.8015, 106.7181, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 15, "0905678901", 10.8494, 106.7719, Station.Status.ACTIVE),
             
-            // Trạm ở Hà Nội
-            createStation("Trạm Đổi Pin Hoàn Kiếm", "25 Phố Hàng Khay, Hoàn Kiếm, Hà Nội", "Hà Nội", "Hoàn Kiếm", 20, "0311112222", 21.0285, 105.8542, "Active"),
-            createStation("Trạm Đổi Pin Cầu Giấy", "88 Đường Cầu Giấy, Cầu Giấy, Hà Nội", "Hà Nội", "Cầu Giấy", 18, "0333334444", 21.0314, 105.7969, "Active"),
-            createStation("Trạm Đổi Pin Ba Đình", "156 Phố Nguyễn Thái Học, Ba Đình, Hà Nội", "Hà Nội", "Ba Đình", 16, "0355556666", 21.0364, 105.8325, "Active"),
-            createStation("Trạm Đổi Pin Đống Đa", "45 Phố Láng, Đống Đa, Hà Nội", "Hà Nội", "Đống Đa", 15, "0377778888", 21.0136, 105.8270, "Active"),
-            createStation("Trạm Đổi Pin Long Biên", "222 Đường Nguyễn Văn Cừ, Long Biên, Hà Nội", "Hà Nội", "Long Biên", 12, "0399990000", 21.0358, 105.8842, "Active")
+            // Trạm ở Hà Nội - TẤT CẢ ĐỀU CAPACITY = 15
+            createStation("Trạm Đổi Pin Hoàn Kiếm", "25 Phố Hàng Khay, Hoàn Kiếm, Hà Nội", "Hà Nội", "Hoàn Kiếm", 15, "0311112222", 21.0285, 105.8542, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Cầu Giấy", "88 Đường Cầu Giấy, Cầu Giấy, Hà Nội", "Hà Nội", "Cầu Giấy", 15, "0333334444", 21.0314, 105.7969, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Ba Đình", "156 Phố Nguyễn Thái Học, Ba Đình, Hà Nội", "Hà Nội", "Ba Đình", 15, "0355556666", 21.0364, 105.8325, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Đống Đa", "45 Phố Láng, Đống Đa, Hà Nội", "Hà Nội", "Đống Đa", 15, "0377778888", 21.0136, 105.8270, Station.Status.ACTIVE),
+            createStation("Trạm Đổi Pin Long Biên", "222 Đường Nguyễn Văn Cừ, Long Biên, Hà Nội", "Hà Nội", "Long Biên", 15, "0399990000", 21.0358, 105.8842, Station.Status.ACTIVE)
         );
     }
 
-    private Station createStation(String name, String location, String city, String district, int capacity, String contactInfo, double lat, double lng, String status) {
+    private Station createStation(String name, String location, String city, String district, int capacity, String contactInfo, double lat, double lng, Station.Status status) {
         Station station = new Station();
         station.setName(name);
         station.setLocation(location);
@@ -227,84 +227,106 @@ public class DatabaseInitializer implements CommandLineRunner {
         
         // Trạm 1 - 15 pin
         for (int i = 0; i < 15; i++) {
-            String status = i < 10 ? "Available" : (i < 13 ? "Charging" : "InUse");
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
             batteries.add(createBattery("VinFast 48V-20Ah", new BigDecimal("1.44"), health, status, stations.get(0)));
         }
         
         // Trạm 2 - 15 pin  
         for (int i = 0; i < 15; i++) {
-            String status = i < 11 ? "Available" : (i < 14 ? "Charging" : "InUse");
+            Battery.Status status = i < 11 ? Battery.Status.AVAILABLE : (i < 14 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Yadea 60V-32Ah", new BigDecimal("1.92"), health, status, stations.get(1)));
         }
         
         // Trạm 3 - 15 pin
         for (int i = 0; i < 15; i++) {
-            String status = i < 9 ? "Available" : (i < 13 ? "Charging" : "InUse");
+            Battery.Status status = i < 9 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Pega 72V-28Ah", new BigDecimal("2.02"), health, status, stations.get(2)));
         }
         
         // Trạm 4 - 15 pin
         for (int i = 0; i < 15; i++) {
-            String status = i < 12 ? "Available" : (i < 14 ? "Charging" : "Maintenance");
+            Battery.Status status = i < 12 ? Battery.Status.AVAILABLE : (i < 14 ? Battery.Status.CHARGING : Battery.Status.MAINTENANCE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Dibao 60V-35Ah", new BigDecimal("2.10"), health, status, stations.get(3)));
         }
         
         // Trạm 5 - TP.HCM Thủ Đức - 15 pin
         for (int i = 0; i < 15; i++) {
-            String status = i < 11 ? "Available" : (i < 13 ? "Charging" : "InUse");
+            Battery.Status status = i < 11 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("VinFast 72V-30Ah", new BigDecimal("2.16"), health, status, stations.get(4)));
         }
         
-        // Trạm 6 - Hà Nội Hoàn Kiếm - 20 pin
-        for (int i = 0; i < 20; i++) {
-            String status = i < 15 ? "Available" : (i < 18 ? "Charging" : "InUse");
+        // Trạm 6 - Hà Nội Hoàn Kiếm - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("VinFast 60V-28Ah", new BigDecimal("1.68"), health, status, stations.get(5)));
         }
         
-        // Trạm 7 - Hà Nội Cầu Giấy - 18 pin
-        for (int i = 0; i < 18; i++) {
-            String status = i < 13 ? "Available" : (i < 16 ? "Charging" : "InUse");
+        // Trạm 7 - Hà Nội Cầu Giấy - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Yadea 72V-35Ah", new BigDecimal("2.52"), health, status, stations.get(6)));
         }
         
-        // Trạm 8 - Hà Nội Ba Đình - 16 pin
-        for (int i = 0; i < 16; i++) {
-            String status = i < 12 ? "Available" : (i < 14 ? "Charging" : "InUse");
+        // Trạm 8 - Hà Nội Ba Đình - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Pega 60V-30Ah", new BigDecimal("1.80"), health, status, stations.get(7)));
         }
         
         // Trạm 9 - Hà Nội Đống Đa - 15 pin
         for (int i = 0; i < 15; i++) {
-            String status = i < 10 ? "Available" : (i < 13 ? "Charging" : "InUse");
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("Dibao 48V-25Ah", new BigDecimal("1.20"), health, status, stations.get(8)));
         }
         
-        // Trạm 10 - Hà Nội Long Biên - 12 pin
-        for (int i = 0; i < 12; i++) {
-            String status = i < 8 ? "Available" : (i < 10 ? "Charging" : "InUse");
+        // Trạm 10 - Hà Nội Long Biên - 15 pin
+        for (int i = 0; i < 15; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
             batteries.add(createBattery("VinFast 48V-22Ah", new BigDecimal("1.06"), health, status, stations.get(9)));
+        }
+        
+        // Tạo thêm 5 pin không được gán vào trạm nào để test chức năng thêm pin
+        for (int i = 0; i < 5; i++) {
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createUnassignedBattery("Available Battery " + (i + 1), new BigDecimal("2.00"), health, Battery.Status.AVAILABLE));
+        }
+        
+        // Tạo thêm 5 pin đang được sử dụng bên ngoài (currentStation = null, status = IN_USE)
+        for (int i = 0; i < 5; i++) {
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
+            batteries.add(createUnassignedBattery("In-Use Battery " + (i + 1), new BigDecimal("2.00"), health, Battery.Status.IN_USE));
         }
         
         return batteries;
     }
 
-    private Battery createBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, String status, Station station) {
+    private Battery createBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status, Station station) {
         Battery battery = new Battery();
         battery.setModel(model);
         battery.setCapacity(capacity);
         battery.setStateOfHealth(stateOfHealth);
         battery.setStatus(status);
         battery.setCurrentStation(station);
+        return battery;
+    }
+
+    private Battery createUnassignedBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status) {
+        Battery battery = new Battery();
+        battery.setModel(model);
+        battery.setCapacity(capacity);
+        battery.setStateOfHealth(stateOfHealth);
+        battery.setStatus(status);
+        battery.setCurrentStation(null); // Không gán vào trạm nào
         return battery;
     }
 
@@ -331,14 +353,14 @@ public class DatabaseInitializer implements CommandLineRunner {
     private List<DriverSubscription> createDriverSubscriptions(List<User> users, List<ServicePackage> packages) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
         return List.of(
-            createDriverSubscription(drivers.get(0), packages.get(1), LocalDate.of(2024, 9, 1), LocalDate.of(2024, 9, 30), "Active"),
-            createDriverSubscription(drivers.get(1), packages.get(0), LocalDate.of(2024, 9, 15), LocalDate.of(2024, 10, 14), "Active"),
-            createDriverSubscription(drivers.get(2), packages.get(2), LocalDate.of(2024, 8, 1), LocalDate.of(2024, 8, 31), "Expired"),
-            createDriverSubscription(drivers.get(3), packages.get(1), LocalDate.of(2024, 9, 10), LocalDate.of(2024, 10, 9), "Active")
+            createDriverSubscription(drivers.get(0), packages.get(1), LocalDate.of(2024, 9, 1), LocalDate.of(2024, 9, 30), DriverSubscription.Status.ACTIVE),
+            createDriverSubscription(drivers.get(1), packages.get(0), LocalDate.of(2024, 9, 15), LocalDate.of(2024, 10, 14), DriverSubscription.Status.ACTIVE),
+            createDriverSubscription(drivers.get(2), packages.get(2), LocalDate.of(2024, 8, 1), LocalDate.of(2024, 8, 31), DriverSubscription.Status.EXPIRED),
+            createDriverSubscription(drivers.get(3), packages.get(1), LocalDate.of(2024, 9, 10), LocalDate.of(2024, 10, 9), DriverSubscription.Status.ACTIVE)
         );
     }
 
-    private DriverSubscription createDriverSubscription(User driver, ServicePackage pkg, LocalDate start, LocalDate end, String status) {
+    private DriverSubscription createDriverSubscription(User driver, ServicePackage pkg, LocalDate start, LocalDate end, DriverSubscription.Status status) {
         DriverSubscription subscription = new DriverSubscription();
         subscription.setDriver(driver);
         subscription.setServicePackage(pkg);
@@ -350,16 +372,16 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private List<StationInventory> createStationInventory(List<Station> stations, List<Battery> batteries) {
         return List.of(
-            createStationInventory(stations.get(0), batteries.get(0), "Available"),
-            createStationInventory(stations.get(0), batteries.get(1), "Available"),
-            createStationInventory(stations.get(1), batteries.get(2), "Available"),
-            createStationInventory(stations.get(1), batteries.get(3), "Charging"),
-            createStationInventory(stations.get(2), batteries.get(4), "Available"),
-            createStationInventory(stations.get(2), batteries.get(5), "InUse")
+            createStationInventory(stations.get(0), batteries.get(0), StationInventory.Status.AVAILABLE),
+            createStationInventory(stations.get(0), batteries.get(1), StationInventory.Status.AVAILABLE),
+            createStationInventory(stations.get(1), batteries.get(2), StationInventory.Status.AVAILABLE),
+            createStationInventory(stations.get(1), batteries.get(3), StationInventory.Status.AVAILABLE), // StationInventory không có CHARGING, chỉ AVAILABLE, RESERVED, MAINTENANCE
+            createStationInventory(stations.get(2), batteries.get(4), StationInventory.Status.AVAILABLE),
+            createStationInventory(stations.get(2), batteries.get(5), StationInventory.Status.RESERVED) // StationInventory không có IN_USE, dùng RESERVED
         );
     }
 
-    private StationInventory createStationInventory(Station station, Battery battery, String status) {
+    private StationInventory createStationInventory(Station station, Battery battery, StationInventory.Status status) {
         StationInventory inventory = new StationInventory();
         inventory.setStation(station);
         inventory.setBattery(battery);
@@ -370,14 +392,20 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private List<Booking> createBookings(List<User> users, List<Vehicle> vehicles, List<Station> stations) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
+
+        // Tạo booking 24/7 để thể hiện trạm hoạt động liên tục
+        LocalDateTime baseTime = LocalDateTime.of(2025, 10, 11, 6, 0); // 6:00 AM hôm nay
+        
         return List.of(
-            createBooking(drivers.get(0), vehicles.get(0), stations.get(0), LocalDateTime.now().plusHours(2), "Confirmed"),
-            createBooking(drivers.get(1), vehicles.get(1), stations.get(1), LocalDateTime.now().plusHours(3), "Pending"),
-            createBooking(drivers.get(2), vehicles.get(2), stations.get(2), LocalDateTime.now().plusHours(1), "Confirmed")
+            createBooking(drivers.get(0), vehicles.get(0), stations.get(0), baseTime.plusHours(2), Booking.Status.CONFIRMED),    // 8:00 AM - Sáng sớm
+            createBooking(drivers.get(1), vehicles.get(1), stations.get(1), baseTime.plusHours(16), Booking.Status.PENDING),    // 10:00 PM - Tối muộn
+            createBooking(drivers.get(2), vehicles.get(2), stations.get(2), baseTime.plusHours(6), Booking.Status.CONFIRMED),   // 12:00 PM - Trưa
+            createBooking(drivers.get(3), vehicles.get(3), stations.get(3), baseTime.plusHours(20), Booking.Status.CONFIRMED),  // 2:00 AM - Đêm khuya
+            createBooking(drivers.get(4), vehicles.get(4), stations.get(4), baseTime.plusHours(10), Booking.Status.PENDING)     // 4:00 PM - Chiều
         );
     }
 
-    private Booking createBooking(User driver, Vehicle vehicle, Station station, LocalDateTime bookingTime, String status) {
+    private Booking createBooking(User driver, Vehicle vehicle, Station station, LocalDateTime bookingTime, Booking.Status status) {
         Booking booking = new Booking();
         booking.setDriver(driver);
         booking.setVehicle(vehicle);
@@ -394,16 +422,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         return List.of(
             createSwapTransaction(drivers.get(0), vehicles.get(0), stations.get(0), staff.get(0), 
                 batteries.get(5), batteries.get(0), LocalDateTime.now().minusHours(2), 
-                LocalDateTime.now().minusHours(2).plusMinutes(3), new BigDecimal("15000.00"), "Success"),
+                LocalDateTime.now().minusHours(2).plusMinutes(3), new BigDecimal("15000.00"), SwapTransaction.Status.COMPLETED),
             createSwapTransaction(drivers.get(1), vehicles.get(1), stations.get(1), staff.get(1), 
                 null, batteries.get(2), LocalDateTime.now().minusHours(1), 
-                LocalDateTime.now().minusHours(1).plusMinutes(2), new BigDecimal("15000.00"), "Success")
+                LocalDateTime.now().minusHours(1).plusMinutes(2), new BigDecimal("15000.00"), SwapTransaction.Status.COMPLETED)
         );
     }
 
     private SwapTransaction createSwapTransaction(User driver, Vehicle vehicle, Station station, User staff,
                                                 Battery swapOut, Battery swapIn, LocalDateTime start, LocalDateTime end,
-                                                BigDecimal cost, String status) {
+                                                BigDecimal cost, SwapTransaction.Status status) {
         SwapTransaction transaction = new SwapTransaction();
         transaction.setDriver(driver);
         transaction.setVehicle(vehicle);
@@ -420,14 +448,14 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private List<Payment> createPayments(List<SwapTransaction> transactions, List<DriverSubscription> subscriptions) {
         return List.of(
-            createPayment(transactions.get(0), null, new BigDecimal("15000.00"), "MoMo", LocalDateTime.now().minusHours(2).plusMinutes(4), "Completed"),
-            createPayment(transactions.get(1), null, new BigDecimal("15000.00"), "ZaloPay", LocalDateTime.now().minusHours(1).plusMinutes(3), "Completed"),
-            createPayment(null, subscriptions.get(0), new BigDecimal("600000.00"), "VietQR", LocalDateTime.of(2024, 9, 1, 8, 0), "Completed")
+            createPayment(transactions.get(0), null, new BigDecimal("15000.00"), "MoMo", LocalDateTime.now().minusHours(2).plusMinutes(4), Payment.Status.COMPLETED),
+            createPayment(transactions.get(1), null, new BigDecimal("15000.00"), "ZaloPay", LocalDateTime.now().minusHours(1).plusMinutes(3), Payment.Status.COMPLETED),
+            createPayment(null, subscriptions.get(0), new BigDecimal("600000.00"), "VietQR", LocalDateTime.of(2024, 9, 1, 8, 0), Payment.Status.COMPLETED)
         );
     }
 
     private Payment createPayment(SwapTransaction transaction, DriverSubscription subscription, BigDecimal amount,
-                                String method, LocalDateTime date, String status) {
+                                String method, LocalDateTime date, Payment.Status status) {
         Payment payment = new Payment();
         payment.setTransaction(transaction);
         payment.setSubscription(subscription);
@@ -465,13 +493,13 @@ public class DatabaseInitializer implements CommandLineRunner {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
         
         return List.of(
-            createSupportTicket(drivers.get(0), stations.get(0), "Pin yếu sau đổi", "Pin tôi vừa đổi chỉ chạy được 40km thay vì 60km như bình thường", "Open"),
-            createSupportTicket(drivers.get(1), stations.get(1), "Trạm đổi pin bị kẹt", "Máy đổi pin tại trạm Quận 3 không nhả pin ra được", "InProgress"),
-            createSupportTicket(drivers.get(2), null, "App không kết nối", "Ứng dụng báo lỗi kết nối khi tôi cố gắng đặt lịch đổi pin", "Resolved")
+            createSupportTicket(drivers.get(0), stations.get(0), "Pin yếu sau đổi", "Pin tôi vừa đổi chỉ chạy được 40km thay vì 60km như bình thường", SupportTicket.Status.OPEN),
+            createSupportTicket(drivers.get(1), stations.get(1), "Trạm đổi pin bị kẹt", "Máy đổi pin tại trạm Quận 3 không nhả pin ra được", SupportTicket.Status.IN_PROGRESS),
+            createSupportTicket(drivers.get(2), null, "App không kết nối", "Ứng dụng báo lỗi kết nối khi tôi cố gắng đặt lịch đổi pin", SupportTicket.Status.RESOLVED)
         );
     }
 
-    private SupportTicket createSupportTicket(User driver, Station station, String subject, String description, String status) {
+    private SupportTicket createSupportTicket(User driver, Station station, String subject, String description, SupportTicket.Status status) {
         SupportTicket ticket = new SupportTicket();
         ticket.setDriver(driver);
         ticket.setStation(station);

@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +31,6 @@ public class StationInventoryService {
 
     @Autowired
     private final AuthenticationService authenticationService;
-
-    @Autowired
-    private final ModelMapper modelMapper;
 
     /**
      * CREATE - Thêm battery vào station (Admin/Staff only)
@@ -56,9 +55,13 @@ public class StationInventoryService {
             throw new AuthenticationException("Battery already exists in another station");
         }
 
-        StationInventory stationInventory = modelMapper.map(request, StationInventory.class);
+        // Kiểm tra capacity của station
+        validateStationCapacity(station);
+
+        StationInventory stationInventory = new StationInventory();
         stationInventory.setStation(station);
         stationInventory.setBattery(battery);
+        stationInventory.setStatus(request.getStatus());
         stationInventory.setLastUpdate(LocalDateTime.now());
 
         // Cập nhật current station của battery
@@ -93,14 +96,38 @@ public class StationInventoryService {
      */
     @Transactional(readOnly = true)
     public List<StationInventory> getAvailableBatteries(Long stationId) {
-        return stationInventoryRepository.findByStationIdAndStatus(stationId, "Available");
+        return stationInventoryRepository.findByStationIdAndStatus(stationId, StationInventory.Status.AVAILABLE);
+    }
+
+    /**
+     * READ - Lấy thông tin capacity của station (Public)
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getStationCapacityInfo(Long stationId) {
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new NotFoundException("Station not found"));
+        
+        List<StationInventory> currentInventory = stationInventoryRepository.findByStationId(stationId);
+        int currentCount = currentInventory.size();
+        int maxCapacity = station.getCapacity();
+        int availableSlots = maxCapacity - currentCount;
+        
+        Map<String, Object> capacityInfo = new HashMap<>();
+        capacityInfo.put("stationId", stationId);
+        capacityInfo.put("stationName", station.getName());
+        capacityInfo.put("maxCapacity", maxCapacity);
+        capacityInfo.put("currentCount", currentCount);
+        capacityInfo.put("availableSlots", availableSlots);
+        capacityInfo.put("isFull", currentCount >= maxCapacity);
+        
+        return capacityInfo;
     }
 
     /**
      * UPDATE - Cập nhật battery status (Admin/Staff only)
      */
     @Transactional
-    public StationInventory updateBatteryStatus(Long id, String status) {
+    public StationInventory updateBatteryStatus(Long id, StationInventory.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -140,5 +167,18 @@ public class StationInventoryService {
 
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
+    }
+
+    /**
+     * Kiểm tra station đã đầy chưa
+     */
+    private void validateStationCapacity(Station station) {
+        int currentBatteryCount = stationInventoryRepository.findByStationId(station.getId()).size();
+        if (currentBatteryCount >= station.getCapacity()) {
+            throw new AuthenticationException(
+                String.format("Station '%s' is full! Current: %d/%d batteries. Cannot add more batteries.", 
+                    station.getName(), currentBatteryCount, station.getCapacity())
+            );
+        }
     }
 }

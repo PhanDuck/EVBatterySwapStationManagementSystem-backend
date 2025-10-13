@@ -1,8 +1,11 @@
 package com.evbs.BackEndEvBs.model.request;
 
+import com.evbs.BackEndEvBs.entity.Battery;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -20,9 +23,8 @@ public class BatteryUpdateRequest {
     @Digits(integer = 3, fraction = 2, message = "State of health must have max 3 integer and 2 fraction digits")
     private BigDecimal stateOfHealth;
 
-    @Pattern(regexp = "Available|InUse|Maintenance|Charging|Reserved",
-            message = "Status must be one of: Available, InUse, Maintenance, Charging, Reserved")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private Battery.Status status;
 
     private Long currentStationId;
 }

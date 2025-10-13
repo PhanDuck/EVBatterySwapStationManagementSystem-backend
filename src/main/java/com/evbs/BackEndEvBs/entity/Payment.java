@@ -14,6 +14,10 @@ import java.time.LocalDateTime;
 @Setter
 public class Payment {
 
+    public enum Status {
+        PENDING, COMPLETED, FAILED, CANCELLED, REFUNDED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "PaymentID")
@@ -38,6 +42,7 @@ public class Payment {
     @Column(name = "PaymentDate", nullable = false)
     private LocalDateTime paymentDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Completed";
+    private Status status = Status.COMPLETED;
 }

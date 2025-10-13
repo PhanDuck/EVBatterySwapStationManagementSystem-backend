@@ -25,6 +25,10 @@ public class User implements UserDetails {
         DRIVER, STAFF, ADMIN
     }
 
+    public enum Status {
+        ACTIVE, INACTIVE, SUSPENDED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "UserID")
@@ -54,8 +58,9 @@ public class User implements UserDetails {
     @Column(name = "Role", nullable = false, length = 50)
     private Role role = Role.DRIVER; // default
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Active";
+    private Status status = Status.ACTIVE;
     
     // Relationships
     @OneToMany(mappedBy = "driver")
@@ -121,7 +126,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "Active".equalsIgnoreCase(this.status);
+        return Status.ACTIVE.equals(this.status);
     }
 
 }

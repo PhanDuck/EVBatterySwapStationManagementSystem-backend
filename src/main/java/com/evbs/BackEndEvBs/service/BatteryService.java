@@ -77,7 +77,19 @@ public class BatteryService {
      */
     @Transactional(readOnly = true)
     public List<Battery> getAvailableBatteries() {
-        return batteryRepository.findByStatus("Available");
+        return batteryRepository.findByStatus(Battery.Status.AVAILABLE);
+    }
+
+    /**
+     * READ - Lấy tất cả batteries trong station (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Battery> getBatteriesByStation(Long stationId) {
+        // Kiểm tra station có tồn tại không
+        if (!stationRepository.existsById(stationId)) {
+            throw new NotFoundException("Station not found");
+        }
+        return batteryRepository.findByCurrentStation_Id(stationId);
     }
 
     /**
@@ -103,7 +115,7 @@ public class BatteryService {
         if (request.getStateOfHealth() != null) {
             battery.setStateOfHealth(request.getStateOfHealth());
         }
-        if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+        if (request.getStatus() != null) {
             battery.setStatus(request.getStatus());
         }
         if (request.getCurrentStationId() != null) {
@@ -147,7 +159,7 @@ public class BatteryService {
      * UPDATE - Cập nhật battery status (Admin/Staff only)
      */
     @Transactional
-    public Battery updateBatteryStatus(Long id, String status) {
+    public Battery updateBatteryStatus(Long id, Battery.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");

@@ -1,6 +1,8 @@
 package com.evbs.BackEndEvBs.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
@@ -15,6 +17,10 @@ import java.util.List;
 @Getter
 @Setter
 public class SupportTicket {
+
+    public enum Status {
+        OPEN, IN_PROGRESS, RESOLVED, CLOSED
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,13 +44,14 @@ public class SupportTicket {
     @Column(name = "Description", columnDefinition = "NVARCHAR(MAX)")
     private String description;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Open";
+    private Status status = Status.OPEN;
 
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt = LocalDateTime.now();
     
-    @OneToMany(mappedBy = "ticket")
-    @JsonIgnore
+    @OneToMany(mappedBy = "ticket", fetch = FetchType.EAGER)
+    @OrderBy("responseTime ASC")  // Sắp xếp theo thời gian từ cũ đến mới
     private List<TicketResponse> responses = new ArrayList<>();
 }

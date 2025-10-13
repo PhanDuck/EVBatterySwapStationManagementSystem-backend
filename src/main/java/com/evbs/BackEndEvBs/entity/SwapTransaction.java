@@ -60,8 +60,13 @@ public class SwapTransaction {
     @Column(name = "Cost", precision = 12, scale = 2)
     private BigDecimal cost;
 
+    public enum Status {
+        PENDING_PAYMENT, PAID, IN_PROGRESS, COMPLETED, CANCELLED
+    }
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "PendingPayment";
+    private Status status = Status.PENDING_PAYMENT;
     
     @OneToMany(mappedBy = "transaction")
     @JsonIgnore

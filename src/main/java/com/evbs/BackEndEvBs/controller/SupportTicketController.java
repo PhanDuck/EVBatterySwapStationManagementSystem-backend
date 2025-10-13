@@ -95,7 +95,7 @@ public class SupportTicketController {
     @Operation(summary = "Update ticket status")
     public ResponseEntity<SupportTicket> updateTicketStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam SupportTicket.Status status) {
         SupportTicket ticket = supportTicketService.updateTicketStatus(id, status);
         return ResponseEntity.ok(ticket);
     }

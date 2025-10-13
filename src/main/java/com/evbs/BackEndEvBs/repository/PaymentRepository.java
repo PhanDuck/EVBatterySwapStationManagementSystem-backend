@@ -11,8 +11,10 @@ import java.util.List;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-    @Query("SELECT p FROM Payment p WHERE " +
-            "(p.transaction IS NOT NULL AND p.transaction.driver.id = :driverId) OR " +
-            "(p.subscription IS NOT NULL AND p.subscription.driver.id = :driverId)")
+    @Query("SELECT p FROM Payment p " +
+            "LEFT JOIN p.transaction t " +
+            "LEFT JOIN p.subscription s " +
+            "WHERE (t IS NOT NULL AND t.driver.id = :driverId) OR " +
+            "(s IS NOT NULL AND s.driver.id = :driverId)")
     List<Payment> findByDriverId(@Param("driverId") Long driverId);
 }

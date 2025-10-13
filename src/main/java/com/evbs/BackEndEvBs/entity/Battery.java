@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +15,10 @@ import java.util.List;
 @Getter
 @Setter
 public class Battery {
+
+    public enum Status {
+        AVAILABLE, IN_USE, CHARGING, MAINTENANCE, DAMAGED
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,8 +34,9 @@ public class Battery {
     @Column(name = "StateOfHealth", precision = 5, scale = 2)
     private BigDecimal stateOfHealth;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Available";
+    private Status status = Status.AVAILABLE;
 
     @ManyToOne
     @JoinColumn(name = "CurrentStationID")
@@ -52,4 +58,10 @@ public class Battery {
     @OneToMany(mappedBy = "swapOutBattery")
     @JsonIgnore
     private List<SwapTransaction> swapOutTransactions = new ArrayList<>();
+    
+    // Getter để serialize currentStationId thay vì toàn bộ Station object
+    @JsonProperty("currentStation")
+    public Long getCurrentStationId() {
+        return currentStation != null ? currentStation.getId() : null;
+    }
 }

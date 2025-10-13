@@ -6,7 +6,6 @@ import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.VehicleRequest;
 import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
-import com.evbs.BackEndEvBs.repository.UserRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -45,6 +44,15 @@ public class VehicleService {
         Vehicle vehicle = modelMapper.map(vehicleRequest, Vehicle.class);
         vehicle.setDriver(authenticationService.getCurrentUser());
         return vehicleRepository.save(vehicle);
+    }
+
+    /**
+     * READ - Lấy vehicles của tôi (Driver only)
+     */
+    @Transactional(readOnly = true)
+    public List<Vehicle> getMyVehicles() {
+        User currentUser = authenticationService.getCurrentUser();
+        return vehicleRepository.findByDriver(currentUser);
     }
 
     /**

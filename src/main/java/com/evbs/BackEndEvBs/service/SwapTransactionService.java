@@ -14,6 +14,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Service xử lý các giao dịch hoán đổi pin
+ * 
+ * LOGIC QUAN TRỌNG:
+ * - Khi swap transaction được COMPLETED (hoàn thành):
+ *   + Pin swapOut (được đem ra khỏi trạm): currentStation = null, status = IN_USE
+ *   + Pin swapIn (được đem vào trạm): currentStation = station, status = AVAILABLE
+ * 
+ * - Điều này đảm bảo:
+ *   + Pin được lấy ra sẽ không còn tính vào capacity của trạm
+ *   + Trạm sẽ có chỗ trống để nhận pin mới
+ *   + Pin đang được sử dụng bên ngoài có thể được track
+ */
 @Service
 @RequiredArgsConstructor
 public class SwapTransactionService {
@@ -89,7 +102,14 @@ public class SwapTransactionService {
         transaction.setSwapInBattery(swapInBattery);
         transaction.setStartTime(LocalDateTime.now());
 
-        return swapTransactionRepository.save(transaction);
+        SwapTransaction savedTransaction = swapTransactionRepository.save(transaction);
+
+        // Nếu transaction được tạo với status COMPLETED, xử lý logic pin
+        if (SwapTransaction.Status.COMPLETED.equals(savedTransaction.getStatus())) {
+            handleBatterySwap(savedTransaction);
+        }
+
+        return savedTransaction;
     }
 
     /**
@@ -120,8 +140,11 @@ public class SwapTransactionService {
         SwapTransaction transaction = swapTransactionRepository.findByIdAndDriver(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Transaction not found"));
 
-        transaction.setStatus("Completed");
+        transaction.setStatus(SwapTransaction.Status.COMPLETED);
         transaction.setEndTime(LocalDateTime.now());
+
+        // Logic: Khi hoàn thành swap, pin được đem ra sẽ không còn ở trạm
+        handleBatterySwap(transaction);
 
         return swapTransactionRepository.save(transaction);
     }
@@ -181,7 +204,7 @@ public class SwapTransactionService {
      * UPDATE - Cập nhật status transaction (Admin/Staff only)
      */
     @Transactional
-    public SwapTransaction updateTransactionStatus(Long id, String status) {
+    public SwapTransaction updateTransactionStatus(Long id, SwapTransaction.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -192,14 +215,42 @@ public class SwapTransactionService {
 
         transaction.setStatus(status);
 
-        if ("Completed".equals(status) && transaction.getEndTime() == null) {
+        if (SwapTransaction.Status.COMPLETED.equals(status) && transaction.getEndTime() == null) {
             transaction.setEndTime(LocalDateTime.now());
+        }
+
+        // Logic: Khi hoàn thành swap, pin được đem ra sẽ không còn ở trạm
+        if (SwapTransaction.Status.COMPLETED.equals(status)) {
+            handleBatterySwap(transaction);
         }
 
         return swapTransactionRepository.save(transaction);
     }
 
     // ==================== HELPER METHODS ====================
+
+    /**
+     * Xử lý logic pin khi swap được hoàn thành
+     * - Pin swapOut (được đem ra): currentStation = null, status = IN_USE
+     * - Pin swapIn (được đem vào): currentStation = station của transaction, status = AVAILABLE
+     */
+    private void handleBatterySwap(SwapTransaction transaction) {
+        // Xử lý pin được đem ra khỏi trạm
+        if (transaction.getSwapOutBattery() != null) {
+            Battery swapOutBattery = transaction.getSwapOutBattery();
+            swapOutBattery.setCurrentStation(null); // Không còn ở trạm nào
+            swapOutBattery.setStatus(Battery.Status.IN_USE); // Đang được sử dụng
+            batteryRepository.save(swapOutBattery);
+        }
+
+        // Xử lý pin được đem vào trạm (nếu có)
+        if (transaction.getSwapInBattery() != null) {
+            Battery swapInBattery = transaction.getSwapInBattery();
+            swapInBattery.setCurrentStation(transaction.getStation()); // Gán vào trạm
+            swapInBattery.setStatus(Battery.Status.AVAILABLE); // Có sẵn để sử dụng
+            batteryRepository.save(swapInBattery);
+        }
+    }
 
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;

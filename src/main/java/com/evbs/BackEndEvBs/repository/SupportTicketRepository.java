@@ -10,13 +10,12 @@ import java.util.Optional;
 
 @Repository
 public interface SupportTicketRepository extends JpaRepository<SupportTicket, Long> {
-
     // Tìm tickets theo driver
     List<SupportTicket> findByDriver(User driver);
 
     // Tìm ticket của driver cụ thể
     Optional<SupportTicket> findByIdAndDriver(Long id, User driver);
 
-    // Đếm tickets của driver
-    long countByDriver(User driver);
+    // Đếm tickets theo driver và status
+    long countByDriverAndStatus(User driver, SupportTicket.Status status);
 }

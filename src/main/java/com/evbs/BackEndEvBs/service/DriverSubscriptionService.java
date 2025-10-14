@@ -73,7 +73,7 @@ public class DriverSubscriptionService {
         if (currentUser.getRole() != User.Role.DRIVER) {
             throw new AuthenticationException("Only drivers can view their subscriptions");
         }
-        return driverSubscriptionRepository.findByDriverId(currentUser.getId());
+        return driverSubscriptionRepository.findByDriver_Id(currentUser.getId());
     }
 
     @Transactional

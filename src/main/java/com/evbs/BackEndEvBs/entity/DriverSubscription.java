@@ -47,4 +47,18 @@ public class DriverSubscription {
     @OneToMany(mappedBy = "subscription")
     @JsonIgnore
     private List<Payment> payments = new ArrayList<>();
+
+    @Transient
+    private Long driverId;
+
+    @Transient
+    private Long packageId;
+
+    public Long getDriverId() {
+        return this.driver != null ? this.driver.getId() : null;
+    }
+
+    public Long getPackageId() {
+        return this.servicePackage != null ? this.servicePackage.getId() : null;
+    }
 }

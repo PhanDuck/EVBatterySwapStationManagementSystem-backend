@@ -1,11 +1,13 @@
 package com.evbs.BackEndEvBs.service;
 
+import com.evbs.BackEndEvBs.entity.BatteryType;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
+import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -21,6 +23,9 @@ public class StationService {
 
     @Autowired
     private final StationRepository stationRepository;
+
+    @Autowired
+    private final BatteryTypeRepository batteryTypeRepository;
 
     @Autowired
     private final AuthenticationService authenticationService;
@@ -43,7 +48,12 @@ public class StationService {
             throw new AuthenticationException("Station name already exists");
         }
 
+        // Validate battery type
+        BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
+                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+
         Station station = modelMapper.map(request, Station.class);
+        station.setBatteryType(batteryType);
         return stationRepository.save(station);
     }
 
@@ -64,6 +74,27 @@ public class StationService {
                 .orElseThrow(() -> new NotFoundException("Station not found"));
     }
 
+    /**
+     * READ - Lấy stations theo battery type (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Station> getStationsByBatteryType(Long batteryTypeId) {
+        BatteryType batteryType = batteryTypeRepository.findById(batteryTypeId)
+                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+        return stationRepository.findByBatteryType(batteryType);
+    }
+
+    /**
+     * READ - Lấy stations tương thích với vehicle (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Station> getCompatibleStations(Long vehicleId) {
+        // Cần có VehicleRepository để lấy vehicle, nhưng hiện tại chưa có
+        // Có thể implement sau khi có VehicleService
+        // Tạm thời trả về tất cả stations
+        return stationRepository.findAll();
+    }
+
     @Transactional
     public Station updateStation(Long id, StationUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
@@ -74,7 +105,7 @@ public class StationService {
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        // Kiểm tra trùng tên station (nếu thay đổi tên) 
+        // Kiểm tra trùng tên station (nếu thay đổi tên)
         if (request.getName() != null && !station.getName().equals(request.getName()) &&
                 stationRepository.existsByName(request.getName())) {
             throw new AuthenticationException("Station name already exists");
@@ -104,6 +135,11 @@ public class StationService {
         }
         if (request.getLongitude() != null) {
             station.setLongitude(request.getLongitude());
+        }
+        if (request.getBatteryTypeId() != null) {
+            BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
+                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+            station.setBatteryType(batteryType);
         }
 
         return stationRepository.save(station);

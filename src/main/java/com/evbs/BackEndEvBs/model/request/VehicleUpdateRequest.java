@@ -19,4 +19,6 @@ public class VehicleUpdateRequest {
     private String model;
 
     private Long driverId;
+
+    private Long batteryTypeId;
 }

@@ -33,6 +33,12 @@ public class Vehicle {
     @JsonIgnore
     private User driver;
 
+    // Thêm batteryType để xác định loại pin tương thích
+    @ManyToOne
+    @JoinColumn(name = "BatteryTypeID", nullable = false)
+    @JsonIgnore
+    private BatteryType batteryType;
+
     @OneToMany(mappedBy = "vehicle")
     @JsonIgnore
     private List<Booking> bookings = new ArrayList<>();
@@ -44,4 +50,9 @@ public class Vehicle {
     @OneToMany(mappedBy = "relatedVehicle")
     @JsonIgnore
     private List<BatteryHistory> batteryHistories = new ArrayList<>();
+
+    // Getter để serialize batteryTypeId
+    public Long getBatteryTypeId() {
+        return batteryType != null ? batteryType.getId() : null;
+    }
 }

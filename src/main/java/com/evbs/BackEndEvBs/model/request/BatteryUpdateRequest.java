@@ -1,7 +1,6 @@
 package com.evbs.BackEndEvBs.model.request;
 
 import com.evbs.BackEndEvBs.entity.Battery;
-
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.DecimalMin;
@@ -9,6 +8,7 @@ import jakarta.validation.constraints.Digits;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class BatteryUpdateRequest {
@@ -25,6 +25,13 @@ public class BatteryUpdateRequest {
 
     @Enumerated(EnumType.STRING)
     private Battery.Status status;
+
+    // Thêm các trường mới
+    private LocalDate manufactureDate;
+
+    private LocalDate lastMaintenanceDate;
+
+    private Long batteryTypeId;
 
     private Long currentStationId;
 }

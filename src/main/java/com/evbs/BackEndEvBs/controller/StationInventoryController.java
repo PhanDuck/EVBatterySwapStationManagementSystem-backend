@@ -51,6 +51,24 @@ public class StationInventoryController {
     }
 
     /**
+     <<<<<<< HEAD
+     =======
+     * GET /api/station-inventory/{id} : Get inventory by ID (Admin/Staff only)
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
+    @Operation(summary = "Get inventory by ID")
+    public ResponseEntity<StationInventory> getInventoryById(@PathVariable Long id) {
+        // You'll need to add this method to your service
+        StationInventory inventory = stationInventoryService.getAllInventory().stream()
+                .filter(inv -> inv.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Inventory not found"));
+        return ResponseEntity.ok(inventory);
+    }
+
+    /**
      * PATCH /api/station-inventory/{id}/status : Update battery status (Admin/Staff only)
      */
     @PatchMapping("/{id}/status")

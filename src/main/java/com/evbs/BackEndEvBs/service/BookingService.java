@@ -62,6 +62,11 @@ public class BookingService {
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
+        // Validate station có cùng loại pin với xe
+        if (!station.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
+            throw new AuthenticationException("Station does not support the battery type of your vehicle");
+        }
+
         // Tạo booking thủ công thay vì dùng ModelMapper để tránh conflict
         Booking booking = new Booking();
         booking.setDriver(currentUser);
@@ -92,6 +97,23 @@ public class BookingService {
     }
 
     /**
+     * READ - Lấy stations tương thích với vehicle (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Station> getCompatibleStations(Long vehicleId) {
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+
+        // Lấy tất cả stations có cùng battery type với vehicle và status ACTIVE
+        return stationRepository.findByBatteryTypeAndStatus(
+                vehicle.getBatteryType(),
+                Station.Status.ACTIVE
+        );
+    }
+
+    // ... (các method khác giữ nguyên)
+
+    /**
      * UPDATE - Hủy booking (Driver)
      */
     @Transactional
@@ -102,7 +124,7 @@ public class BookingService {
 
         // Kiểm tra trạng thái booking - chỉ cho phép hủy khi status là PENDING
         if (booking.getStatus() != Booking.Status.PENDING) {
-            String message = String.format("Cannot cancel booking with status '%s'. Only PENDING bookings can be cancelled by driver.", 
+            String message = String.format("Cannot cancel booking with status '%s'. Only PENDING bookings can be cancelled by driver.",
                     booking.getStatus());
             throw new AuthenticationException(message);
         }
@@ -164,7 +186,6 @@ public class BookingService {
         booking.setStatus(newStatus);
         return bookingRepository.save(booking);
     }
-
 
     /**
      * DELETE - Xóa booking (Admin only)

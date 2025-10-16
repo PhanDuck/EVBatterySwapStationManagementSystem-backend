@@ -6,7 +6,6 @@ import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.StationInventoryRequest;
 import com.evbs.BackEndEvBs.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,20 +38,24 @@ public class StationInventoryService {
     public StationInventory addBatteryToStation(StationInventoryRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Access denied. Admin or Staff role required.");
         }
 
         // Validate station
         Station station = stationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new NotFoundException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Station not found with id: " + request.getStationId()));
 
         // Validate battery
         Battery battery = batteryRepository.findById(request.getBatteryId())
-                .orElseThrow(() -> new NotFoundException("Battery not found"));
+                .orElseThrow(() -> new NotFoundException("Battery not found with id: " + request.getBatteryId()));
 
         // Kiểm tra battery đã có trong station khác chưa
         if (stationInventoryRepository.existsByBatteryId(request.getBatteryId())) {
             throw new AuthenticationException("Battery already exists in another station");
+        }
+        // Kiểm tra battery đã có trong station này chưa
+        if (stationInventoryRepository.existsByStationIdAndBatteryId(request.getStationId(), request.getBatteryId())) {
+            throw new AuthenticationException("Battery already exists in this station");
         }
 
         // Kiểm tra capacity của station
@@ -61,13 +64,12 @@ public class StationInventoryService {
         StationInventory stationInventory = new StationInventory();
         stationInventory.setStation(station);
         stationInventory.setBattery(battery);
-        stationInventory.setStatus(request.getStatus());
+        stationInventory.setStatus(request.getStatus() != null ? request.getStatus() : StationInventory.Status.AVAILABLE);
         stationInventory.setLastUpdate(LocalDateTime.now());
 
         // Cập nhật current station của battery
         battery.setCurrentStation(station);
         batteryRepository.save(battery);
-
         return stationInventoryRepository.save(stationInventory);
     }
 
@@ -78,7 +80,7 @@ public class StationInventoryService {
     public List<StationInventory> getAllInventory() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Access denied. Admin or Staff role required.");
         }
         return stationInventoryRepository.findAll();
     }
@@ -88,6 +90,11 @@ public class StationInventoryService {
      */
     @Transactional(readOnly = true)
     public List<StationInventory> getStationInventory(Long stationId) {
+
+        // Validate station exists
+        if (!stationRepository.existsById(stationId)) {
+            throw new NotFoundException("Station not found with id: " + stationId);
+        }
         return stationInventoryRepository.findByStationId(stationId);
     }
 
@@ -96,6 +103,11 @@ public class StationInventoryService {
      */
     @Transactional(readOnly = true)
     public List<StationInventory> getAvailableBatteries(Long stationId) {
+
+        // Validate station exists
+        if (!stationRepository.existsById(stationId)) {
+            throw new NotFoundException("Station not found with id: " + stationId);
+        }
         return stationInventoryRepository.findByStationIdAndStatus(stationId, StationInventory.Status.AVAILABLE);
     }
 
@@ -105,13 +117,13 @@ public class StationInventoryService {
     @Transactional(readOnly = true)
     public Map<String, Object> getStationCapacityInfo(Long stationId) {
         Station station = stationRepository.findById(stationId)
-                .orElseThrow(() -> new NotFoundException("Station not found"));
-        
-        List<StationInventory> currentInventory = stationInventoryRepository.findByStationId(stationId);
-        int currentCount = currentInventory.size();
+
+                .orElseThrow(() -> new NotFoundException("Station not found with id: " + stationId));
+
+        int currentCount = stationInventoryRepository.countByStationId(stationId);
         int maxCapacity = station.getCapacity();
-        int availableSlots = maxCapacity - currentCount;
-        
+        int availableSlots = Math.max(0, maxCapacity - currentCount);
+
         Map<String, Object> capacityInfo = new HashMap<>();
         capacityInfo.put("stationId", stationId);
         capacityInfo.put("stationName", station.getName());
@@ -119,7 +131,9 @@ public class StationInventoryService {
         capacityInfo.put("currentCount", currentCount);
         capacityInfo.put("availableSlots", availableSlots);
         capacityInfo.put("isFull", currentCount >= maxCapacity);
-        
+
+        capacityInfo.put("utilizationRate", maxCapacity > 0 ? (double) currentCount / maxCapacity * 100 : 0);
+
         return capacityInfo;
     }
 
@@ -130,11 +144,10 @@ public class StationInventoryService {
     public StationInventory updateBatteryStatus(Long id, StationInventory.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Access denied. Admin or Staff role required.");
         }
-
         StationInventory inventory = stationInventoryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Inventory not found"));
+                .orElseThrow(() -> new NotFoundException("Station inventory not found with id: " + id));
 
         inventory.setStatus(status);
         inventory.setLastUpdate(LocalDateTime.now());
@@ -149,11 +162,11 @@ public class StationInventoryService {
     public void removeBatteryFromStation(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Access denied. Admin role required.");
         }
 
         StationInventory inventory = stationInventoryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Inventory not found"));
+                .orElseThrow(() -> new NotFoundException("Station inventory not found with id: " + id));
 
         // Cập nhật current station của battery thành null
         Battery battery = inventory.getBattery();
@@ -173,11 +186,11 @@ public class StationInventoryService {
      * Kiểm tra station đã đầy chưa
      */
     private void validateStationCapacity(Station station) {
-        int currentBatteryCount = stationInventoryRepository.findByStationId(station.getId()).size();
+        int currentBatteryCount = stationInventoryRepository.countByStationId(station.getId());
         if (currentBatteryCount >= station.getCapacity()) {
             throw new AuthenticationException(
-                String.format("Station '%s' is full! Current: %d/%d batteries. Cannot add more batteries.", 
-                    station.getName(), currentBatteryCount, station.getCapacity())
+                    String.format("Station '%s' is full! Current: %d/%d batteries. Cannot add more batteries.",
+                            station.getName(), currentBatteryCount, station.getCapacity())
             );
         }
     }

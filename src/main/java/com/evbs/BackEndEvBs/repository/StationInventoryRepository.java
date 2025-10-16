@@ -21,4 +21,10 @@ public interface StationInventoryRepository extends JpaRepository<StationInvento
 
     // Kiểm tra battery đã tồn tại trong inventory
     boolean existsByBatteryId(Long batteryId);
+
+    // Đếm số lượng battery trong station
+    int countByStationId(Long stationId);
+
+    // Kiểm tra battery có trong station cụ thể không
+    boolean existsByStationIdAndBatteryId(Long stationId, Long batteryId);
 }

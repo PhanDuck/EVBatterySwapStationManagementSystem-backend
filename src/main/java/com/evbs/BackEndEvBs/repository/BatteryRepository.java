@@ -17,4 +17,7 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
 
     // Tìm batteries theo station
     List<Battery> findByCurrentStation_Id(Long stationId);
+
+    // Tìm batteries theo battery type
+    List<Battery> findByBatteryType_Id(Long batteryTypeId);
 }

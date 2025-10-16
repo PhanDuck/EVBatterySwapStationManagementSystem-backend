@@ -25,4 +25,6 @@ public class StationUpdateRequest {
     private Double latitude;
 
     private Double longitude;
+
+    private Long batteryTypeId;
 }

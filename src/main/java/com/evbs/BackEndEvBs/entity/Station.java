@@ -52,6 +52,12 @@ public class Station {
     @Column(name = "Longitude")
     private Double longitude;
 
+    // Thêm batteryType để xác định loại pin của trạm
+    @ManyToOne
+    @JoinColumn(name = "BatteryTypeID", nullable = false)
+    @JsonIgnore
+    private BatteryType batteryType;
+
     public enum Status {
         ACTIVE, INACTIVE, MAINTENANCE, UNDER_CONSTRUCTION
     }
@@ -84,4 +90,19 @@ public class Station {
     @OneToMany(mappedBy = "relatedStation")
     @JsonIgnore
     private List<BatteryHistory> batteryHistories = new ArrayList<>();
+
+    // Getter để serialize batteryTypeId
+    public Long getBatteryTypeId() {
+        return batteryType != null ? batteryType.getId() : null;
+    }
+
+    // Phương thức tính số pin hiện có trong trạm
+    public int getCurrentBatteryCount() {
+        return (batteries != null) ? batteries.size() : 0;
+    }
+
+    // Phương thức kiểm tra trạm còn chỗ trống không
+    public boolean hasAvailableSlot() {
+        return getCurrentBatteryCount() < capacity;
+    }
 }

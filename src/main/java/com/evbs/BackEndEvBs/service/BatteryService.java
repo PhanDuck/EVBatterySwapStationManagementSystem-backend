@@ -1,12 +1,14 @@
 package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.BatteryType;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
 import com.evbs.BackEndEvBs.model.request.BatteryUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryRepository;
+import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -26,6 +29,9 @@ public class BatteryService {
 
     @Autowired
     private final StationRepository stationRepository;
+
+    @Autowired
+    private final BatteryTypeRepository batteryTypeRepository;
 
     @Autowired
     private final AuthenticationService authenticationService;
@@ -43,7 +49,19 @@ public class BatteryService {
             throw new AuthenticationException("Access denied");
         }
 
+        // Validate battery type
+        BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
+                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+
         Battery battery = modelMapper.map(request, Battery.class);
+        battery.setBatteryType(batteryType);
+
+        // Set current station nếu có
+        if (request.getCurrentStationId() != null) {
+            battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
+                    .orElseThrow(() -> new NotFoundException("Station not found")));
+        }
+
         return batteryRepository.save(battery);
     }
 
@@ -118,11 +136,21 @@ public class BatteryService {
         if (request.getStatus() != null) {
             battery.setStatus(request.getStatus());
         }
+        if (request.getManufactureDate() != null) {
+            battery.setManufactureDate(request.getManufactureDate());
+        }
+        if (request.getLastMaintenanceDate() != null) {
+            battery.setLastMaintenanceDate(request.getLastMaintenanceDate());
+        }
+        if (request.getBatteryTypeId() != null) {
+            BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
+                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+            battery.setBatteryType(batteryType);
+        }
         if (request.getCurrentStationId() != null) {
             // Tìm station và set
-            // Có thể cần thêm logic validation station exists
             battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
-                .orElseThrow(() -> new NotFoundException("Station not found")));
+                    .orElseThrow(() -> new NotFoundException("Station not found")));
         }
 
         return batteryRepository.save(battery);
@@ -186,6 +214,30 @@ public class BatteryService {
                 .orElseThrow(() -> new NotFoundException("Battery not found"));
 
         battery.setStateOfHealth(stateOfHealth);
+        return batteryRepository.save(battery);
+    }
+
+    /**
+     * UPDATE - Tăng số lần sử dụng pin
+     */
+    @Transactional
+    public Battery incrementBatteryUsage(Long batteryId) {
+        Battery battery = batteryRepository.findById(batteryId)
+                .orElseThrow(() -> new NotFoundException("Battery not found"));
+
+        battery.incrementUsageCount();
+        return batteryRepository.save(battery);
+    }
+
+    /**
+     * UPDATE - Cập nhật ngày bảo trì
+     */
+    @Transactional
+    public Battery updateMaintenanceDate(Long batteryId, LocalDate maintenanceDate) {
+        Battery battery = batteryRepository.findById(batteryId)
+                .orElseThrow(() -> new NotFoundException("Battery not found"));
+
+        battery.setLastMaintenanceDate(maintenanceDate);
         return batteryRepository.save(battery);
     }
 

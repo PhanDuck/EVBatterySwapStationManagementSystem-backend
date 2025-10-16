@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.Booking;
+import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.BookingRequest;
 import com.evbs.BackEndEvBs.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,11 +19,25 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/booking")
 @SecurityRequirement(name = "api")
-@Tag(name = "Booking Management")
+@Tag(name = "Booking Management", description = "APIs for managing bookings and compatible stations")
 public class BookingController {
 
     @Autowired
     private BookingService bookingService;
+
+    // ==================== COMPATIBILITY ENDPOINTS ====================
+
+    /**
+     * GET /api/booking/compatible-stations/{vehicleId} : Get compatible stations for vehicle (Public)
+     * Used to populate station dropdown when creating booking
+     */
+    @GetMapping("/compatible-stations/{vehicleId}")
+    @Operation(summary = "Get compatible stations for vehicle",
+            description = "Get list of stations that support the battery type of the selected vehicle. Used to populate station dropdown when creating booking.")
+    public ResponseEntity<List<Station>> getCompatibleStations(@PathVariable Long vehicleId) {
+        List<Station> stations = bookingService.getCompatibleStations(vehicleId);
+        return ResponseEntity.ok(stations);
+    }
 
     // ==================== DRIVER ENDPOINTS ====================
 
@@ -30,7 +45,8 @@ public class BookingController {
      * POST /api/booking : Create new booking (Driver)
      */
     @PostMapping
-    @Operation(summary = "Create new booking")
+    @Operation(summary = "Create new booking",
+            description = "Create a new booking. System automatically validates battery type compatibility between vehicle and station.")
     public ResponseEntity<Booking> createBooking(@Valid @RequestBody BookingRequest request) {
         Booking booking = bookingService.createBooking(request);
         return new ResponseEntity<>(booking, HttpStatus.CREATED);
@@ -40,7 +56,8 @@ public class BookingController {
      * GET /api/booking/my-bookings : Get my bookings (Driver)
      */
     @GetMapping("/my-bookings")
-    @Operation(summary = "Get my bookings")
+    @Operation(summary = "Get my bookings",
+            description = "Get all bookings for the current driver")
     public ResponseEntity<List<Booking>> getMyBookings() {
         List<Booking> bookings = bookingService.getMyBookings();
         return ResponseEntity.ok(bookings);
@@ -50,7 +67,8 @@ public class BookingController {
      * GET /api/booking/my-bookings/{id} : Get my booking by ID (Driver)
      */
     @GetMapping("/my-bookings/{id}")
-    @Operation(summary = "Get my booking by ID")
+    @Operation(summary = "Get my booking by ID",
+            description = "Get specific booking details for the current driver")
     public ResponseEntity<Booking> getMyBooking(@PathVariable Long id) {
         Booking booking = bookingService.getMyBooking(id);
         return ResponseEntity.ok(booking);
@@ -60,7 +78,8 @@ public class BookingController {
      * PATCH /api/booking/my-bookings/{id}/cancel : Cancel my booking (Driver)
      */
     @PatchMapping("/my-bookings/{id}/cancel")
-    @Operation(summary = "Cancel my booking")
+    @Operation(summary = "Cancel my booking",
+            description = "Cancel a booking. Only PENDING bookings can be cancelled by driver.")
     public ResponseEntity<Booking> cancelMyBooking(@PathVariable Long id) {
         Booking booking = bookingService.cancelMyBooking(id);
         return ResponseEntity.ok(booking);
@@ -73,7 +92,8 @@ public class BookingController {
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get all bookings")
+    @Operation(summary = "Get all bookings",
+            description = "Get all bookings in the system (Admin/Staff only)")
     public ResponseEntity<List<Booking>> getAllBookings() {
         List<Booking> bookings = bookingService.getAllBookings();
         return ResponseEntity.ok(bookings);
@@ -84,7 +104,8 @@ public class BookingController {
      */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update booking status")
+    @Operation(summary = "Update booking status",
+            description = "Update booking status with validation for status transitions (Admin/Staff only)")
     public ResponseEntity<Booking> updateBookingStatus(
             @PathVariable Long id,
             @RequestParam Booking.Status status) {
@@ -97,7 +118,8 @@ public class BookingController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete booking")
+    @Operation(summary = "Delete booking",
+            description = "Permanently delete a booking (Admin only)")
     public ResponseEntity<Void> deleteBooking(@PathVariable Long id) {
         bookingService.deleteBooking(id);
         return ResponseEntity.noContent().build();
@@ -110,7 +132,8 @@ public class BookingController {
      */
     @GetMapping("/station/{stationId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get bookings by station")
+    @Operation(summary = "Get bookings by station",
+            description = "Get all bookings for a specific station (Admin/Staff only)")
     public ResponseEntity<List<Booking>> getBookingsByStation(@PathVariable Long stationId) {
         List<Booking> bookings = bookingService.getBookingsByStation(stationId);
         return ResponseEntity.ok(bookings);
@@ -121,7 +144,8 @@ public class BookingController {
      */
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get bookings by status")
+    @Operation(summary = "Get bookings by status",
+            description = "Get all bookings with specific status (Admin/Staff only)")
     public ResponseEntity<List<Booking>> getBookingsByStatus(@PathVariable Booking.Status status) {
         List<Booking> bookings = bookingService.getBookingsByStatus(status);
         return ResponseEntity.ok(bookings);

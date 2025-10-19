@@ -10,7 +10,6 @@ import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,29 +29,33 @@ public class VehicleService {
     @Autowired
     private final AuthenticationService authenticationService;
 
-    @Autowired
-    private final ModelMapper modelMapper;
-
     /**
      * Creates a new Vehicle
      */
     @Transactional
     public Vehicle createVehicle(VehicleRequest vehicleRequest) {
+        // Validate VIN unique
         if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
             throw new AuthenticationException("VIN already exists!");
         }
 
+        // Validate PlateNumber unique
         if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
             throw new AuthenticationException("Plate number already exists!");
         }
 
-        // Validate battery type
+        // Validate battery type exists
         BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
 
-        Vehicle vehicle = modelMapper.map(vehicleRequest, Vehicle.class);
+        // ✅ Tạo vehicle mới thủ công thay vì dùng ModelMapper (tránh conflict)
+        Vehicle vehicle = new Vehicle();
+        vehicle.setVin(vehicleRequest.getVin());
+        vehicle.setPlateNumber(vehicleRequest.getPlateNumber());
+        vehicle.setModel(vehicleRequest.getModel());
         vehicle.setDriver(authenticationService.getCurrentUser());
         vehicle.setBatteryType(batteryType);
+
         return vehicleRepository.save(vehicle);
     }
 

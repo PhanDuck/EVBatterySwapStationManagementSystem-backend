@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.Booking;
+import com.evbs.BackEndEvBs.entity.DriverSubscription;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.Vehicle;
@@ -8,6 +9,7 @@ import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BookingRequest;
 import com.evbs.BackEndEvBs.repository.BookingRepository;
+import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -31,14 +34,38 @@ public class BookingService {
     private final StationRepository stationRepository;
 
     @Autowired
+    private final DriverSubscriptionRepository driverSubscriptionRepository;
+
+    @Autowired
     private final AuthenticationService authenticationService;
 
     /**
      * CREATE - Tạo booking mới (Driver)
+     * 
+     * ✅ BẮT BUỘC PHẢI CÓ SUBSCRIPTION:
+     * - Driver phải có subscription ACTIVE
+     * - RemainingSwaps > 0
+     * - StartDate <= Today <= EndDate
      */
     @Transactional
     public Booking createBooking(BookingRequest request) {
         User currentUser = authenticationService.getCurrentUser();
+
+        // ✅ VALIDATION 0: BẮT BUỘC phải có subscription ACTIVE
+        DriverSubscription activeSubscription = driverSubscriptionRepository
+                .findActiveSubscriptionByDriver(currentUser, LocalDate.now())
+                .orElseThrow(() -> new AuthenticationException(
+                        "❌ BẮT BUỘC: Bạn phải mua gói dịch vụ trước khi booking. " +
+                        "Vui lòng mua ServicePackage và tạo DriverSubscription trước."
+                ));
+
+        // ✅ VALIDATION 1: Kiểm tra còn lượt swap không
+        if (activeSubscription.getRemainingSwaps() <= 0) {
+            throw new AuthenticationException(
+                    "❌ Gói dịch vụ của bạn đã hết lượt swap. " +
+                    "Vui lòng gia hạn hoặc mua gói mới."
+            );
+        }
 
         //Kiểm tra driver đã có booking đang hoạt động chưa
         List<Booking> activeBookings = bookingRepository.findByDriverAndStatusNotIn(
@@ -73,6 +100,11 @@ public class BookingService {
         booking.setVehicle(vehicle);
         booking.setStation(station);
         booking.setBookingTime(request.getBookingTime());
+        
+        // ⭐ THAY ĐỔI: KHÔNG generate code khi tạo booking
+        // Code sẽ được generate khi Staff/Admin CONFIRM booking
+        booking.setConfirmationCode(null);
+        booking.setStatus(Booking.Status.PENDING);
 
         return bookingRepository.save(booking);
     }
@@ -224,6 +256,110 @@ public class BookingService {
             throw new AuthenticationException("Access denied");
         }
         return bookingRepository.findByStatus(status);
+    }
+
+    /**
+     * ✅ CONFIRM BOOKING BY ID (Staff/Admin only)
+     * 
+     * Khi Staff/Admin confirm booking:
+     * 1. Generate mã xác nhận 6 ký tự (ABC123)
+     * 2. Chuyển status: PENDING → CONFIRMED
+     * 3. Trả code cho driver
+     * 
+     * Driver sẽ dùng code này để tự swap pin tại trạm
+     */
+    @Transactional
+    public Booking confirmBookingById(Long bookingId) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("❌ Chỉ Staff/Admin mới được confirm booking");
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy booking với ID: " + bookingId));
+
+        if (booking.getStatus() != Booking.Status.PENDING) {
+            throw new AuthenticationException(
+                    "❌ Chỉ confirm được booking PENDING. " +
+                    "Booking này đang ở trạng thái: " + booking.getStatus()
+            );
+        }
+
+        // ⭐ GENERATE CODE KHI CONFIRM (không phải khi tạo booking)
+        String confirmationCode = com.evbs.BackEndEvBs.util.ConfirmationCodeGenerator.generateUnique(
+            10, // Thử tối đa 10 lần
+            code -> bookingRepository.findByConfirmationCode(code).isPresent()
+        );
+        booking.setConfirmationCode(confirmationCode);
+        booking.setStatus(Booking.Status.CONFIRMED);
+        booking.setConfirmedBy(currentUser);  // ⭐ LƯU NGƯỜI CONFIRM
+        
+        return bookingRepository.save(booking);
+    }
+
+    /**
+     * ✅ VERIFY BOOKING BY CONFIRMATION CODE (Staff only)
+     * 
+     * Staff nhập confirmation code (ABC123) từ driver
+     * → Trả về thông tin booking để xác nhận
+     * → Staff có thể confirm booking (PENDING → CONFIRMED)
+     */
+    @Transactional(readOnly = true)
+    public Booking verifyBookingByCode(String confirmationCode) {
+        User currentStaff = authenticationService.getCurrentUser();
+        if (currentStaff.getRole() != User.Role.STAFF) {
+            throw new AuthenticationException("❌ Chỉ Staff mới được verify booking");
+        }
+
+        Booking booking = bookingRepository.findByConfirmationCode(confirmationCode)
+                .orElseThrow(() -> new NotFoundException(
+                        "❌ Không tìm thấy booking với mã: " + confirmationCode
+                ));
+
+        // Kiểm tra status - chỉ cho verify booking PENDING hoặc CONFIRMED
+        if (booking.getStatus() == Booking.Status.COMPLETED || 
+            booking.getStatus() == Booking.Status.CANCELLED) {
+            throw new AuthenticationException(
+                    "❌ Booking này đã " + booking.getStatus() + 
+                    " (không thể swap nữa)"
+            );
+        }
+
+        return booking;
+    }
+
+    /**
+     * ✅ CONFIRM BOOKING BY CODE (Staff only) - DEPRECATED
+     * 
+     * Sau khi verify, staff confirm booking
+     * PENDING → CONFIRMED
+     * 
+     * CHƯA TRỪ remainingSwaps (chỉ trừ khi swap hoàn tất)
+     * 
+     * @deprecated Use confirmBookingById(Long bookingId) instead
+     */
+    @Deprecated
+    @Transactional
+    public Booking confirmBookingByCode(String confirmationCode) {
+        User currentStaff = authenticationService.getCurrentUser();
+        if (currentStaff.getRole() != User.Role.STAFF) {
+            throw new AuthenticationException("❌ Chỉ Staff mới được confirm booking");
+        }
+
+        Booking booking = bookingRepository.findByConfirmationCode(confirmationCode)
+                .orElseThrow(() -> new NotFoundException(
+                        "❌ Không tìm thấy booking với mã: " + confirmationCode
+                ));
+
+        if (booking.getStatus() != Booking.Status.PENDING) {
+            throw new AuthenticationException(
+                    "❌ Chỉ confirm được booking PENDING. " +
+                    "Booking này đang ở trạng thái: " + booking.getStatus()
+            );
+        }
+
+        booking.setStatus(Booking.Status.CONFIRMED);
+        return bookingRepository.save(booking);
     }
 
     // ==================== HELPER METHODS ====================

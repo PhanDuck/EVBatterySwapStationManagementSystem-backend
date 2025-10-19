@@ -39,6 +39,12 @@ public class Vehicle {
     @JsonIgnore
     private BatteryType batteryType;
 
+    // Pin hiện tại đang gắn trên xe (nullable - xe có thể không có pin)
+    @ManyToOne
+    @JoinColumn(name = "CurrentBatteryID")
+    @JsonIgnore
+    private Battery currentBattery;
+
     @OneToMany(mappedBy = "vehicle")
     @JsonIgnore
     private List<Booking> bookings = new ArrayList<>();
@@ -51,8 +57,26 @@ public class Vehicle {
     @JsonIgnore
     private List<BatteryHistory> batteryHistories = new ArrayList<>();
 
-    // Getter để serialize batteryTypeId
+    // Transient fields để serialize IDs
+    @Transient
+    private Long driverId;
+
+    @Transient
+    private Long batteryTypeId;
+
+    @Transient
+    private Long currentBatteryId;
+
+    // Getters để serialize IDs
+    public Long getDriverId() {
+        return this.driver != null ? this.driver.getId() : null;
+    }
+
     public Long getBatteryTypeId() {
-        return batteryType != null ? batteryType.getId() : null;
+        return this.batteryType != null ? this.batteryType.getId() : null;
+    }
+
+    public Long getCurrentBatteryId() {
+        return this.currentBattery != null ? this.currentBattery.getId() : null;
     }
 }

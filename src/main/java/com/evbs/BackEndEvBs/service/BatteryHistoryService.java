@@ -94,6 +94,44 @@ public class BatteryHistoryService {
         return batteryHistoryRepository.findByStaffId(currentUser.getId());
     }
 
+    // ==================== CREATE METHODS ====================
+
+    /**
+     * CREATE - Tạo battery history record mới (Internal use)
+     * Method này được gọi từ các services khác (SwapTransaction, BatteryCharging, etc.)
+     */
+    @Transactional
+    public BatteryHistory createBatteryHistory(Battery battery, String eventType, 
+                                               Station relatedStation, Vehicle relatedVehicle, 
+                                               User staff) {
+        BatteryHistory history = new BatteryHistory();
+        history.setBattery(battery);
+        history.setEventType(eventType);
+        history.setEventTime(LocalDateTime.now());
+        history.setRelatedStation(relatedStation);
+        history.setRelatedVehicle(relatedVehicle);
+        history.setStaff(staff);
+        
+        return batteryHistoryRepository.save(history);
+    }
+
+    /**
+     * CREATE - Tạo battery history với minimal info
+     */
+    @Transactional
+    public BatteryHistory logBatteryEvent(Battery battery, String eventType) {
+        return createBatteryHistory(battery, eventType, null, null, null);
+    }
+
+    /**
+     * CREATE - Tạo battery history cho swap transaction
+     */
+    @Transactional
+    public BatteryHistory logSwapEvent(Battery battery, String eventType, 
+                                       Station station, Vehicle vehicle, User staff) {
+        return createBatteryHistory(battery, eventType, station, vehicle, staff);
+    }
+
     // ==================== HELPER METHODS ====================
 
     private boolean isAdminOrStaff(User user) {

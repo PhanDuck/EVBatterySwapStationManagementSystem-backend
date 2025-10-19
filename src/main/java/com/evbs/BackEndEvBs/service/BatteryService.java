@@ -11,7 +11,6 @@ import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,9 +35,6 @@ public class BatteryService {
     @Autowired
     private final AuthenticationService authenticationService;
 
-    @Autowired
-    private final ModelMapper modelMapper;
-
     /**
      * CREATE - Tạo battery mới (Admin/Staff only)
      */
@@ -53,8 +49,15 @@ public class BatteryService {
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
 
-        Battery battery = modelMapper.map(request, Battery.class);
+        // ✅ Tạo battery thủ công thay vì dùng ModelMapper (tránh conflict)
+        Battery battery = new Battery();
+        battery.setModel(request.getModel());
+        battery.setCapacity(request.getCapacity());
+        battery.setStateOfHealth(request.getStateOfHealth());
+        battery.setManufactureDate(request.getManufactureDate());
+        battery.setLastMaintenanceDate(request.getLastMaintenanceDate());
         battery.setBatteryType(batteryType);
+        battery.setStatus(request.getStatus() != null ? request.getStatus() : Battery.Status.AVAILABLE);
 
         // Set current station nếu có
         if (request.getCurrentStationId() != null) {

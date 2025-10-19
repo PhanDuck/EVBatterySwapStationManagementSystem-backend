@@ -41,6 +41,27 @@ public class SwapTransaction {
     @JsonIgnore
     private User staff;
 
+    // 🔑 Expose các IDs quan trọng cho JSON response
+    @Transient
+    public Long getDriverId() {
+        return driver != null ? driver.getId() : null;
+    }
+
+    @Transient
+    public Long getVehicleId() {
+        return vehicle != null ? vehicle.getId() : null;
+    }
+
+    @Transient
+    public Long getStationId() {
+        return station != null ? station.getId() : null;
+    }
+
+    @Transient
+    public Long getStaffId() {
+        return staff != null ? staff.getId() : null;
+    }
+
     @ManyToOne
     @JoinColumn(name = "SwapOutBatteryID")
     @JsonIgnore
@@ -50,6 +71,49 @@ public class SwapTransaction {
     @JoinColumn(name = "SwapInBatteryID")
     @JsonIgnore
     private Battery swapInBattery;
+
+    // ⭐ SNAPSHOT thông tin pin tại thời điểm swap (để lưu lịch sử không bị mất)
+    
+    // Thông tin pin lấy RA (swapOut - pin mới lên xe)
+    @Column(name = "SwapOutBatteryModel", length = 100, columnDefinition = "NVARCHAR(100)")
+    private String swapOutBatteryModel;
+    
+    @Column(name = "SwapOutBatteryChargeLevel", precision = 5, scale = 2)
+    private BigDecimal swapOutBatteryChargeLevel;
+    
+    @Column(name = "SwapOutBatteryHealth", precision = 5, scale = 2)
+    private BigDecimal swapOutBatteryHealth;
+    
+    // Thông tin pin đem VÀO (swapIn - pin cũ xuống xe)
+    @Column(name = "SwapInBatteryModel", length = 100, columnDefinition = "NVARCHAR(100)")
+    private String swapInBatteryModel;
+    
+    @Column(name = "SwapInBatteryChargeLevel", precision = 5, scale = 2)
+    private BigDecimal swapInBatteryChargeLevel;
+    
+    @Column(name = "SwapInBatteryHealth", precision = 5, scale = 2)
+    private BigDecimal swapInBatteryHealth;
+
+    // 🔑 Expose Battery IDs cho JSON response
+    @Transient
+    public Long getSwapOutBatteryId() {
+        return swapOutBattery != null ? swapOutBattery.getId() : null;
+    }
+
+    @Transient
+    public Long getSwapInBatteryId() {
+        return swapInBattery != null ? swapInBattery.getId() : null;
+    }
+
+    @OneToOne
+    @JoinColumn(name = "BookingID")
+    @JsonIgnore
+    private Booking booking;
+
+    @Transient
+    public Long getBookingId() {
+        return booking != null ? booking.getId() : null;
+    }
 
     @Column(name = "StartTime")
     private LocalDateTime startTime;

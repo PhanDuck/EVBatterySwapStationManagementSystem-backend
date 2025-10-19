@@ -8,7 +8,6 @@ import com.evbs.BackEndEvBs.model.request.ServicePackageRequest;
 import com.evbs.BackEndEvBs.model.request.ServicePackageUpdateRequest;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +24,6 @@ public class ServicePackageService {
     @Autowired
     private final AuthenticationService authenticationService;
 
-    @Autowired
-    private final ModelMapper modelMapper;
-
     @Transactional
     public ServicePackage createServicePackage(ServicePackageRequest request) {
         User currentUser = authenticationService.getCurrentUser();
@@ -39,7 +35,14 @@ public class ServicePackageService {
             throw new IllegalArgumentException("Service package with name '" + request.getName() + "' already exists");
         }
 
-        ServicePackage servicePackage = modelMapper.map(request, ServicePackage.class);
+        // ✅ Tạo service package thủ công thay vì dùng ModelMapper (tránh conflict)
+        ServicePackage servicePackage = new ServicePackage();
+        servicePackage.setName(request.getName());
+        servicePackage.setDescription(request.getDescription());
+        servicePackage.setPrice(request.getPrice());
+        servicePackage.setDuration(request.getDuration());
+        servicePackage.setMaxSwaps(request.getMaxSwaps());
+        
         return servicePackageRepository.save(servicePackage);
     }
 

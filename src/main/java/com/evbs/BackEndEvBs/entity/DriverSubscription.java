@@ -43,6 +43,9 @@ public class DriverSubscription {
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
     private Status status = Status.ACTIVE;
+
+    @Column(name = "RemainingSwaps", nullable = false)
+    private Integer remainingSwaps; // Số lần swap còn lại
     
     @OneToMany(mappedBy = "subscription")
     @JsonIgnore

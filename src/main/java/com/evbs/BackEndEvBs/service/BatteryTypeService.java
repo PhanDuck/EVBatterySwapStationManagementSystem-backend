@@ -7,7 +7,6 @@ import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BatteryTypeRequest;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +23,6 @@ public class BatteryTypeService {
     @Autowired
     private final AuthenticationService authenticationService;
 
-    @Autowired
-    private final ModelMapper modelMapper;
-
     @Transactional
     public BatteryType createBatteryType(BatteryTypeRequest request) {
         User currentUser = authenticationService.getCurrentUser();
@@ -38,7 +34,15 @@ public class BatteryTypeService {
             throw new AuthenticationException("Battery type name already exists");
         }
 
-        BatteryType batteryType = modelMapper.map(request, BatteryType.class);
+        // ✅ Tạo battery type thủ công thay vì dùng ModelMapper (tránh conflict)
+        BatteryType batteryType = new BatteryType();
+        batteryType.setName(request.getName());
+        batteryType.setDescription(request.getDescription());
+        batteryType.setVoltage(request.getVoltage());
+        batteryType.setCapacity(request.getCapacity());
+        batteryType.setWeight(request.getWeight());
+        batteryType.setDimensions(request.getDimensions());
+        
         return batteryTypeRepository.save(batteryType);
     }
 

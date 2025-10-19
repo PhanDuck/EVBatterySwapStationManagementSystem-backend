@@ -9,8 +9,8 @@ import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
+import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,10 +28,10 @@ public class StationService {
     private final BatteryTypeRepository batteryTypeRepository;
 
     @Autowired
-    private final AuthenticationService authenticationService;
+    private final StaffStationAssignmentRepository staffStationAssignmentRepository;
 
     @Autowired
-    private final ModelMapper modelMapper;
+    private final AuthenticationService authenticationService;
 
     /**
      * CREATE - Tạo station mới (Admin/Staff only)
@@ -52,17 +52,44 @@ public class StationService {
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
 
-        Station station = modelMapper.map(request, Station.class);
+        // ✅ Tạo station thủ công thay vì dùng ModelMapper (tránh conflict)
+        Station station = new Station();
+        station.setName(request.getName());
+        station.setLocation(request.getLocation());
+        station.setCapacity(request.getCapacity());
+        station.setContactInfo(request.getContactInfo());
+        station.setCity(request.getCity());
+        station.setDistrict(request.getDistrict());
+        station.setLatitude(request.getLatitude());
+        station.setLongitude(request.getLongitude());
         station.setBatteryType(batteryType);
+        // status = ACTIVE (default)
+        
         return stationRepository.save(station);
     }
 
     /**
-     * READ - Lấy tất cả stations (Public)
+     * READ - Lấy tất cả stations
+     * - Admin: xem tất cả stations
+     * - Staff: chỉ xem stations được assign
+     * - Driver/Public: xem tất cả stations ACTIVE
      */
     @Transactional(readOnly = true)
     public List<Station> getAllStations() {
-        return stationRepository.findAll();
+        User currentUser = authenticationService.getCurrentUser();
+
+        // Admin thấy tất cả
+        if (currentUser != null && currentUser.getRole() == User.Role.ADMIN) {
+            return stationRepository.findAll();
+        }
+
+        // Staff chỉ thấy stations được assign
+        if (currentUser != null && currentUser.getRole() == User.Role.STAFF) {
+            return staffStationAssignmentRepository.findStationsByStaff(currentUser);
+        }
+
+        // Driver hoặc Public chỉ thấy stations ACTIVE
+        return stationRepository.findByStatus(Station.Status.ACTIVE);
     }
 
     /**
@@ -104,6 +131,13 @@ public class StationService {
 
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
+
+        // ✅ Staff chỉ update được stations được assign
+        if (currentUser.getRole() == User.Role.STAFF) {
+            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
+                throw new AuthenticationException("You are not assigned to manage this station");
+            }
+        }
 
         // Kiểm tra trùng tên station (nếu thay đổi tên)
         if (request.getName() != null && !station.getName().equals(request.getName()) &&
@@ -172,6 +206,13 @@ public class StationService {
 
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
+
+        // ✅ Staff chỉ update được stations được assign
+        if (currentUser.getRole() == User.Role.STAFF) {
+            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
+                throw new AuthenticationException("You are not assigned to manage this station");
+            }
+        }
 
         station.setStatus(status);
         return stationRepository.save(station);

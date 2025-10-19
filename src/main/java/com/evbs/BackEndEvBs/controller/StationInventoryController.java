@@ -22,7 +22,7 @@ import java.util.Map;
 public class StationInventoryController {
 
     @Autowired
-    private StationInventoryService stationInventoryService;
+    StationInventoryService stationInventoryService;
 
     // ==================== ADMIN/STAFF ENDPOINTS ====================
 

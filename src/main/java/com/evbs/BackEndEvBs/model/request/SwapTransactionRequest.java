@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 @Data
 public class SwapTransactionRequest {
 
+    private Long bookingId; // Optional: Link to booking if exists
+
     @NotNull(message = "Vehicle ID cannot be null!")
     private Long vehicleId;
 

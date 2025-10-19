@@ -10,21 +10,21 @@ import java.util.Optional;
 @Repository
 public interface StationInventoryRepository extends JpaRepository<StationInventory, Long> {
 
-    // Tìm inventory theo station
-    List<StationInventory> findByStationId(Long stationId);
+    // Tìm inventory theo station (dùng station_id vì station là relationship)
+    List<StationInventory> findByStation_Id(Long stationId);
 
-    // Tìm inventory theo battery
-    Optional<StationInventory> findByBatteryId(Long batteryId);
+    // Tìm inventory theo battery (dùng battery_id vì battery là relationship)
+    Optional<StationInventory> findByBattery_Id(Long batteryId);
 
     // Tìm available batteries trong station
-    List<StationInventory> findByStationIdAndStatus(Long stationId, StationInventory.Status status);
+    List<StationInventory> findByStation_IdAndStatus(Long stationId, StationInventory.Status status);
 
     // Kiểm tra battery đã tồn tại trong inventory
-    boolean existsByBatteryId(Long batteryId);
+    boolean existsByBattery_Id(Long batteryId);
 
     // Đếm số lượng battery trong station
-    int countByStationId(Long stationId);
+    int countByStation_Id(Long stationId);
 
     // Kiểm tra battery có trong station cụ thể không
-    boolean existsByStationIdAndBatteryId(Long stationId, Long batteryId);
+    boolean existsByStation_IdAndBattery_Id(Long stationId, Long batteryId);
 }

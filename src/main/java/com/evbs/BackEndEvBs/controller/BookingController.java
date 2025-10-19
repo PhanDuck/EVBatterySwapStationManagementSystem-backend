@@ -150,4 +150,50 @@ public class BookingController {
         List<Booking> bookings = bookingService.getBookingsByStatus(status);
         return ResponseEntity.ok(bookings);
     }
+
+    // ==================== STAFF CONFIRMATION CODE ENDPOINTS ====================
+
+    /**
+     * PATCH /api/booking/{id}/confirm : Confirm booking by ID (Staff/Admin only)
+     * 
+     * Staff/Admin confirm booking → Generate mã xác nhận → Trả cho driver
+     * PENDING → CONFIRMED (với confirmationCode mới)
+     */
+    @PatchMapping("/{id}/confirm")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Confirm booking and generate confirmation code",
+            description = "Staff/Admin xác nhận booking, hệ thống tự động tạo mã 6 ký tự (ABC123) cho driver")
+    public ResponseEntity<Booking> confirmBooking(@PathVariable Long id) {
+        Booking booking = bookingService.confirmBookingById(id);
+        return ResponseEntity.ok(booking);
+    }
+
+    /**
+     * GET /api/booking/verify/{confirmationCode} : Verify booking by confirmation code (Driver uses at station)
+     * 
+     * Driver nhập mã code (ABC123) vào máy tại trạm → Kiểm tra booking hợp lệ
+     * Endpoint này có thể được gọi bởi Driver hoặc hệ thống tự động tại trạm
+     */
+    @GetMapping("/verify/{confirmationCode}")
+    @Operation(summary = "Verify booking by confirmation code",
+            description = "Driver nhập mã xác nhận 6 ký tự (ABC123) tại trạm để verify booking")
+    public ResponseEntity<Booking> verifyBookingByCode(@PathVariable String confirmationCode) {
+        Booking booking = bookingService.verifyBookingByCode(confirmationCode);
+        return ResponseEntity.ok(booking);
+    }
+
+    /**
+     * PATCH /api/booking/confirm/{confirmationCode} : Confirm booking by code (DEPRECATED)
+     * 
+     * @deprecated Use PATCH /api/booking/{id}/confirm instead
+     */
+    @Deprecated
+    @PatchMapping("/confirm/{confirmationCode}")
+    @PreAuthorize("hasRole('STAFF')")
+    @Operation(summary = "[DEPRECATED] Confirm booking by confirmation code",
+            description = "Use PATCH /api/booking/{id}/confirm instead")
+    public ResponseEntity<Booking> confirmBookingByCode(@PathVariable String confirmationCode) {
+        Booking booking = bookingService.confirmBookingByCode(confirmationCode);
+        return ResponseEntity.ok(booking);
+    }
 }

@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.model.request;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -22,5 +23,6 @@ public class VehicleRequest {
     @NotEmpty(message = "Vehicle model cannot be empty!")
     private String model;
 
-    private Long driverId;
+    @NotNull(message = "Battery type ID cannot be null!")
+    private Long batteryTypeId;
 }

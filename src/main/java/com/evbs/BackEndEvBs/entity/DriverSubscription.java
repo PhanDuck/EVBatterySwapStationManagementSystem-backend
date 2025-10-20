@@ -15,6 +15,10 @@ import java.util.List;
 @Setter
 public class DriverSubscription {
 
+    public enum Status {
+        ACTIVE, EXPIRED, CANCELLED, SUSPENDED
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "SubscriptionID")
@@ -36,10 +40,28 @@ public class DriverSubscription {
     @Column(name = "EndDate", nullable = false)
     private LocalDate endDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
-    private String status = "Active";
+    private Status status = Status.ACTIVE;
+
+    @Column(name = "RemainingSwaps", nullable = false)
+    private Integer remainingSwaps; // Số lần swap còn lại
     
     @OneToMany(mappedBy = "subscription")
     @JsonIgnore
     private List<Payment> payments = new ArrayList<>();
+
+    @Transient
+    private Long driverId;
+
+    @Transient
+    private Long packageId;
+
+    public Long getDriverId() {
+        return this.driver != null ? this.driver.getId() : null;
+    }
+
+    public Long getPackageId() {
+        return this.servicePackage != null ? this.servicePackage.getId() : null;
+    }
 }

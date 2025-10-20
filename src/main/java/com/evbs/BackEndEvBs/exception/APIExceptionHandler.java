@@ -37,6 +37,11 @@ public class APIExceptionHandler {
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity handleAuthenticationException(AuthenticationException exception) {
+        // Kiểm tra nếu là lỗi không được thao tác trên chính mình
+        if (exception.getMessage().contains("Cannot update your own account") || 
+            exception.getMessage().contains("Cannot delete your own account")) {
+            return ResponseEntity.status(403).body(exception.getMessage());
+        }
         return ResponseEntity.status(401).body(exception.getMessage());
     }
 }

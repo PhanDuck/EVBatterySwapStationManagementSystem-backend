@@ -14,7 +14,7 @@ public class UserResponse {
     private String email;
     private String phoneNumber;
     private User.Role role;
-    private String status;
+    private User.Status status;
     
     // Token chỉ có khi login, null khi CRUD operations
     private String token;

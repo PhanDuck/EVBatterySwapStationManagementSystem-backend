@@ -1,8 +1,12 @@
 package com.evbs.BackEndEvBs.controller;
 
+import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
+import com.evbs.BackEndEvBs.service.BatteryHealthService;
+import com.evbs.BackEndEvBs.service.BatteryService;
+import com.evbs.BackEndEvBs.service.StaffStationAssignmentService;
 import com.evbs.BackEndEvBs.service.StationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,7 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/station")
@@ -23,6 +29,15 @@ public class StationController {
 
     @Autowired
     private StationService stationService;
+
+    @Autowired
+    private StaffStationAssignmentService staffStationAssignmentService;
+
+    @Autowired
+    private BatteryService batteryService;
+
+    @Autowired
+    private BatteryHealthService batteryHealthService;
 
     // ==================== PUBLIC ENDPOINTS ====================
 
@@ -47,6 +62,14 @@ public class StationController {
     }
 
     /**
+     * GET /api/station/{id}/batteries : Get all batteries in station (Public)
+     */
+    @GetMapping("/{id}/batteries")
+    @Operation(summary = "Get all batteries in station")
+    public ResponseEntity<List<Battery>> getBatteriesByStation(@PathVariable Long id) {
+        List<Battery> batteries = batteryService.getBatteriesByStation(id);
+        return ResponseEntity.ok(batteries);
+    }
 
     // ==================== ADMIN/STAFF ENDPOINTS ====================
 
@@ -97,8 +120,49 @@ public class StationController {
     @Operation(summary = "Update station status")
     public ResponseEntity<Station> updateStationStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestParam Station.Status status) {
         Station station = stationService.updateStationStatus(id, status);
         return ResponseEntity.ok(station);
+    }
+
+    // ==================== BATTERY MAINTENANCE AT STATION ====================
+
+    /**
+     * GET /api/station/{id}/batteries/needs-maintenance : Lấy pin cần bảo trì TẠI TRẠM CỤ THỂ
+     * 
+     * Pin ở trạm: currentStation = stationId, SOH < 70%
+     * Staff chỉ xem được pins của stations mình quản lý
+     */
+    @GetMapping("/{id}/batteries/needs-maintenance")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
+    @Operation(summary = "Get batteries needing maintenance AT THIS STATION (SOH < 70%)",
+               description = "Lấy danh sách pin cần bảo trì đang nằm tại trạm này. Staff chỉ xem được pins của stations mình quản lý.")
+    public ResponseEntity<Map<String, Object>> getBatteriesNeedingMaintenanceAtStation(@PathVariable Long id) {
+        // Validate station access for staff
+        staffStationAssignmentService.validateStationAccess(id);
+        
+        // Verify station exists
+        Station station = stationService.getStationById(id);
+        
+        // Lấy tất cả pin có SOH < 70%
+        List<Battery> allBatteriesNeedMaintenance = batteryHealthService.getBatteriesNeedingMaintenance();
+        
+        // Filter chỉ lấy pin Ở TRẠM NÀY (currentStation = id)
+        List<Battery> batteriesAtStation = allBatteriesNeedMaintenance.stream()
+                .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(id))
+                .collect(java.util.stream.Collectors.toList());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("stationId", id);
+        response.put("stationName", station.getName());
+        response.put("location", "AT_STATION");
+        response.put("total", batteriesAtStation.size());
+        response.put("batteries", batteriesAtStation);
+        response.put("message", batteriesAtStation.isEmpty() 
+            ? "Trạm này không có pin nào cần bảo trì" 
+            : "Trạm này có " + batteriesAtStation.size() + " pin cần bảo trì");
+        
+        return ResponseEntity.ok(response);
     }
 }

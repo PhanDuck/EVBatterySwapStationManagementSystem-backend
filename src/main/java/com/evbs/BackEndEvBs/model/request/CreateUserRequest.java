@@ -31,5 +31,5 @@ public class CreateUserRequest {
     
     private User.Role role = User.Role.DRIVER; // default
     
-    private String status = "Active"; // default
+    private User.Status status = User.Status.ACTIVE; // default
 }

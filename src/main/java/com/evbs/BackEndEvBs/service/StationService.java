@@ -1,14 +1,16 @@
 package com.evbs.BackEndEvBs.service;
 
+import com.evbs.BackEndEvBs.entity.BatteryType;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
+import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
+import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,10 +25,13 @@ public class StationService {
     private final StationRepository stationRepository;
 
     @Autowired
-    private final AuthenticationService authenticationService;
+    private final BatteryTypeRepository batteryTypeRepository;
 
     @Autowired
-    private final ModelMapper modelMapper;
+    private final StaffStationAssignmentRepository staffStationAssignmentRepository;
+
+    @Autowired
+    private final AuthenticationService authenticationService;
 
     /**
      * CREATE - Tạo station mới (Admin/Staff only)
@@ -43,16 +48,55 @@ public class StationService {
             throw new AuthenticationException("Station name already exists");
         }
 
-        Station station = modelMapper.map(request, Station.class);
+        // Validate battery type
+        BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
+                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+
+        // ✅ Tạo station thủ công thay vì dùng ModelMapper (tránh conflict)
+        Station station = new Station();
+        station.setName(request.getName());
+        station.setLocation(request.getLocation());
+        station.setCapacity(request.getCapacity());
+        station.setContactInfo(request.getContactInfo());
+        station.setCity(request.getCity());
+        station.setDistrict(request.getDistrict());
+        station.setLatitude(request.getLatitude());
+        station.setLongitude(request.getLongitude());
+        station.setBatteryType(batteryType);
+        // status = ACTIVE (default)
+        
         return stationRepository.save(station);
     }
 
     /**
-     * READ - Lấy tất cả stations (Public)
+     * READ - Lấy tất cả stations (PUBLIC - không cần đăng nhập)
+     * - Admin: xem tất cả stations
+     * - Staff: chỉ xem stations được assign
+     * - Driver/Public (không đăng nhập): xem tất cả stations ACTIVE
      */
     @Transactional(readOnly = true)
     public List<Station> getAllStations() {
-        return stationRepository.findAll();
+        // Lấy current user, có thể null nếu chưa đăng nhập
+        User currentUser = null;
+        try {
+            currentUser = authenticationService.getCurrentUser();
+        } catch (Exception e) {
+            // User chưa đăng nhập hoặc token không hợp lệ → currentUser = null
+            currentUser = null;
+        }
+
+        // Admin thấy tất cả
+        if (currentUser != null && currentUser.getRole() == User.Role.ADMIN) {
+            return stationRepository.findAll();
+        }
+
+        // Staff chỉ thấy stations được assign
+        if (currentUser != null && currentUser.getRole() == User.Role.STAFF) {
+            return staffStationAssignmentRepository.findStationsByStaff(currentUser);
+        }
+
+        // Driver hoặc Public (không đăng nhập) chỉ thấy stations ACTIVE
+        return stationRepository.findByStatus(Station.Status.ACTIVE);
     }
 
     /**
@@ -62,6 +106,27 @@ public class StationService {
     public Station getStationById(Long id) {
         return stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
+    }
+
+    /**
+     * READ - Lấy stations theo battery type (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Station> getStationsByBatteryType(Long batteryTypeId) {
+        BatteryType batteryType = batteryTypeRepository.findById(batteryTypeId)
+                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+        return stationRepository.findByBatteryType(batteryType);
+    }
+
+    /**
+     * READ - Lấy stations tương thích với vehicle (Public)
+     */
+    @Transactional(readOnly = true)
+    public List<Station> getCompatibleStations(Long vehicleId) {
+        // Cần có VehicleRepository để lấy vehicle, nhưng hiện tại chưa có
+        // Có thể implement sau khi có VehicleService
+        // Tạm thời trả về tất cả stations
+        return stationRepository.findAll();
     }
 
     @Transactional
@@ -74,7 +139,14 @@ public class StationService {
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        // Kiểm tra trùng tên station (nếu thay đổi tên) 
+        // ✅ Staff chỉ update được stations được assign
+        if (currentUser.getRole() == User.Role.STAFF) {
+            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
+                throw new AuthenticationException("You are not assigned to manage this station");
+            }
+        }
+
+        // Kiểm tra trùng tên station (nếu thay đổi tên)
         if (request.getName() != null && !station.getName().equals(request.getName()) &&
                 stationRepository.existsByName(request.getName())) {
             throw new AuthenticationException("Station name already exists");
@@ -105,6 +177,11 @@ public class StationService {
         if (request.getLongitude() != null) {
             station.setLongitude(request.getLongitude());
         }
+        if (request.getBatteryTypeId() != null) {
+            BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
+                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+            station.setBatteryType(batteryType);
+        }
 
         return stationRepository.save(station);
     }
@@ -128,7 +205,7 @@ public class StationService {
      * UPDATE - Cập nhật status station (Admin/Staff only)
      */
     @Transactional
-    public Station updateStationStatus(Long id, String status) {
+    public Station updateStationStatus(Long id, Station.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
@@ -136,6 +213,13 @@ public class StationService {
 
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
+
+        // ✅ Staff chỉ update được stations được assign
+        if (currentUser.getRole() == User.Role.STAFF) {
+            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
+                throw new AuthenticationException("You are not assigned to manage this station");
+            }
+        }
 
         station.setStatus(status);
         return stationRepository.save(station);

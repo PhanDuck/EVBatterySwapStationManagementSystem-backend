@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/driver-subscription")
@@ -23,14 +24,6 @@ public class DriverSubscriptionController {
 
     @Autowired
     private DriverSubscriptionService driverSubscriptionService;
-
-    @PostMapping
-    @PreAuthorize("hasRole('DRIVER')")
-    @Operation(summary = "Create subscription", description = "Create new subscription (Driver only)")
-    public ResponseEntity<DriverSubscription> createSubscription(@Valid @RequestBody DriverSubscriptionRequest request) {
-        DriverSubscription subscription = driverSubscriptionService.createSubscription(request);
-        return new ResponseEntity<>(subscription, HttpStatus.CREATED);
-    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")

@@ -33,6 +33,18 @@ public class Vehicle {
     @JsonIgnore
     private User driver;
 
+    // Thêm batteryType để xác định loại pin tương thích
+    @ManyToOne
+    @JoinColumn(name = "BatteryTypeID", nullable = false)
+    @JsonIgnore
+    private BatteryType batteryType;
+
+    // Pin hiện tại đang gắn trên xe (nullable - xe có thể không có pin)
+    @ManyToOne
+    @JoinColumn(name = "CurrentBatteryID")
+    @JsonIgnore
+    private Battery currentBattery;
+
     @OneToMany(mappedBy = "vehicle")
     @JsonIgnore
     private List<Booking> bookings = new ArrayList<>();
@@ -41,7 +53,26 @@ public class Vehicle {
     @JsonIgnore
     private List<SwapTransaction> swapTransactions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "relatedVehicle")
-    @JsonIgnore
-    private List<BatteryHistory> batteryHistories = new ArrayList<>();
+    // Transient fields để serialize IDs
+    @Transient
+    private Long driverId;
+
+    @Transient
+    private Long batteryTypeId;
+
+    @Transient
+    private Long currentBatteryId;
+
+    // Getters để serialize IDs
+    public Long getDriverId() {
+        return this.driver != null ? this.driver.getId() : null;
+    }
+
+    public Long getBatteryTypeId() {
+        return this.batteryType != null ? this.batteryType.getId() : null;
+    }
+
+    public Long getCurrentBatteryId() {
+        return this.currentBattery != null ? this.currentBattery.getId() : null;
+    }
 }

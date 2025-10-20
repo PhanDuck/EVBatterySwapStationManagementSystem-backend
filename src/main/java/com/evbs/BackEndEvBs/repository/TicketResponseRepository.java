@@ -12,6 +12,6 @@ public interface TicketResponseRepository extends JpaRepository<TicketResponse, 
     // Tìm responses theo ticket
     List<TicketResponse> findByTicketId(Long ticketId);
 
-    // Tìm responses theo staff
-    List<TicketResponse> findByStaffId(Long staffId);
+    // Tìm responses theo staff (sử dụng nested property)
+    List<TicketResponse> findByStaff_Id(Long staffId);
 }

@@ -34,6 +34,16 @@ public class VehicleController {
     }
 
     /**
+     * GET /api/vehicle/my-vehicles : Get my vehicles (Driver only)
+     */
+    @GetMapping("/my-vehicles")
+    @Operation(summary = "Get my vehicles (Driver only)")
+    public ResponseEntity<List<Vehicle>> getMyVehicles() {
+        List<Vehicle> myVehicles = vehicleService.getMyVehicles();
+        return ResponseEntity.ok(myVehicles);
+    }
+
+    /**
      * PUT /api/vehicle/my-vehicles/{id} : Update vehicle's info by ID (Driver)
      */
     @PutMapping("/my-vehicles/{id}")

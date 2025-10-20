@@ -1,5 +1,7 @@
 package com.evbs.BackEndEvBs.service;
 
+import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.BatteryType;
 import com.evbs.BackEndEvBs.entity.Booking;
 import com.evbs.BackEndEvBs.entity.DriverSubscription;
 import com.evbs.BackEndEvBs.entity.Station;
@@ -9,8 +11,10 @@ import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.BookingRequest;
+import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.BookingRepository;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
+import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,8 +22,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.format.DateTimeFormatter;
+import java.math.BigDecimal;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -39,36 +45,50 @@ public class BookingService {
     private final DriverSubscriptionRepository driverSubscriptionRepository;
 
     @Autowired
+    private final BatteryRepository batteryRepository;
+
+    @Autowired
+    private final StaffStationAssignmentRepository staffStationAssignmentRepository;
+
+    @Autowired
     private final AuthenticationService authenticationService;
 
     @Autowired
     private EmailService emailService;
 
     /**
-     * CREATE - Tạo booking mới (Driver)
+     * CREATE - Tao booking moi (Driver)
      * 
-     * ✅ BẮT BUỘC PHẢI CÓ SUBSCRIPTION:
-     * - Driver phải có subscription ACTIVE
-     * - RemainingSwaps > 0
+     * BAT BUOC PHAI CO SUBSCRIPTION:
+     * - Driver phai co subscription ACTIVE
+     * - RemainingSwaps > 0 (con luot swap)
      * - StartDate <= Today <= EndDate
+     * 
+     * CHI TRU LUOT SWAP KHI:
+     * - Booking CONFIRMED ma driver KHONG DEN (sau 3 tieng)
+     * - Swap thanh cong (COMPLETED)
+     * 
+     * KHONG TRU LUOT SWAP KHI:
+     * - Booking van PENDING (chua confirm)
+     * - Driver tu huy PENDING (huy som)
      */
     @Transactional
     public Booking createBooking(BookingRequest request) {
         User currentUser = authenticationService.getCurrentUser();
 
-        // ✅ VALIDATION 0: BẮT BUỘC phải có subscription ACTIVE
+        // VALIDATION 0: BAT BUOC phai co subscription ACTIVE
         DriverSubscription activeSubscription = driverSubscriptionRepository
                 .findActiveSubscriptionByDriver(currentUser, LocalDate.now())
                 .orElseThrow(() -> new AuthenticationException(
-                        "❌ BẮT BUỘC: Bạn phải mua gói dịch vụ trước khi booking. " +
-                        "Vui lòng mua ServicePackage và tạo DriverSubscription trước."
+                        "BAT BUOC: Ban phai mua goi dich vu truoc khi booking. " +
+                        "Vui long mua ServicePackage truoc."
                 ));
 
-        // ✅ VALIDATION 1: Kiểm tra còn lượt swap không
+        // VALIDATION 1: Kiem tra con luot swap khong (QUAN TRONG!)
         if (activeSubscription.getRemainingSwaps() <= 0) {
             throw new AuthenticationException(
-                    "❌ Gói dịch vụ của bạn đã hết lượt swap. " +
-                    "Vui lòng gia hạn hoặc mua gói mới."
+                    "Goi dich vu cua ban da het luot swap. " +
+                    "Vui long gia han hoac mua goi moi."
             );
         }
 
@@ -185,17 +205,22 @@ public class BookingService {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new NotFoundException("Vehicle not found"));
 
-        // Lấy tất cả stations có cùng battery type với vehicle và status ACTIVE
-        return stationRepository.findByBatteryTypeAndStatus(
+        // Chi lay stations co cung battery type, ACTIVE, VA co pin >80% san sang
+        return stationRepository.findStationsWithAvailableBatteries(
                 vehicle.getBatteryType(),
-                Station.Status.ACTIVE
+                80  // Yeu cau pin tren 80% suc khoe
         );
     }
 
     // ... (các method khác giữ nguyên)
 
     /**
-     * UPDATE - Hủy booking (Driver)
+     * UPDATE - Huy booking (Driver)
+     * 
+     * CHI CHO PHEP HUY KHI PENDING (chua confirm)
+     * - Sau khi Staff confirm → KHONG CHO HUY
+     * - Ly do: Pin da duoc giu (PENDING), neu khong den se bi tru luot
+     * - Neu muon huy sau khi confirm → Lien he staff
      */
     @Transactional
     public Booking cancelMyBooking(Long id) {
@@ -203,14 +228,89 @@ public class BookingService {
         Booking booking = bookingRepository.findByIdAndDriver(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Booking not found"));
 
-        // Kiểm tra trạng thái booking - chỉ cho phép hủy khi status là PENDING
+        // QUAN TRONG: CHI CHO PHEP HUY KHI PENDING
         if (booking.getStatus() != Booking.Status.PENDING) {
-            String message = String.format("Cannot cancel booking with status '%s'. Only PENDING bookings can be cancelled by driver.",
-                    booking.getStatus());
+            String message = String.format(
+                "Khong the huy booking voi trang thai '%s'. " +
+                "Chi co the huy booking PENDING (chua confirm). " +
+                "Neu da CONFIRMED, vui long lien he staff hoac den tram dung gio.",
+                booking.getStatus()
+            );
             throw new AuthenticationException(message);
         }
 
+        // Huy booking (PENDING → CANCELLED)
         booking.setStatus(Booking.Status.CANCELLED);
+        return bookingRepository.save(booking);
+    }
+
+    /**
+     * UPDATE - Huy booking boi Staff/Admin (truong hop dac biet)
+     * 
+     * Staff co the huy bat ky booking nao (PENDING hoac CONFIRMED)
+     * Ly do: Tram bao tri, pin hong, khan cap, etc.
+     * 
+     * Neu huy CONFIRMED booking:
+     * - Giai phong pin (PENDING → AVAILABLE)
+     * - KHONG TRU luot swap (loi tu phia tram, khong phai loi driver)
+     * - Clear reservation fields
+     * 
+     * @param id Booking ID can huy
+     * @param reason Ly do huy (optional, de tracking)
+     */
+    @Transactional
+    public Booking cancelBookingByStaff(Long id, String reason) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Chi Staff/Admin moi duoc huy booking");
+        }
+
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Khong tim thay booking voi ID: " + id));
+
+        // Kiem tra: Khong cho huy booking da COMPLETED hoac da CANCELLED
+        if (booking.getStatus() == Booking.Status.COMPLETED) {
+            throw new AuthenticationException("Khong the huy booking da COMPLETED");
+        }
+        if (booking.getStatus() == Booking.Status.CANCELLED) {
+            throw new AuthenticationException("Booking nay da duoc huy truoc do");
+        }
+
+        // NEU BOOKING DA CONFIRMED VA CO PIN RESERVED → GIAI PHONG PIN
+        if (booking.getStatus() == Booking.Status.CONFIRMED && booking.getReservedBattery() != null) {
+            Battery battery = booking.getReservedBattery();
+            
+            // Giai phong pin (PENDING → AVAILABLE)
+            if (battery.getStatus() == Battery.Status.PENDING) {
+                battery.setStatus(Battery.Status.AVAILABLE);
+                battery.setReservedForBooking(null);
+                battery.setReservationExpiry(null);
+                batteryRepository.save(battery);
+                
+                // Log de tracking
+                System.out.println(String.format(
+                    "Staff huy booking CONFIRMED. BookingID: %d, StaffID: %d, Reason: %s, BatteryID: %d da giai phong",
+                    booking.getId(), currentUser.getId(), 
+                    reason != null ? reason : "Khong co ly do", 
+                    battery.getId()
+                ));
+            }
+            
+            // Clear booking reservation
+            booking.setReservedBattery(null);
+            booking.setReservationExpiry(null);
+        }
+
+        // Huy booking
+        booking.setStatus(Booking.Status.CANCELLED);
+        
+        // Log de tracking
+        System.out.println(String.format(
+            "Staff huy booking. BookingID: %d, DriverID: %d, StaffID: %d, Reason: %s",
+            booking.getId(), booking.getDriver().getId(), currentUser.getId(), 
+            reason != null ? reason : "Khong co ly do"
+        ));
+        
         return bookingRepository.save(booking);
     }
 
@@ -224,6 +324,38 @@ public class BookingService {
             throw new AuthenticationException("Access denied");
         }
         return bookingRepository.findAll();
+    }
+
+    /**
+     * READ - Lay bookings cua cac tram Staff quan ly (Staff only)
+     * 
+     * Staff chi xem duoc bookings cua cac tram minh duoc assign
+     * Admin xem duoc tat ca bookings
+     * 
+     * Dung de hien thi danh sach booking can confirm
+     */
+    @Transactional(readOnly = true)
+    public List<Booking> getBookingsForMyStations() {
+        User currentUser = authenticationService.getCurrentUser();
+        
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Chi Staff/Admin moi xem duoc bookings");
+        }
+
+        // Admin xem tat ca
+        if (currentUser.getRole() == User.Role.ADMIN) {
+            return bookingRepository.findAll();
+        }
+
+        // Staff chi xem booking cua cac tram minh quan ly
+        List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
+        
+        if (myStations.isEmpty()) {
+            throw new AuthenticationException("Ban chua duoc assign vao tram nao");
+        }
+
+        // Lay tat ca bookings cua cac tram minh quan ly
+        return bookingRepository.findByStationIn(myStations);
     }
 
     /**
@@ -308,106 +440,87 @@ public class BookingService {
     }
 
     /**
-     * ✅ CONFIRM BOOKING BY ID (Staff/Admin only)
+     * CONFIRM BOOKING BY ID (Staff/Admin only)
      * 
      * Khi Staff/Admin confirm booking:
-     * 1. Generate mã xác nhận 6 ký tự (ABC123)
-     * 2. Chuyển status: PENDING → CONFIRMED
-     * 3. Trả code cho driver
+     * 1. Generate ma xac nhan 6 ky tu (ABC123)
+     * 2. TU DONG LAY PIN >80% TAI TRAM
+     * 3. RESERVE PIN CHO DRIVER (status = PENDING)
+     * 4. DAT THOI HAN 3 TIENG (auto-cancel neu khong swap)
+     * 5. Chuyen status: PENDING → CONFIRMED
+     * 6. Tra code cho driver
      * 
-     * Driver sẽ dùng code này để tự swap pin tại trạm
+     * Driver se dung code nay de tu swap pin tai tram
      */
     @Transactional
     public Booking confirmBookingById(Long bookingId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("❌ Chỉ Staff/Admin mới được confirm booking");
+            throw new AuthenticationException("Chi Staff/Admin moi duoc confirm booking");
         }
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy booking với ID: " + bookingId));
+                .orElseThrow(() -> new NotFoundException("Khong tim thay booking voi ID: " + bookingId));
 
         if (booking.getStatus() != Booking.Status.PENDING) {
             throw new AuthenticationException(
-                    "❌ Chỉ confirm được booking PENDING. " +
-                    "Booking này đang ở trạng thái: " + booking.getStatus()
+                    "Chi confirm duoc booking PENDING. " +
+                    "Booking nay dang o trang thai: " + booking.getStatus()
             );
         }
 
-        // ⭐ GENERATE CODE KHI CONFIRM (không phải khi tạo booking)
+        // BUOC 1: TIM PIN AVAILABLE, DIEN >= 80%, SUCK KHOE >= 70% TAI TRAM, DUNG LOAI PIN
+        BatteryType requiredBatteryType = booking.getVehicle().getBatteryType();
+        
+        List<Battery> availableBatteries = batteryRepository.findAll()
+                .stream()
+                .filter(b -> b.getCurrentStation() != null 
+                        && b.getCurrentStation().getId().equals(booking.getStation().getId())
+                        && b.getBatteryType().getId().equals(requiredBatteryType.getId())
+                        && b.getStatus() == Battery.Status.AVAILABLE
+                        && b.getChargeLevel().compareTo(BigDecimal.valueOf(80)) >= 0
+                        && b.getStateOfHealth() != null 
+                        && b.getStateOfHealth().compareTo(BigDecimal.valueOf(70)) >= 0)  // ⭐ Health >= 70%
+                .sorted((b1, b2) -> {
+                    // Ưu tiên: Sức khỏe cao nhất → Điện cao nhất
+                    int healthCompare = b2.getStateOfHealth().compareTo(b1.getStateOfHealth());
+                    if (healthCompare != 0) return healthCompare;
+                    return b2.getChargeLevel().compareTo(b1.getChargeLevel());
+                })
+                .toList();
+
+        if (availableBatteries.isEmpty()) {
+            throw new NotFoundException(
+                    "Khong co pin nao du dien (>= 80%) tai tram nay. " +
+                    "Vui long chon tram khac hoac doi sau."
+            );
+        }
+
+        // BUOC 2: LAY PIN CO SUC KHOE CAO NHAT
+        Battery reservedBattery = availableBatteries.get(0);
+
+        // BUOC 3: RESERVE PIN (status = PENDING, khoa trong 3 tieng)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiryTime = now.plusHours(3);
+
+        reservedBattery.setStatus(Battery.Status.PENDING);
+        reservedBattery.setReservedForBooking(booking);
+        reservedBattery.setReservationExpiry(expiryTime);
+        batteryRepository.save(reservedBattery);
+
+        // BUOC 4: CAP NHAT BOOKING
+        booking.setReservedBattery(reservedBattery);
+        booking.setReservationExpiry(expiryTime);
+
+        // BUOC 5: GENERATE CODE KHI CONFIRM (khong phai khi tao booking)
         String confirmationCode = com.evbs.BackEndEvBs.util.ConfirmationCodeGenerator.generateUnique(
-            10, // Thử tối đa 10 lần
+            10, // Thu toi da 10 lan
             code -> bookingRepository.findByConfirmationCode(code).isPresent()
         );
         booking.setConfirmationCode(confirmationCode);
         booking.setStatus(Booking.Status.CONFIRMED);
-        booking.setConfirmedBy(currentUser);  // ⭐ LƯU NGƯỜI CONFIRM
+        booking.setConfirmedBy(currentUser);  // LUU NGUOI CONFIRM
         
-        return bookingRepository.save(booking);
-    }
-
-    /**
-     * ✅ VERIFY BOOKING BY CONFIRMATION CODE (Staff only)
-     * 
-     * Staff nhập confirmation code (ABC123) từ driver
-     * → Trả về thông tin booking để xác nhận
-     * → Staff có thể confirm booking (PENDING → CONFIRMED)
-     */
-    @Transactional(readOnly = true)
-    public Booking verifyBookingByCode(String confirmationCode) {
-        User currentStaff = authenticationService.getCurrentUser();
-        if (currentStaff.getRole() != User.Role.STAFF) {
-            throw new AuthenticationException("❌ Chỉ Staff mới được verify booking");
-        }
-
-        Booking booking = bookingRepository.findByConfirmationCode(confirmationCode)
-                .orElseThrow(() -> new NotFoundException(
-                        "❌ Không tìm thấy booking với mã: " + confirmationCode
-                ));
-
-        // Kiểm tra status - chỉ cho verify booking PENDING hoặc CONFIRMED
-        if (booking.getStatus() == Booking.Status.COMPLETED || 
-            booking.getStatus() == Booking.Status.CANCELLED) {
-            throw new AuthenticationException(
-                    "❌ Booking này đã " + booking.getStatus() + 
-                    " (không thể swap nữa)"
-            );
-        }
-
-        return booking;
-    }
-
-    /**
-     * ✅ CONFIRM BOOKING BY CODE (Staff only) - DEPRECATED
-     * 
-     * Sau khi verify, staff confirm booking
-     * PENDING → CONFIRMED
-     * 
-     * CHƯA TRỪ remainingSwaps (chỉ trừ khi swap hoàn tất)
-     * 
-     * @deprecated Use confirmBookingById(Long bookingId) instead
-     */
-    @Deprecated
-    @Transactional
-    public Booking confirmBookingByCode(String confirmationCode) {
-        User currentStaff = authenticationService.getCurrentUser();
-        if (currentStaff.getRole() != User.Role.STAFF) {
-            throw new AuthenticationException("❌ Chỉ Staff mới được confirm booking");
-        }
-
-        Booking booking = bookingRepository.findByConfirmationCode(confirmationCode)
-                .orElseThrow(() -> new NotFoundException(
-                        "❌ Không tìm thấy booking với mã: " + confirmationCode
-                ));
-
-        if (booking.getStatus() != Booking.Status.PENDING) {
-            throw new AuthenticationException(
-                    "❌ Chỉ confirm được booking PENDING. " +
-                    "Booking này đang ở trạng thái: " + booking.getStatus()
-            );
-        }
-
-        booking.setStatus(Booking.Status.CONFIRMED);
         return bookingRepository.save(booking);
     }
 

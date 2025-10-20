@@ -53,10 +53,6 @@ public class Vehicle {
     @JsonIgnore
     private List<SwapTransaction> swapTransactions = new ArrayList<>();
 
-    @OneToMany(mappedBy = "relatedVehicle")
-    @JsonIgnore
-    private List<BatteryHistory> batteryHistories = new ArrayList<>();
-
     // Transient fields để serialize IDs
     @Transient
     private Long driverId;

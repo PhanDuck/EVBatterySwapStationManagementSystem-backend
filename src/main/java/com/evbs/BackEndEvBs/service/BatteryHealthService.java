@@ -29,7 +29,6 @@ import java.util.List;
 public class BatteryHealthService {
 
     private final BatteryRepository batteryRepository;
-    private final BatteryHistoryService batteryHistoryService;
 
     // ⚙️ Ngưỡng cảnh báo SOH
     private static final BigDecimal SOH_WARNING_THRESHOLD = BigDecimal.valueOf(80.0);      // Cảnh báo theo dõi
@@ -149,9 +148,6 @@ public class BatteryHealthService {
         battery.setStatus(Battery.Status.MAINTENANCE);
         battery.setLastMaintenanceDate(LocalDate.now());
         batteryRepository.save(battery);
-        
-        // 📝 GHI LỊCH SỬ: Pin vào bảo trì
-        batteryHistoryService.logBatteryEvent(battery, "MAINTENANCE");
 
         log.info("🔧 [Battery {}] Status changed to MAINTENANCE. SOH: {:.1f}%", 
                 battery.getId(), 
@@ -248,22 +244,40 @@ public class BatteryHealthService {
 
     /**
      * Admin hoàn thành bảo trì pin
+     * Logic tự động: SOH >= 70% → AVAILABLE, SOH < 70% → MAINTENANCE
      */
     @Transactional
     public void completeMaintenance(Battery battery, BigDecimal newSOH) {
-        log.info("🔧 [Battery {}] Maintenance completed. SOH restored from {:.1f}% to {:.1f}%",
-                battery.getId(),
-                battery.getStateOfHealth() != null ? battery.getStateOfHealth().doubleValue() : 0,
-                newSOH.doubleValue());
-
+        // Validation: Pin phải ở trong kho (currentStation = null)
+        if (battery.getCurrentStation() != null) {
+            throw new IllegalArgumentException(
+                "Chỉ có thể bảo trì pin đang ở trong kho. Pin này đang ở trạm: " + battery.getCurrentStation().getName()
+            );
+        }
+        
+        BigDecimal oldSOH = battery.getStateOfHealth();
         battery.setStateOfHealth(newSOH);
-        battery.setStatus(Battery.Status.AVAILABLE);
         battery.setLastMaintenanceDate(LocalDate.now());
         battery.setUsageCount(0);  // Reset usage count sau bảo trì
-        batteryRepository.save(battery);
         
-        // 📝 GHI LỊCH SỬ: Pin hoàn thành bảo trì
-        batteryHistoryService.logBatteryEvent(battery, "MAINTENANCE_COMPLETED");
+        // Logic tự động: Kiểm tra SOH để quyết định status
+        if (newSOH.compareTo(SOH_CRITICAL_THRESHOLD) >= 0) {
+            // SOH >= 70% → Pin sẵn sàng sử dụng
+            battery.setStatus(Battery.Status.AVAILABLE);
+            log.info("✅ [Battery {}] Maintenance completed. SOH: {:.1f}% → {:.1f}%. Status: AVAILABLE", 
+                    battery.getId(),
+                    oldSOH != null ? oldSOH.doubleValue() : 0,
+                    newSOH.doubleValue());
+        } else {
+            // SOH < 70% → Pin vẫn cần bảo trì
+            battery.setStatus(Battery.Status.MAINTENANCE);
+            log.warn("⚠️ [Battery {}] SOH updated but still needs maintenance. SOH: {:.1f}% → {:.1f}%. Status: MAINTENANCE", 
+                    battery.getId(),
+                    oldSOH != null ? oldSOH.doubleValue() : 0,
+                    newSOH.doubleValue());
+        }
+        
+        batteryRepository.save(battery);
     }
 
     /**

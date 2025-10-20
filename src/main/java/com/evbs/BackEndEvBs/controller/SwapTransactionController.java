@@ -127,19 +127,6 @@ public class SwapTransactionController {
     }
 
     /**
-     * ⭐ GET /api/swap-transaction/my-vehicle/{vehicleId}/history : Xem lịch sử đổi pin xe của tôi
-     * 
-     * Driver xem lịch sử xe mình sở hữu
-     */
-    @GetMapping("/my-vehicle/{vehicleId}/history")
-    @Operation(summary = "Get my vehicle swap history",
-            description = "Driver xem lịch sử đổi pin của xe mình")
-    public ResponseEntity<List<SwapTransaction>> getMyVehicleSwapHistory(@PathVariable Long vehicleId) {
-        List<SwapTransaction> history = swapTransactionService.getMyVehicleSwapHistory(vehicleId);
-        return ResponseEntity.ok(history);
-    }
-
-    /**
      * 🔋 GET /api/swap-transaction/battery/{batteryId}/history : Xem lịch sử sử dụng của pin
      * 
      * Staff/Admin xem pin đã được dùng bởi driver nào, xe nào, ở đâu
@@ -147,35 +134,9 @@ public class SwapTransactionController {
      */
     @GetMapping("/battery/{batteryId}/history")
     @Operation(summary = "Get battery usage history",
-            description = "Xem lịch sử sử dụng của pin (Staff/Admin only)")
+            description = "Xem lịch sử sử dụng của pin (bao gồm swap-out và swap-in) - Staff/Admin only")
     public ResponseEntity<List<SwapTransaction>> getBatteryUsageHistory(@PathVariable Long batteryId) {
         List<SwapTransaction> history = swapTransactionService.getBatteryUsageHistory(batteryId);
-        return ResponseEntity.ok(history);
-    }
-
-    /**
-     * 🔋 GET /api/swap-transaction/battery/{batteryId}/swap-out-history : Xem pin đã được lấy ra bao nhiêu lần
-     * 
-     * Staff/Admin xem các lần pin được swap OUT (lấy từ trạm lên xe)
-     */
-    @GetMapping("/battery/{batteryId}/swap-out-history")
-    @Operation(summary = "Get battery swap out history",
-            description = "Xem pin đã được lấy ra bao nhiêu lần (Staff/Admin only)")
-    public ResponseEntity<List<SwapTransaction>> getBatterySwapOutHistory(@PathVariable Long batteryId) {
-        List<SwapTransaction> history = swapTransactionService.getBatterySwapOutHistory(batteryId);
-        return ResponseEntity.ok(history);
-    }
-
-    /**
-     * 🔋 GET /api/swap-transaction/battery/{batteryId}/swap-in-history : Xem pin đã được trả về bao nhiêu lần
-     * 
-     * Staff/Admin xem các lần pin được swap IN (trả từ xe về trạm)
-     */
-    @GetMapping("/battery/{batteryId}/swap-in-history")
-    @Operation(summary = "Get battery swap in history",
-            description = "Xem pin đã được trả về bao nhiêu lần (Staff/Admin only)")
-    public ResponseEntity<List<SwapTransaction>> getBatterySwapInHistory(@PathVariable Long batteryId) {
-        List<SwapTransaction> history = swapTransactionService.getBatterySwapInHistory(batteryId);
         return ResponseEntity.ok(history);
     }
 }

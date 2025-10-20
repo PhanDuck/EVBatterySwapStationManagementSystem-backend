@@ -20,7 +20,9 @@ import java.util.List;
  * - Pin status = CHARGING sẽ tự động tăng chargeLevel theo thời gian
  * - Thời gian sạc đầy: 3-4 giờ (configurable)
  * - Chạy mỗi 15 phút để update chargeLevel
- * - Khi chargeLevel >= 100% → Đổi status thành AVAILABLE
+ * - Khi chargeLevel >= 95% → AVAILABLE (nhưng vẫn sạc tiếp đến 100%)
+ * - Khi chargeLevel >= 100% → Dừng sạc
+ * - ⭐ QUAN TRỌNG: Kiểm tra StateOfHealth - nếu < 70% → MAINTENANCE (không cho dùng)
  */
 @Service
 @RequiredArgsConstructor
@@ -28,11 +30,13 @@ import java.util.List;
 public class BatteryChargingService {
 
     private final BatteryRepository batteryRepository;
-    private final BatteryHistoryService batteryHistoryService;
 
     // ⚙️ Cấu hình thời gian sạc
     private static final long FULL_CHARGE_HOURS = 4;  // 4 giờ để sạc đầy từ 0% → 100%
     private static final BigDecimal CHARGE_RATE_PER_HOUR = BigDecimal.valueOf(100.0 / FULL_CHARGE_HOURS);  // 25% per hour
+    
+    // ⚙️ Ngưỡng sức khỏe pin
+    private static final BigDecimal MIN_HEALTH_FOR_USE = BigDecimal.valueOf(70.0);  // < 70% phải bảo trì
 
     /**
      * Scheduled job chạy mỗi 15 phút để update chargeLevel của pin đang sạc
@@ -90,30 +94,80 @@ public class BatteryChargingService {
             return true;
         }
 
-        // Tính thời gian đã sạc (giờ)
-        long minutesCharged = ChronoUnit.MINUTES.between(chargeStartTime, now);
-        double hoursCharged = minutesCharged / 60.0;
-
-        // Tính chargeLevel hiện tại dựa trên thời gian
         BigDecimal currentCharge = battery.getChargeLevel() != null 
                 ? battery.getChargeLevel() 
                 : BigDecimal.ZERO;
 
-        // Tính chargeLevel mới = chargeLevel cũ + (giờ đã sạc × tốc độ sạc)
+        // ✅ Nếu đã đạt 100% thì dừng cập nhật (đã sạc xong)
+        if (currentCharge.compareTo(BigDecimal.valueOf(100)) >= 0) {
+            // Đảm bảo status = AVAILABLE và chargeLevel = 100%
+            if (battery.getStatus() != Battery.Status.AVAILABLE) {
+                battery.setStatus(Battery.Status.AVAILABLE);
+                battery.setChargeLevel(BigDecimal.valueOf(100.0));
+                battery.setLastChargedTime(null);  // Clear charge start time
+                batteryRepository.save(battery);
+                
+                log.info("🔋 [Battery {}] ✅ FULLY CHARGED! Switched to AVAILABLE at 100%", battery.getId());
+                return true;
+            }
+            return false;  // Đã sạc xong từ trước
+        }
+
+        // Tính thời gian đã sạc (phút)
+        long minutesCharged = ChronoUnit.MINUTES.between(chargeStartTime, now);
+        
+        // ⚠️ Chỉ update nếu đã qua ít nhất 1 phút (tránh spam update)
+        if (minutesCharged < 1) {
+            return false;
+        }
+
+        // Tính charge tăng lên = (phút đã sạc / 60) × tốc độ sạc per hour
+        double hoursCharged = minutesCharged / 60.0;
         BigDecimal chargeIncrease = CHARGE_RATE_PER_HOUR.multiply(BigDecimal.valueOf(hoursCharged));
         BigDecimal newChargeLevel = currentCharge.add(chargeIncrease);
 
         // Cap ở 100%
         if (newChargeLevel.compareTo(BigDecimal.valueOf(100)) >= 0) {
             newChargeLevel = BigDecimal.valueOf(100.0);
-            battery.setStatus(Battery.Status.AVAILABLE);  // ✅ Đã sạc đầy → AVAILABLE
             
-            // 📝 GHI LỊCH SỬ: Pin sạc đầy
-            batteryHistoryService.logBatteryEvent(battery, "CHARGED");
+            // ⭐ KIỂM TRA SỨC KHỎE PIN trước khi chuyển AVAILABLE
+            BigDecimal health = battery.getStateOfHealth();
+            if (health != null && health.compareTo(MIN_HEALTH_FOR_USE) < 0) {
+                // Sức khỏe < 70% → MAINTENANCE (không cho dùng)
+                battery.setStatus(Battery.Status.MAINTENANCE);
+                battery.setLastChargedTime(null);
+                
+                log.warn("🔋 [Battery {}] ⚠️ 100% charged but health {:.1f}% < 70% → MAINTENANCE", 
+                         battery.getId(), health.doubleValue());
+            } else {
+                // Sức khỏe tốt → AVAILABLE
+                battery.setStatus(Battery.Status.AVAILABLE);
+                battery.setLastChargedTime(null);  // ✅ Dừng sạc khi đạt 100%
+                
+                log.info("🔋 [Battery {}] ✅ 100% FULLY CHARGED → AVAILABLE (health: {:.1f}%)", 
+                         battery.getId(), health != null ? health.doubleValue() : 100.0);
+            }
+        } else if (newChargeLevel.compareTo(BigDecimal.valueOf(95)) >= 0) {
+            // ⭐ >= 95% → Kiểm tra sức khỏe trước khi chuyển AVAILABLE
+            BigDecimal health = battery.getStateOfHealth();
             
-            log.info("🔋 [Battery {}] ✅ FULLY CHARGED! 100% (charged for {:.1f} hours)", 
-                     battery.getId(), hoursCharged);
+            if (health != null && health.compareTo(MIN_HEALTH_FOR_USE) < 0) {
+                // Sức khỏe thấp → Giữ CHARGING, không cho dùng
+                log.warn("🔋 [Battery {}] ⚠️ {:.1f}% but health {:.1f}% < 70% → Keep CHARGING (will be MAINTENANCE at 100%)", 
+                         battery.getId(), newChargeLevel.doubleValue(), health.doubleValue());
+            } else {
+                // Sức khỏe tốt → AVAILABLE nhưng VẪN SẠC tiếp đến 100%
+                if (battery.getStatus() == Battery.Status.CHARGING) {
+                    battery.setStatus(Battery.Status.AVAILABLE);
+                    log.info("🔋 [Battery {}] ⚡ {:.1f}% → AVAILABLE (still charging to 100%, health: {:.1f}%)", 
+                             battery.getId(), newChargeLevel.doubleValue(), health != null ? health.doubleValue() : 100.0);
+                } else {
+                    log.info("🔋 [Battery {}] Charging: {:.1f}% → {:.1f}% (AVAILABLE, charging to 100%)", 
+                             battery.getId(), currentCharge.doubleValue(), newChargeLevel.doubleValue());
+                }
+            }
         } else {
+            // < 95% → Vẫn CHARGING
             log.info("🔋 [Battery {}] Charging: {:.1f}% → {:.1f}% ({:.1f} hours)", 
                      battery.getId(), 
                      currentCharge.doubleValue(), 
@@ -122,6 +176,9 @@ public class BatteryChargingService {
         }
 
         battery.setChargeLevel(newChargeLevel);
+        
+        // Reset lastChargedTime để tính tiếp từ đây
+        battery.setLastChargedTime(now);
         batteryRepository.save(battery);
         
         return true;
@@ -134,16 +191,28 @@ public class BatteryChargingService {
      */
     @Transactional
     public void startCharging(Battery battery, BigDecimal initialChargeLevel) {
+        // ⭐ KIỂM TRA SỨC KHỎE: Nếu < 70% → MAINTENANCE ngay lập tức
+        BigDecimal health = battery.getStateOfHealth();
+        if (health != null && health.compareTo(MIN_HEALTH_FOR_USE) < 0) {
+            battery.setStatus(Battery.Status.MAINTENANCE);
+            battery.setChargeLevel(initialChargeLevel);
+            battery.setLastChargedTime(null);  // Không sạc, để bảo trì
+            batteryRepository.save(battery);
+            
+            log.warn("🔋 [Battery {}] ⚠️ Cannot charge - health {:.1f}% < 70% → MAINTENANCE", 
+                     battery.getId(), health.doubleValue());
+            return;
+        }
+        
+        // Sức khỏe tốt → Cho phép sạc
         battery.setStatus(Battery.Status.CHARGING);
         battery.setChargeLevel(initialChargeLevel);
         battery.setLastChargedTime(LocalDateTime.now());
         batteryRepository.save(battery);
         
-        // 📝 GHI LỊCH SỬ: Pin bắt đầu sạc
-        batteryHistoryService.logBatteryEvent(battery, "CHARGING");
-        
-        log.info("🔋 [Battery {}] Started charging from {:.1f}%", 
-                 battery.getId(), initialChargeLevel.doubleValue());
+        log.info("🔋 [Battery {}] Started charging from {:.1f}% (health: {:.1f}%)", 
+                 battery.getId(), initialChargeLevel.doubleValue(), 
+                 health != null ? health.doubleValue() : 100.0);
     }
 
     /**

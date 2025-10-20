@@ -72,7 +72,7 @@ public class SwapTransaction {
     @JsonIgnore
     private Battery swapInBattery;
 
-    // ⭐ SNAPSHOT thông tin pin tại thời điểm swap (để lưu lịch sử không bị mất)
+    // Snapshot of battery info at swap time (to preserve history)
     
     // Thông tin pin lấy RA (swapOut - pin mới lên xe)
     @Column(name = "SwapOutBatteryModel", length = 100, columnDefinition = "NVARCHAR(100)")

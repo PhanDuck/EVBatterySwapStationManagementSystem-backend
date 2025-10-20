@@ -68,7 +68,7 @@ public class SwapTransactionService {
     public SwapTransaction createTransaction(SwapTransactionRequest request) {
         User currentUser = authenticationService.getCurrentUser();
 
-        // ✅ VALIDATION: Kiểm tra driver có subscription ACTIVE với remainingSwaps > 0
+        // VALIDATION: Check if driver has ACTIVE subscription with remainingSwaps > 0
         DriverSubscription activeSubscription = driverSubscriptionRepository
                 .findActiveSubscriptionByDriver(currentUser, LocalDate.now())
                 .orElseThrow(() -> new AuthenticationException(
@@ -83,7 +83,7 @@ public class SwapTransactionService {
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        // ✅ TỰ ĐỘNG TÌM BOOKING CONFIRMED (không cần truyền bookingId)
+        // AUTO FIND CONFIRMED BOOKING (no need to pass bookingId)
         // Tìm booking CONFIRMED gần nhất của driver tại station này
         Booking booking = bookingRepository.findLatestConfirmedBooking(currentUser, station)
                 .orElse(null);  // Có thể null nếu driver chưa booking (walk-in customer)
@@ -96,14 +96,14 @@ public class SwapTransactionService {
             throw new AuthenticationException("Vehicle does not belong to current user");
         }
 
-        // ✅ VALIDATION: Kiểm tra trạm có hỗ trợ loại pin của xe không
+        // VALIDATION: Check if station supports vehicle's battery type
         if (!station.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
             throw new AuthenticationException(
-                    "❌ KHÔNG TƯƠNG THÍCH! Trạm '" + station.getName() + 
-                    "' chỉ hỗ trợ pin loại '" + station.getBatteryType().getName() + 
-                    "', nhưng xe '" + vehicle.getPlateNumber() + 
-                    "' cần pin loại '" + vehicle.getBatteryType().getName() + "'." +
-                    "\n\n⚠️ Vui lòng đến trạm khác!"
+                    "INCOMPATIBLE! Station '" + station.getName() + 
+                    "' only supports battery type '" + station.getBatteryType().getName() + 
+                    "', but vehicle '" + vehicle.getPlateNumber() + 
+                    "' requires battery type '" + vehicle.getBatteryType().getName() + "'." +
+                    "\n\nPlease go to another station!"
             );
         }
 
@@ -117,47 +117,52 @@ public class SwapTransactionService {
             throw new AuthenticationException("User is not staff or admin");
         }
 
-        // ✅ TỰ ĐỘNG CHỌN PIN
-        Battery swapOutBattery = null;  // Pin lấy RA khỏi trạm (cho driver)
-        Battery swapInBattery = null;   // Pin đem VÀO trạm (driver trả)
+        // BATTERY SELECTION LOGIC
+        Battery swapOutBattery = null;  // Battery OUT from station (new battery for driver)
+        Battery swapInBattery = null;   // Battery IN to station (old battery from driver)
 
-        // ========================================
-        // LOGIC SWAP:
-        // 1. SwapOut = Pin RA khỏi trạm → Lên xe (pin mới từ trạm)
-        // 2. SwapIn = Pin VÀO trạm → Từ xe cũ (pin cũ của driver)
-        // ========================================
-
-        // ✅ SWAP OUT: Pin lấy RA từ trạm (pin mới cho driver)
+        // SWAP OUT: Get battery for driver
         if (request.getSwapOutBatteryId() != null) {
-            // Manual selection
+            // Manual selection by staff
             swapOutBattery = batteryRepository.findById(request.getSwapOutBatteryId())
                     .orElseThrow(() -> new NotFoundException("Swap-out battery not found"));
+        } else if (booking != null) {
+            // If has CONFIRMED booking, use the RESERVED (PENDING) battery
+            swapOutBattery = batteryRepository.findByStatusAndReservedForBooking(
+                    Battery.Status.PENDING, 
+                    booking
+            ).orElseThrow(() -> new AuthenticationException(
+                    "No reserved battery found for this booking. Please contact staff."
+            ));
+            
+            log.info("Using reserved battery {} for booking {}", swapOutBattery.getId(), booking.getId());
         } else {
-            // ✅ Auto selection: Lấy pin TỐT NHẤT từ trạm (chargeLevel >= 80%)
+            // Walk-in customer (no booking) - find best AVAILABLE battery
             List<Battery> availableBatteries = batteryRepository
                     .findAvailableBatteriesAtStation(
                             station.getId(), 
                             Battery.Status.AVAILABLE, 
-                            BigDecimal.valueOf(80.0)  // Tối thiểu 80%
+                            BigDecimal.valueOf(80.0)  // Minimum 80% charge
                     );
             
             if (availableBatteries.isEmpty()) {
                 throw new AuthenticationException(
-                        "No available batteries with charge level >= 80% at this station. Please choose another station or wait for batteries to be charged."
+                        "No available batteries with charge >= 80% at this station. " +
+                        "Please book in advance or choose another station."
                 );
             }
             
-            // Lấy pin có chargeLevel cao nhất (ORDER BY chargeLevel DESC)
-            swapOutBattery = availableBatteries.get(0);
+            swapOutBattery = availableBatteries.get(0);  // Take battery with highest charge
+            log.info("Walk-in customer - using available battery {}", swapOutBattery.getId());
         }
 
-        // ✅ SWAP IN: Pin đem VÀO trạm (pin cũ từ xe của driver)
+        // SWAP IN: Battery brought IN to station (old battery from driver's vehicle)
         if (request.getSwapInBatteryId() != null) {
             // Manual selection
             swapInBattery = batteryRepository.findById(request.getSwapInBatteryId())
                     .orElseThrow(() -> new NotFoundException("Swap-in battery not found"));
         } else {
-            // ✅ Auto selection: Tìm pin HIỆN TẠI đang được dùng bởi vehicle
+            // Auto selection: Find CURRENT battery being used by vehicle
             // Tìm swap transaction gần nhất của vehicle để biết pin nào đang trên xe
             SwapTransaction lastSwap = swapTransactionRepository
                     .findTopByVehicleOrderByStartTimeDesc(vehicle)
@@ -170,11 +175,11 @@ public class SwapTransactionService {
                 // Xe chưa từng swap, không có pin để trả
                 // Cho phép swap mà không cần trả pin (first time swap)
                 swapInBattery = null;
-                log.warn("⚠️ Vehicle {} has no battery to return (first swap or no history)", vehicle.getId());
+                log.warn("Vehicle {} has no battery to return (first swap or no history)", vehicle.getId());
             }
         }
 
-        // ✅ Tạo transaction thủ công thay vì dùng ModelMapper (tránh conflict)
+        // Create transaction manually to avoid ModelMapper conflicts
         SwapTransaction transaction = new SwapTransaction();
         transaction.setDriver(currentUser);
         transaction.setVehicle(vehicle);
@@ -189,7 +194,7 @@ public class SwapTransactionService {
         }
         // status = PENDING_PAYMENT (default)
         
-        // ⭐ LƯU SNAPSHOT thông tin pin tại thời điểm swap
+        // Save snapshot of battery info at swap time
         if (swapOutBattery != null) {
             transaction.setSwapOutBatteryModel(swapOutBattery.getModel());
             transaction.setSwapOutBatteryChargeLevel(swapOutBattery.getChargeLevel());
@@ -373,66 +378,74 @@ public class SwapTransactionService {
     }
 
     /**
-     * Xử lý logic pin khi swap được hoàn thành
-     * - Pin swapOut (được đem ra): currentStation = null, status = IN_USE, gắn lên xe
-     * - Pin swapIn (được đem vào): currentStation = station, status = AVAILABLE/CHARGING, tháo xuống xe
-     * - Vehicle.currentBattery: Cập nhật từ swapIn → swapOut
+     * Handle battery swap logic when transaction COMPLETED
+     * - SwapOut battery: currentStation = null, status = IN_USE, mounted on vehicle
+     * - SwapIn battery: currentStation = station, status = AVAILABLE/CHARGING/MAINTENANCE
+     * - Vehicle.currentBattery: Update from swapIn to swapOut
      */
     private void handleBatterySwap(SwapTransaction transaction, User staff) {
         Vehicle vehicle = transaction.getVehicle();
         
-        // Xử lý pin được đem ra khỏi trạm (pin mới lên xe)
+        // Process battery taken OUT from station (new battery for vehicle)
         if (transaction.getSwapOutBattery() != null) {
             Battery swapOutBattery = transaction.getSwapOutBattery();
-            swapOutBattery.setCurrentStation(null); // Không còn ở trạm nào
-            swapOutBattery.setStatus(Battery.Status.IN_USE); // Đang được sử dụng
             
-            // ✅ Tăng UsageCount mỗi khi pin được lấy ra sử dụng
+            // Clear reservation if battery was PENDING (reserved for booking)
+            if (swapOutBattery.getStatus() == Battery.Status.PENDING) {
+                swapOutBattery.setReservedForBooking(null);
+                swapOutBattery.setReservationExpiry(null);
+                log.info("Cleared reservation for battery {}", swapOutBattery.getId());
+            }
+            
+            swapOutBattery.setCurrentStation(null); // No longer at any station
+            swapOutBattery.setStatus(Battery.Status.IN_USE); // Now in use
+            
+            // Increase usage count
             Integer currentUsage = swapOutBattery.getUsageCount();
             swapOutBattery.setUsageCount(currentUsage != null ? currentUsage + 1 : 1);
             
             batteryRepository.save(swapOutBattery);
             
-            // ✅ Kiểm tra và giảm SOH sau mỗi lần sử dụng
+            // Check and degrade SOH after usage
             batteryHealthService.degradeSOHAfterUsage(swapOutBattery);
             
-            log.info("✅ Processed SWAP_OUT for battery {}", swapOutBattery.getId());
+            log.info("Processed SWAP_OUT for battery {}", swapOutBattery.getId());
         }
 
-        // Xử lý pin được đem vào trạm (pin cũ xuống xe)
+        // Process battery brought IN to station (old battery from vehicle)
         if (transaction.getSwapInBattery() != null) {
             Battery swapInBattery = transaction.getSwapInBattery();
-            swapInBattery.setCurrentStation(transaction.getStation()); // Gán vào trạm
+            swapInBattery.setCurrentStation(transaction.getStation()); // Assign to station
             
-            // ⭐ KIỂM TRA SỨC KHỎE TRƯỚC: Nếu health < 70% → MAINTENANCE
+            // Check battery health first: If health < 70% -> MAINTENANCE
             BigDecimal health = swapInBattery.getStateOfHealth();
             if (health != null && health.compareTo(BigDecimal.valueOf(70)) < 0) {
                 swapInBattery.setStatus(Battery.Status.MAINTENANCE);
                 swapInBattery.setLastChargedTime(null);
-                log.warn("⚠️ Swap-in battery {} has low health {:.1f}% < 70% → MAINTENANCE", 
+                log.warn("Swap-in battery {} has low health {}% < 70%, set to MAINTENANCE", 
                          swapInBattery.getId(), health.doubleValue());
             } else {
-                // Sức khỏe tốt → Kiểm tra chargeLevel
+                // Good health, check charge level
                 BigDecimal currentCharge = swapInBattery.getChargeLevel();
                 if (currentCharge != null && currentCharge.compareTo(BigDecimal.valueOf(100)) < 0) {
-                    swapInBattery.setStatus(Battery.Status.CHARGING); // Bắt đầu sạc
+                    swapInBattery.setStatus(Battery.Status.CHARGING); // Start charging
                     swapInBattery.setLastChargedTime(LocalDateTime.now());
                 } else {
-                    swapInBattery.setStatus(Battery.Status.AVAILABLE); // Đã đầy, sẵn sàng sử dụng
+                    swapInBattery.setStatus(Battery.Status.AVAILABLE); // Fully charged, ready to use
                 }
             }
             
             batteryRepository.save(swapInBattery);
             
-            log.info("✅ Processed SWAP_IN for battery {}", swapInBattery.getId());
+            log.info("Processed SWAP_IN for battery {}", swapInBattery.getId());
         }
         
-        // ⭐ CẬP NHẬT VEHICLE.CURRENTBATTERY
-        // Gắn pin mới (swapOut) lên xe, thay thế pin cũ (swapIn)
+        // Update vehicle current battery
+        // Mount new battery (swapOut) on vehicle, replacing old battery (swapIn)
         if (transaction.getSwapOutBattery() != null) {
             vehicle.setCurrentBattery(transaction.getSwapOutBattery());
             vehicleRepository.save(vehicle);
-            log.info("✅ Updated vehicle {} currentBattery from {} to {}", 
+            log.info("Updated vehicle {} currentBattery from {} to {}", 
                     vehicle.getId(), 
                     transaction.getSwapInBattery() != null ? transaction.getSwapInBattery().getId() : "null",
                     transaction.getSwapOutBattery().getId());
@@ -523,25 +536,16 @@ public class SwapTransactionService {
             );
         }
 
-        // 7. Tự động chọn pin TỐT NHẤT
-        List<Battery> availableBatteries = batteryRepository
-                .findAvailableBatteriesAtStation(
-                        station.getId(), 
-                        Battery.Status.AVAILABLE, 
-                        BigDecimal.valueOf(80.0)
-                );
+        // 7. Use RESERVED (PENDING) battery for this booking
+        Battery swapOutBattery = batteryRepository.findByStatusAndReservedForBooking(
+                Battery.Status.PENDING, 
+                booking
+        ).orElseThrow(() -> new AuthenticationException(
+                "No reserved battery found for this booking. Please contact staff."
+        ));
         
-        if (availableBatteries.isEmpty()) {
-            throw new AuthenticationException(
-                    "❌ Không có pin nào với mức sạc >= 80% tại trạm này. " +
-                    "Vui lòng chờ hoặc chọn trạm khác."
-            );
-        }
-
-        // Chọn pin có chargeLevel CAO NHẤT
-        Battery swapOutBattery = availableBatteries.stream()
-                .max((b1, b2) -> b1.getChargeLevel().compareTo(b2.getChargeLevel()))
-                .orElseThrow();
+        log.info("Using reserved battery {} for booking {} (confirmation code: {})", 
+                 swapOutBattery.getId(), booking.getId(), confirmationCode);
 
         // 8. Pin cũ của vehicle (nếu có)
         Battery swapInBattery = vehicle.getCurrentBattery();

@@ -46,7 +46,7 @@ public class BookingService {
 
     /**
      * CREATE - Tạo booking mới (Driver)
-     * 
+     *
      * ✅ BẮT BUỘC PHẢI CÓ SUBSCRIPTION:
      * - Driver phải có subscription ACTIVE
      * - RemainingSwaps > 0
@@ -105,7 +105,7 @@ public class BookingService {
         booking.setVehicle(vehicle);
         booking.setStation(station);
         booking.setBookingTime(request.getBookingTime());
-        
+
         // ⭐ THAY ĐỔI: KHÔNG generate code khi tạo booking
         // Code sẽ được generate khi Staff/Admin CONFIRM booking
         booking.setConfirmationCode(null);
@@ -309,12 +309,12 @@ public class BookingService {
 
     /**
      * ✅ CONFIRM BOOKING BY ID (Staff/Admin only)
-     * 
+     *
      * Khi Staff/Admin confirm booking:
      * 1. Generate mã xác nhận 6 ký tự (ABC123)
      * 2. Chuyển status: PENDING → CONFIRMED
      * 3. Trả code cho driver
-     * 
+     *
      * Driver sẽ dùng code này để tự swap pin tại trạm
      */
     @Transactional
@@ -342,13 +342,18 @@ public class BookingService {
         booking.setConfirmationCode(confirmationCode);
         booking.setStatus(Booking.Status.CONFIRMED);
         booking.setConfirmedBy(currentUser);  // ⭐ LƯU NGƯỜI CONFIRM
-        
-        return bookingRepository.save(booking);
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Gửi email thông báo booking đã được confirm với mã xác nhận
+        sendBookingConfirmedEmail(savedBooking, currentUser);
+
+        return savedBooking;
     }
 
     /**
      * ✅ VERIFY BOOKING BY CONFIRMATION CODE (Staff only)
-     * 
+     *
      * Staff nhập confirmation code (ABC123) từ driver
      * → Trả về thông tin booking để xác nhận
      * → Staff có thể confirm booking (PENDING → CONFIRMED)
@@ -366,10 +371,10 @@ public class BookingService {
                 ));
 
         // Kiểm tra status - chỉ cho verify booking PENDING hoặc CONFIRMED
-        if (booking.getStatus() == Booking.Status.COMPLETED || 
+        if (booking.getStatus() == Booking.Status.COMPLETED ||
             booking.getStatus() == Booking.Status.CANCELLED) {
             throw new AuthenticationException(
-                    "❌ Booking này đã " + booking.getStatus() + 
+                    "❌ Booking này đã " + booking.getStatus() +
                     " (không thể swap nữa)"
             );
         }
@@ -379,12 +384,12 @@ public class BookingService {
 
     /**
      * ✅ CONFIRM BOOKING BY CODE (Staff only) - DEPRECATED
-     * 
+     *
      * Sau khi verify, staff confirm booking
      * PENDING → CONFIRMED
-     * 
+     *
      * CHƯA TRỪ remainingSwaps (chỉ trừ khi swap hoàn tất)
-     * 
+     *
      * @deprecated Use confirmBookingById(Long bookingId) instead
      */
     @Deprecated
@@ -409,6 +414,54 @@ public class BookingService {
 
         booking.setStatus(Booking.Status.CONFIRMED);
         return bookingRepository.save(booking);
+    }
+
+
+    /**
+     * Gửi email xác nhận booking đã được approve với confirmation code
+     */
+    private void sendBookingConfirmedEmail(Booking booking, User confirmedBy) {
+        try {
+            User driver = booking.getDriver();
+            Vehicle vehicle = booking.getVehicle();
+            Station station = booking.getStation();
+
+            // Tạo email detail
+            EmailDetail emailDetail = new EmailDetail();
+            emailDetail.setRecipient(driver.getEmail());
+            emailDetail.setSubject("Booking được xác nhận - Mã swap pin: " + booking.getConfirmationCode());
+            emailDetail.setFullName(driver.getFullName());
+
+            // Thông tin booking
+            emailDetail.setBookingId(booking.getId());
+            emailDetail.setStationName(station.getName());
+            emailDetail.setStationLocation(
+                    station.getLocation() != null ? station.getLocation() :
+                            (station.getDistrict() + ", " + station.getCity())
+            );
+            emailDetail.setStationContact(station.getContactInfo() != null ? station.getContactInfo() : "Chưa cập nhật");
+
+            // Format thời gian
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+            emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
+
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : vehicle.getPlateNumber());
+            emailDetail.setBatteryType(
+                    station.getBatteryType().getName() +
+                            (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
+            );
+            emailDetail.setStatus(booking.getStatus().toString());
+
+            // ⭐ THÊM CONFIRMATION CODE VÀO EMAIL
+            emailDetail.setConfirmationCode(booking.getConfirmationCode());
+            emailDetail.setConfirmedBy(confirmedBy.getFullName());
+
+            // Gửi email bất đồng bộ
+            emailService.sendBookingConfirmedEmail(emailDetail);
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không ảnh hưởng đến booking
+            System.err.println("Failed to send booking confirmed email: " + e.getMessage());
+        }
     }
 
     // ==================== HELPER METHODS ====================

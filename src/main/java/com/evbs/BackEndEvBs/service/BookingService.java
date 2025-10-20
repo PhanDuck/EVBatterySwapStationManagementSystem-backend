@@ -521,8 +521,13 @@ public class BookingService {
         booking.setConfirmationCode(confirmationCode);
         booking.setStatus(Booking.Status.CONFIRMED);
         booking.setConfirmedBy(currentUser);  // LUU NGUOI CONFIRM
-        
-        return bookingRepository.save(booking);
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // ⭐ GỬI EMAIL CONFIRMATION VỚI CODE
+        sendBookingConfirmedEmail(savedBooking, currentUser);
+
+        return savedBooking;
     }
 
 

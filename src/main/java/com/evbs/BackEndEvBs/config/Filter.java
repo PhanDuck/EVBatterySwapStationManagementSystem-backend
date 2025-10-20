@@ -39,7 +39,10 @@ public class Filter extends OncePerRequestFilter {
             "GET:/swagger-ui/**",
             "GET:/v3/api-docs/**",
             "GET:/swagger-resources/**",
-            "GET:/api/station/**",
+            // Station PUBLIC endpoints (chỉ list, detail và batteries list - không bao gồm needs-maintenance)
+            "GET:/api/station",
+            "GET:/api/station/*",
+            "GET:/api/station/*/batteries",
             "GET:/api/stations/active",
             "GET:/api/stations/available",
             "GET:/api/stations/search",

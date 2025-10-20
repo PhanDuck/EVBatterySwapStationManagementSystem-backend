@@ -26,11 +26,10 @@ public class DatabaseInitializer implements CommandLineRunner {
     private final ServicePackageRepository servicePackageRepository;
     private final DriverSubscriptionRepository driverSubscriptionRepository;
     private final StationInventoryRepository stationInventoryRepository;
-    private final StaffStationAssignmentRepository staffStationAssignmentRepository;  // ⭐ THÊM
+    private final StaffStationAssignmentRepository staffStationAssignmentRepository;
     private final BookingRepository bookingRepository;
     private final SwapTransactionRepository swapTransactionRepository;
     private final PaymentRepository paymentRepository;
-    private final BatteryHistoryRepository batteryHistoryRepository;
     private final SupportTicketRepository supportTicketRepository;
     private final TicketResponseRepository ticketResponseRepository;
 
@@ -40,10 +39,10 @@ public class DatabaseInitializer implements CommandLineRunner {
                               ServicePackageRepository servicePackageRepository, 
                               DriverSubscriptionRepository driverSubscriptionRepository,
                               StationInventoryRepository stationInventoryRepository, 
-                              StaffStationAssignmentRepository staffStationAssignmentRepository,  // ⭐ THÊM
+                              StaffStationAssignmentRepository staffStationAssignmentRepository,
                               BookingRepository bookingRepository,
                               SwapTransactionRepository swapTransactionRepository, PaymentRepository paymentRepository,
-                              BatteryHistoryRepository batteryHistoryRepository, SupportTicketRepository supportTicketRepository,
+                              SupportTicketRepository supportTicketRepository,
                               TicketResponseRepository ticketResponseRepository) {
         this.userRepository = userRepository;
         this.stationRepository = stationRepository;
@@ -53,11 +52,10 @@ public class DatabaseInitializer implements CommandLineRunner {
         this.servicePackageRepository = servicePackageRepository;
         this.driverSubscriptionRepository = driverSubscriptionRepository;
         this.stationInventoryRepository = stationInventoryRepository;
-        this.staffStationAssignmentRepository = staffStationAssignmentRepository;  // ⭐ THÊM
+        this.staffStationAssignmentRepository = staffStationAssignmentRepository;
         this.bookingRepository = bookingRepository;
         this.swapTransactionRepository = swapTransactionRepository;
         this.paymentRepository = paymentRepository;
-        this.batteryHistoryRepository = batteryHistoryRepository;
         this.supportTicketRepository = supportTicketRepository;
         this.ticketResponseRepository = ticketResponseRepository;
     }
@@ -83,72 +81,73 @@ public class DatabaseInitializer implements CommandLineRunner {
         // 2. Tạo BatteryTypes TRƯỚC (vì Station và Battery cần)
         List<BatteryType> batteryTypes = createBatteryTypes();
         batteryTypeRepository.saveAll(batteryTypes);
-        log.info("✓ Đã tạo {} battery types", batteryTypes.size());
+        log.info("Created {} battery types", batteryTypes.size());
 
         // 3. Tạo Stations (cần BatteryTypes)
         List<Station> stations = createStations(batteryTypes);
         stationRepository.saveAll(stations);
-        log.info("✓ Đã tạo {} stations", stations.size());
+        log.info("Created {} stations", stations.size());
 
         // 4. Tạo Service Packages
         List<ServicePackage> packages = createServicePackages();
         servicePackageRepository.saveAll(packages);
-        log.info("✓ Đã tạo {} service packages", packages.size());
+        log.info("Created {} service packages", packages.size());
 
         // 5. Tạo Batteries (cần BatteryTypes)
         List<Battery> batteries = createBatteries(stations, batteryTypes);
         batteryRepository.saveAll(batteries);
-        log.info("✓ Đã tạo {} batteries", batteries.size());
+        log.info("Created {} batteries", batteries.size());
 
         // 5. Tạo Vehicles (cần batteries để lấy batteryType)
         List<Vehicle> vehicles = createVehicles(users, batteries);
         vehicleRepository.saveAll(vehicles);
-        log.info("✓ Đã tạo {} vehicles", vehicles.size());
+        log.info("Created {} vehicles", vehicles.size());
 
         // 6. Tạo Driver Subscriptions
         List<DriverSubscription> subscriptions = createDriverSubscriptions(users, packages);
         driverSubscriptionRepository.saveAll(subscriptions);
-        log.info("✓ Đã tạo {} subscriptions", subscriptions.size());
+        log.info("Created {} subscriptions", subscriptions.size());
 
         // 7. Tạo Staff Station Assignments (Staff được assign vào stations)
         List<StaffStationAssignment> assignments = createStaffStationAssignments(users, stations);
         staffStationAssignmentRepository.saveAll(assignments);
-        log.info("✓ Đã tạo {} staff station assignments", assignments.size());
+        log.info("Created {} staff station assignments", assignments.size());
 
         // 8. Tạo Station Inventory
         List<StationInventory> inventory = createStationInventory(stations, batteries);
         stationInventoryRepository.saveAll(inventory);
-        log.info("✓ Đã tạo {} station inventory records", inventory.size());
+        log.info("Created {} station inventory records", inventory.size());
 
         // 9. Tạo Bookings
-        List<Booking> bookings = createBookings(users, vehicles, stations);
+        List<Booking> bookings = createBookings(users, vehicles, stations, batteries);
         bookingRepository.saveAll(bookings);
-        log.info("✓ Đã tạo {} bookings", bookings.size());
+        log.info("Created {} bookings", bookings.size());
+        
+        // 9b. Reserve batteries cho PENDING bookings
+        reserveBatteriesForPendingBookings(bookings, batteries);
+        batteryRepository.saveAll(batteries);
+        log.info("Reserved batteries for {} PENDING bookings", 
+            bookings.stream().filter(b -> b.getStatus() == Booking.Status.PENDING).count());
 
         // 10. Tạo Swap Transactions
         List<SwapTransaction> transactions = createSwapTransactions(users, vehicles, stations, batteries);
         swapTransactionRepository.saveAll(transactions);
-        log.info("✓ Đã tạo {} swap transactions", transactions.size());
+        log.info("Created {} swap transactions", transactions.size());
 
         // 11. Tạo Payments
         List<Payment> payments = createPayments(transactions, subscriptions);
         paymentRepository.saveAll(payments);
-        log.info("✓ Đã tạo {} payments", payments.size());
+        log.info("Created {} payments", payments.size());
 
-        // 12. Tạo Battery History
-        List<BatteryHistory> history = createBatteryHistory(batteries, users, stations, vehicles);
-        batteryHistoryRepository.saveAll(history);
-        log.info("✓ Đã tạo {} battery history records", history.size());
-
-        // 13. Tạo Support Tickets
+        // 12. Tạo Support Tickets
         List<SupportTicket> tickets = createSupportTickets(users, stations);
         supportTicketRepository.saveAll(tickets);
-        log.info("✓ Đã tạo {} support tickets", tickets.size());
+        log.info("Created {} support tickets", tickets.size());
 
-        // 14. Tạo Ticket Responses
+        // 13. Tạo Ticket Responses
         List<TicketResponse> responses = createTicketResponses(tickets, users);
         ticketResponseRepository.saveAll(responses);
-        log.info("✓ Đã tạo {} ticket responses", responses.size());
+        log.info("Created {} ticket responses", responses.size());
     }
 
     private List<User> createUsers() {
@@ -217,21 +216,16 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     private List<Station> createStations(List<BatteryType> batteryTypes) {
-        // Distribute battery types across stations
+        // CHI TAO TRAM O TP.HCM
         return List.of(
-            // Trạm ở TP.HCM
-            createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", "TP.HCM", "Quận 1", 15, "0901234567", 10.7769, 106.7009, Station.Status.ACTIVE, batteryTypes.get(0)),
-            createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", "TP.HCM", "Quận 3", 15, "0902345678", 10.7867, 106.6837, Station.Status.ACTIVE, batteryTypes.get(1)),
-            createStation("Trạm Đổi Pin Quận 7", "789 Đường Nguyễn Thị Thập, Quận 7, TP.HCM", "TP.HCM", "Quận 7", 15, "0903456789", 10.7307, 106.7218, Station.Status.ACTIVE, batteryTypes.get(2)),
-            createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", "TP.HCM", "Quận Bình Thạnh", 15, "0904567890", 10.8015, 106.7181, Station.Status.ACTIVE, batteryTypes.get(0)),
-            createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 15, "0905678901", 10.8494, 106.7719, Station.Status.ACTIVE, batteryTypes.get(1)),
-            
-            // Trạm ở Hà Nội - TẤT CẢ ĐỀU CAPACITY = 15
-            createStation("Trạm Đổi Pin Hoàn Kiếm", "25 Phố Hàng Khay, Hoàn Kiếm, Hà Nội", "Hà Nội", "Hoàn Kiếm", 15, "0311112222", 21.0285, 105.8542, Station.Status.ACTIVE, batteryTypes.get(2)),
-            createStation("Trạm Đổi Pin Cầu Giấy", "88 Đường Cầu Giấy, Cầu Giấy, Hà Nội", "Hà Nội", "Cầu Giấy", 15, "0333334444", 21.0314, 105.7969, Station.Status.ACTIVE, batteryTypes.get(0)),
-            createStation("Trạm Đổi Pin Ba Đình", "156 Phố Nguyễn Thái Học, Ba Đình, Hà Nội", "Hà Nội", "Ba Đình", 15, "0355556666", 21.0364, 105.8325, Station.Status.ACTIVE, batteryTypes.get(1)),
-            createStation("Trạm Đổi Pin Đống Đa", "45 Phố Láng, Đống Đa, Hà Nội", "Hà Nội", "Đống Đa", 15, "0377778888", 21.0136, 105.8270, Station.Status.ACTIVE, batteryTypes.get(2)),
-            createStation("Trạm Đổi Pin Long Biên", "222 Đường Nguyễn Văn Cừ, Long Biên, Hà Nội", "Hà Nội", "Long Biên", 15, "0399990000", 21.0358, 105.8842, Station.Status.ACTIVE, batteryTypes.get(0))
+            createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", "TP.HCM", "Quận 1", 20, "0901234567", 10.7769, 106.7009, Station.Status.ACTIVE, batteryTypes.get(0)),
+            createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", "TP.HCM", "Quận 3", 20, "0902345678", 10.7867, 106.6837, Station.Status.ACTIVE, batteryTypes.get(1)),
+            createStation("Trạm Đổi Pin Quận 7", "789 Đường Nguyễn Thị Thập, Quận 7, TP.HCM", "TP.HCM", "Quận 7", 20, "0903456789", 10.7307, 106.7218, Station.Status.ACTIVE, batteryTypes.get(2)),
+            createStation("Trạm Đổi Pin Bình Thạnh", "101 Đường Xô Viết Nghệ Tĩnh, Quận Bình Thạnh, TP.HCM", "TP.HCM", "Quận Bình Thạnh", 20, "0904567890", 10.8015, 106.7181, Station.Status.ACTIVE, batteryTypes.get(0)),
+            createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 20, "0905678901", 10.8494, 106.7719, Station.Status.ACTIVE, batteryTypes.get(1)),
+            createStation("Trạm Đổi Pin Gò Vấp", "45 Đường Quang Trung, Gò Vấp, TP.HCM", "TP.HCM", "Gò Vấp", 20, "0906789012", 10.8376, 106.6731, Station.Status.ACTIVE, batteryTypes.get(2)),
+            createStation("Trạm Đổi Pin Tân Bình", "88 Đường Cộng Hòa, Tân Bình, TP.HCM", "TP.HCM", "Tân Bình", 20, "0907890123", 10.7992, 106.6530, Station.Status.ACTIVE, batteryTypes.get(0)),
+            createStation("Trạm Đổi Pin Phú Nhuận", "156 Đường Phan Đăng Lưu, Phú Nhuận, TP.HCM", "TP.HCM", "Phú Nhuận", 20, "0908901234", 10.7980, 106.6831, Station.Status.ACTIVE, batteryTypes.get(1))
         );
     }
 
@@ -246,7 +240,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         station.setLatitude(lat);
         station.setLongitude(lng);
         station.setStatus(status);
-        station.setBatteryType(batteryType);  // ⭐ QUAN TRỌNG
+        station.setBatteryType(batteryType);
         return station;
     }
 
@@ -277,105 +271,275 @@ public class DatabaseInitializer implements CommandLineRunner {
         BatteryType type60V = batteryTypes.get(1);  // 60V-30Ah
         BatteryType type72V = batteryTypes.get(2);  // 72V-40Ah
         
-        // Trạm 1 (Quận 1) - 48V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
+        // ==================================================
+        // PIN O TRAM (currentStation != null)
+        // ==================================================
+        
+        // Trạm 1 (Quận 1) - 48V - 14 pin (còn 6 chỗ trống để nhận pin)
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status;
+            BigDecimal health;
+            BigDecimal chargeLevel;
+            
+            // Pin 0-1: MAINTENANCE (health < 70%)
+            if (i < 2) {
+                status = Battery.Status.MAINTENANCE;
+                health = new BigDecimal(55 + (Math.random() * 15)); // 55-70%
+                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50)); // 30-80%
+            }
+            // Pin 2-10: AVAILABLE (health >= 85%)
+            else if (i < 11) {
+                status = Battery.Status.AVAILABLE;
+                health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
+                chargeLevel = BigDecimal.valueOf(100.0);
+            }
+            // Pin 11-13: CHARGING (health >= 85%)
+            else {
+                status = Battery.Status.CHARGING;
+                health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
+                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70)); // 20-90%
+            }
+            
+            batteries.add(createBatteryAtStation("VinFast 48V-20Ah", new BigDecimal("1.44"), health, chargeLevel, status, stations.get(0), type48V));
+        }
+        
+        // Trạm 2 (Quận 3) - 60V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status;
+            BigDecimal health;
+            BigDecimal chargeLevel;
+            
+            if (i < 1) {
+                status = Battery.Status.MAINTENANCE;
+                health = new BigDecimal(55 + (Math.random() * 15)); // 55-70%
+                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
+            } else if (i < 11) {
+                status = Battery.Status.AVAILABLE;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(100.0);
+            } else {
+                status = Battery.Status.CHARGING;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
+            }
+            
+            batteries.add(createBatteryAtStation("Yadea 60V-30Ah", new BigDecimal("1.92"), health, chargeLevel, status, stations.get(1), type60V));
+        }
+        
+        // Trạm 3 (Quận 7) - 72V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status;
+            BigDecimal health;
+            BigDecimal chargeLevel;
+            
+            if (i < 3) {
+                status = Battery.Status.MAINTENANCE;
+                health = new BigDecimal(55 + (Math.random() * 15)); // 55-70%
+                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
+            } else if (i < 10) {
+                status = Battery.Status.AVAILABLE;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(100.0);
+            } else {
+                status = Battery.Status.CHARGING;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
+            }
+            
+            batteries.add(createBatteryAtStation("Pega 72V-40Ah", new BigDecimal("2.02"), health, chargeLevel, status, stations.get(2), type72V));
+        }
+        
+        // Trạm 4 (Bình Thạnh) - 48V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status;
+            BigDecimal health;
+            BigDecimal chargeLevel;
+            
+            if (i < 2) {
+                status = Battery.Status.MAINTENANCE;
+                health = new BigDecimal(55 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
+            } else if (i < 11) {
+                status = Battery.Status.AVAILABLE;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(100.0);
+            } else {
+                status = Battery.Status.CHARGING;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
+            }
+            
+            batteries.add(createBatteryAtStation("Dibao 48V-20Ah", new BigDecimal("2.10"), health, chargeLevel, status, stations.get(3), type48V));
+        }
+        
+        // Trạm 5 (Thủ Đức) - 60V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status = i < 11 ? Battery.Status.AVAILABLE : Battery.Status.CHARGING;
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // Trạm này không có pin bảo trì
+            BigDecimal chargeLevel = status == Battery.Status.AVAILABLE ? 
+                BigDecimal.valueOf(100.0) : BigDecimal.valueOf(20 + (Math.random() * 70));
+            batteries.add(createBatteryAtStation("VinFast 60V-30Ah", new BigDecimal("2.16"), health, chargeLevel, status, stations.get(4), type60V));
+        }
+        
+        // Trạm 6 (Gò Vấp) - 72V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status;
+            BigDecimal health;
+            BigDecimal chargeLevel;
+            
+            if (i < 1) {
+                status = Battery.Status.MAINTENANCE;
+                health = new BigDecimal(55 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
+            } else if (i < 10) {
+                status = Battery.Status.AVAILABLE;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(100.0);
+            } else {
+                status = Battery.Status.CHARGING;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
+            }
+            
+            batteries.add(createBatteryAtStation("VinFast 72V-40Ah", new BigDecimal("1.68"), health, chargeLevel, status, stations.get(5), type72V));
+        }
+        
+        // Trạm 7 (Tân Bình) - 48V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : Battery.Status.CHARGING;
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // Trạm này không có pin bảo trì
+            BigDecimal chargeLevel = status == Battery.Status.AVAILABLE ? 
+                BigDecimal.valueOf(100.0) : BigDecimal.valueOf(20 + (Math.random() * 70));
+            batteries.add(createBatteryAtStation("Yadea 48V-20Ah", new BigDecimal("2.52"), health, chargeLevel, status, stations.get(6), type48V));
+        }
+        
+        // Trạm 8 (Phú Nhuận) - 60V - 14 pin
+        for (int i = 0; i < 14; i++) {
+            Battery.Status status;
+            BigDecimal health;
+            BigDecimal chargeLevel;
+            
+            if (i < 2) {
+                status = Battery.Status.MAINTENANCE;
+                health = new BigDecimal(55 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
+            } else if (i < 10) {
+                status = Battery.Status.AVAILABLE;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(100.0);
+            } else {
+                status = Battery.Status.CHARGING;
+                health = new BigDecimal(85 + (Math.random() * 15));
+                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
+            }
+            
+            batteries.add(createBatteryAtStation("Pega 60V-30Ah", new BigDecimal("1.80"), health, chargeLevel, status, stations.get(7), type60V));
+        }
+        
+        // ==================================================
+        // PIN O KHO (currentStation = null)
+        // ==================================================
+        
+        // 1. PIN BINH THUONG O KHO (status = AVAILABLE, health >= 90%)
+        // Đây là pin dự trữ tốt để thay thế pin bảo trì
+        String[] brands = {"VinFast", "Yadea", "Pega", "Dibao"};
+        
+        // 5 pin 48V-20Ah trong kho
+        for (int i = 0; i < 5; i++) {
+            String model = brands[i % brands.length] + " 48V-20Ah";
+            BigDecimal health = new BigDecimal(90 + (Math.random() * 10)); // 90-100%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("1.44"), health, Battery.Status.AVAILABLE, type48V));
+        }
+        
+        // 5 pin 60V-30Ah trong kho
+        for (int i = 0; i < 5; i++) {
+            String model = brands[i % brands.length] + " 60V-30Ah";
+            BigDecimal health = new BigDecimal(90 + (Math.random() * 10)); // 90-100%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("1.92"), health, Battery.Status.AVAILABLE, type60V));
+        }
+        
+        // 5 pin 72V-40Ah trong kho
+        for (int i = 0; i < 5; i++) {
+            String model = brands[i % brands.length] + " 72V-40Ah";
+            BigDecimal health = new BigDecimal(90 + (Math.random() * 10)); // 90-100%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("2.02"), health, Battery.Status.AVAILABLE, type72V));
+        }
+        
+        // 2. PIN DANG BAO TRI O KHO (status = MAINTENANCE, health < 70%)
+        // Đây là pin đã bị thay ra từ trạm, đang chờ sửa chữa/bảo dưỡng
+        
+        // 3 pin 48V đang bảo trì
+        for (int i = 0; i < 3; i++) {
+            String model = brands[i % brands.length] + " 48V-20Ah";
+            BigDecimal health = new BigDecimal(50 + (Math.random() * 20)); // 50-70%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("1.44"), health, Battery.Status.MAINTENANCE, type48V));
+        }
+        
+        // 3 pin 60V đang bảo trì
+        for (int i = 0; i < 3; i++) {
+            String model = brands[i % brands.length] + " 60V-30Ah";
+            BigDecimal health = new BigDecimal(50 + (Math.random() * 20)); // 50-70%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("1.92"), health, Battery.Status.MAINTENANCE, type60V));
+        }
+        
+        // 2 pin 72V đang bảo trì
+        for (int i = 0; i < 2; i++) {
+            String model = brands[i % brands.length] + " 72V-40Ah";
+            BigDecimal health = new BigDecimal(50 + (Math.random() * 20)); // 50-70%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("2.02"), health, Battery.Status.MAINTENANCE, type72V));
+        }
+        
+        // ==================================================
+        // PIN DANG DUOC TAI XE MUON DI (currentStation = null, status = IN_USE)
+        // ==================================================
+        // Pin đang ở ngoài, không thuộc trạm nào, không trong kho
+        
+        // 3 pin 48V đang được dùng
+        for (int i = 0; i < 3; i++) {
+            String model = brands[i % brands.length] + " 48V-20Ah";
             BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
-            batteries.add(createBattery("VinFast 48V-20Ah", new BigDecimal("1.44"), health, status, stations.get(0), type48V));
+            batteries.add(createUnassignedBattery(model, new BigDecimal("1.44"), health, Battery.Status.IN_USE, type48V));
         }
         
-        // Trạm 2 (Quận 3) - 60V - 15 pin  
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 11 ? Battery.Status.AVAILABLE : (i < 14 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("Yadea 60V-30Ah", new BigDecimal("1.92"), health, status, stations.get(1), type60V));
-        }
-        
-        // Trạm 3 (Quận 7) - 72V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 9 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("Pega 72V-40Ah", new BigDecimal("2.02"), health, status, stations.get(2), type72V));
-        }
-        
-        // Trạm 4 (Bình Thạnh) - 48V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 12 ? Battery.Status.AVAILABLE : (i < 14 ? Battery.Status.CHARGING : Battery.Status.MAINTENANCE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("Dibao 48V-20Ah", new BigDecimal("2.10"), health, status, stations.get(3), type48V));
-        }
-        
-        // Trạm 5 (Thủ Đức) - 60V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 11 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("VinFast 60V-30Ah", new BigDecimal("2.16"), health, status, stations.get(4), type60V));
-        }
-        
-        // Trạm 6 (Hoàn Kiếm) - 72V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("VinFast 72V-40Ah", new BigDecimal("1.68"), health, status, stations.get(5), type72V));
-        }
-        
-        // Trạm 7 (Cầu Giấy) - 48V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("Yadea 48V-20Ah", new BigDecimal("2.52"), health, status, stations.get(6), type48V));
-        }
-        
-        // Trạm 8 (Ba Đình) - 60V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("Pega 60V-30Ah", new BigDecimal("1.80"), health, status, stations.get(7), type60V));
-        }
-        
-        // Trạm 9 (Đống Đa) - 72V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("Dibao 72V-40Ah", new BigDecimal("1.20"), health, status, stations.get(8), type72V));
-        }
-        
-        // Trạm 10 (Long Biên) - 48V - 15 pin
-        for (int i = 0; i < 15; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : (i < 13 ? Battery.Status.CHARGING : Battery.Status.IN_USE);
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createBattery("VinFast 48V-20Ah", new BigDecimal("1.06"), health, status, stations.get(9), type48V));
-        }
-        
-        // Tạo thêm 5 pin không được gán vào trạm nào để test chức năng thêm pin
-        for (int i = 0; i < 5; i++) {
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createUnassignedBattery("Available Battery " + (i + 1), new BigDecimal("2.00"), health, Battery.Status.AVAILABLE, type48V));
-        }
-        
-        // Tạo thêm 5 pin đang được sử dụng bên ngoài (currentStation = null, status = IN_USE)
-        for (int i = 0; i < 5; i++) {
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15));
-            batteries.add(createUnassignedBattery("In-Use Battery " + (i + 1), new BigDecimal("2.00"), health, Battery.Status.IN_USE, type60V));
+        // 2 pin 60V đang được dùng
+        for (int i = 0; i < 2; i++) {
+            String model = brands[i % brands.length] + " 60V-30Ah";
+            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
+            batteries.add(createUnassignedBattery(model, new BigDecimal("1.92"), health, Battery.Status.IN_USE, type60V));
         }
         
         return batteries;
     }
 
-    private Battery createBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status, Station station, BatteryType batteryType) {
+    // ============================================
+    // HELPER METHODS - TAO BATTERY
+    // ============================================
+    
+    /**
+     * TAO PIN THUOC TRAM (currentStation != null)
+     * Pin này ở TRẠM, không ở kho, không ở vehicle
+     */
+    private Battery createBatteryAtStation(String model, BigDecimal capacity, BigDecimal stateOfHealth, 
+                                          BigDecimal chargeLevel, Battery.Status status, 
+                                          Station station, BatteryType batteryType) {
         Battery battery = new Battery();
         battery.setModel(model);
         battery.setCapacity(capacity);
         battery.setStateOfHealth(stateOfHealth);
-        battery.setChargeLevel(status == Battery.Status.AVAILABLE ? BigDecimal.valueOf(100.0) : BigDecimal.valueOf(50.0));
+        battery.setChargeLevel(chargeLevel);
         battery.setStatus(status);
-        battery.setCurrentStation(station);
+        battery.setCurrentStation(station); // Pin at station
         battery.setBatteryType(batteryType);
         battery.setManufactureDate(LocalDate.now().minusMonths((long) (Math.random() * 12)));
         battery.setUsageCount((int) (Math.random() * 100));
         return battery;
     }
 
+    /**
+     * Create battery in warehouse or borrowed by driver (currentStation = null)
+     * - If status = AVAILABLE/CHARGING/MAINTENANCE -> Battery in warehouse (will have StationInventory)
+     * - If status = IN_USE -> Battery borrowed by driver (on vehicle)
+     */
     private Battery createUnassignedBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status, BatteryType batteryType) {
         Battery battery = new Battery();
         battery.setModel(model);
@@ -383,7 +547,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         battery.setStateOfHealth(stateOfHealth);
         battery.setChargeLevel(BigDecimal.valueOf(100.0));
         battery.setStatus(status);
-        battery.setCurrentStation(null); // Không gán vào trạm nào
+        battery.setCurrentStation(null); // Not at any station (warehouse or borrowed)
         battery.setBatteryType(batteryType);
         battery.setManufactureDate(LocalDate.now().minusMonths((long) (Math.random() * 6)));
         battery.setUsageCount(0);
@@ -397,12 +561,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         BatteryType type1 = batteries.get(0).getBatteryType();
         BatteryType type2 = batteries.get(15).getBatteryType();
         
+        // Lấy 5 pin cuối cùng (135-139) cho xe (sẽ trở thành IN_USE)
+        // Các pin này chưa được assign vào trạm nào (currentStation = null)
+        int baseIndex = batteries.size() - 5; // 140 - 5 = 135
+        
         return List.of(
-            createVehicle("VFMOTO2024001234", "59-A1 123.45", "VinFast Klara A2", drivers.get(0), type1, batteries.get(145)),
-            createVehicle("VFMOTO2024001235", "51-F1 456.78", "VinFast Impes", drivers.get(1), type2, batteries.get(146)),
-            createVehicle("YADEA2024001236", "59-B2 789.01", "Yadea Xmen Neo", drivers.get(2), type1, batteries.get(147)),
-            createVehicle("PEGA2024001237", "51-G1 234.56", "Pega NewTech", drivers.get(3), type2, batteries.get(148)),
-            createVehicle("DIBAO2024001238", "59-C3 567.89", "Dibao Angelina", drivers.get(4), type1, batteries.get(149))
+            createVehicle("VFMOTO2024001234", "59-A1 123.45", "VinFast Klara A2", drivers.get(0), type1, batteries.get(baseIndex)),
+            createVehicle("VFMOTO2024001235", "51-F1 456.78", "VinFast Impes", drivers.get(1), type2, batteries.get(baseIndex + 1)),
+            createVehicle("YADEA2024001236", "59-B2 789.01", "Yadea Xmen Neo", drivers.get(2), type1, batteries.get(baseIndex + 2)),
+            createVehicle("PEGA2024001237", "51-G1 234.56", "Pega NewTech", drivers.get(3), type2, batteries.get(baseIndex + 3)),
+            createVehicle("DIBAO2024001238", "59-C3 567.89", "Dibao Angelina", drivers.get(4), type1, batteries.get(baseIndex + 4))
         );
     }
 
@@ -415,10 +583,11 @@ public class DatabaseInitializer implements CommandLineRunner {
         vehicle.setBatteryType(batteryType);
         vehicle.setCurrentBattery(currentBattery);
         
-        // Cập nhật battery status
+        // Update battery status when mounted on vehicle
         if (currentBattery != null) {
             currentBattery.setStatus(Battery.Status.IN_USE);
-            currentBattery.setCurrentStation(null); // Pin đang trên xe, không ở trạm
+            currentBattery.setCurrentStation(null); // Battery on vehicle, not at any station
+            // IN_USE batteries are also not in StationInventory
         }
         
         return vehicle;
@@ -461,12 +630,10 @@ public class DatabaseInitializer implements CommandLineRunner {
             createStaffStationAssignment(staff.get(1), stations.get(3), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Bình Thạnh
             createStaffStationAssignment(staff.get(1), stations.get(4), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Thủ Đức
             
-            // Staff 3 (index 2) - Phụ trách 5 trạm ở Hà Nội
-            createStaffStationAssignment(staff.get(2), stations.get(5), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Hoàn Kiếm
-            createStaffStationAssignment(staff.get(2), stations.get(6), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Cầu Giấy
-            createStaffStationAssignment(staff.get(2), stations.get(7), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Ba Đình
-            createStaffStationAssignment(staff.get(2), stations.get(8), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Đống Đa
-            createStaffStationAssignment(staff.get(2), stations.get(9), LocalDateTime.of(2025, 10, 1, 8, 0))   // Long Biên
+            // Staff 3 (index 2) - Phụ trách 3 trạm còn lại ở TP.HCM
+            createStaffStationAssignment(staff.get(2), stations.get(5), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Gò Vấp
+            createStaffStationAssignment(staff.get(2), stations.get(6), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Tân Bình
+            createStaffStationAssignment(staff.get(2), stations.get(7), LocalDateTime.of(2025, 10, 1, 8, 0))   // Phú Nhuận
         );
     }
 
@@ -481,59 +648,128 @@ public class DatabaseInitializer implements CommandLineRunner {
     private List<StationInventory> createStationInventory(List<Station> stations, List<Battery> batteries) {
         List<StationInventory> inventory = new java.util.ArrayList<>();
         
-        // Tạo inventory cho TẤT CẢ batteries có currentStation
+        // IMPORTANT RULE: 1 BATTERY IN ONLY 1 LOCATION
+        // - Battery at STATION (currentStation != null) -> NOT in StationInventory
+        // - Battery on VEHICLE (status = IN_USE) -> NOT in StationInventory
+        // - Battery in WAREHOUSE (currentStation = null, status != IN_USE) -> IN StationInventory
+        
+        // StationInventory = Central Warehouse
+        // Only create for batteries in warehouse (currentStation = NULL and status != IN_USE)
         for (Battery battery : batteries) {
+            // Skip: Battery at station
             if (battery.getCurrentStation() != null) {
-                StationInventory.Status status;
-                
-                // Map Battery.Status -> StationInventory.Status
-                switch (battery.getStatus()) {
-                    case AVAILABLE:
-                        status = StationInventory.Status.AVAILABLE;
-                        break;
-                    case CHARGING:
-                        status = StationInventory.Status.AVAILABLE; // Pin đang sạc vẫn available
-                        break;
-                    case MAINTENANCE:
-                        status = StationInventory.Status.MAINTENANCE;
-                        break;
-                    case IN_USE:
-                        status = StationInventory.Status.RESERVED; // Pin đang dùng = reserved
-                        break;
-                    default:
-                        status = StationInventory.Status.AVAILABLE;
-                }
-                
-                inventory.add(createStationInventory(battery.getCurrentStation(), battery, status));
+                continue; // Battery at station -> not in warehouse
             }
+            
+            // Skip: Battery on vehicle
+            if (battery.getStatus() == Battery.Status.IN_USE) {
+                continue; // Battery on vehicle -> not in warehouse
+            }
+            
+            // Only include: Batteries in warehouse (currentStation = null, status != IN_USE)
+            StationInventory.Status status;
+            
+            // Map Battery.Status -> StationInventory.Status
+            switch (battery.getStatus()) {
+                case AVAILABLE:
+                    status = StationInventory.Status.AVAILABLE;
+                    break;
+                case CHARGING:
+                    status = StationInventory.Status.AVAILABLE; // Battery charging in warehouse
+                    break;
+                case MAINTENANCE:
+                    status = StationInventory.Status.MAINTENANCE;
+                    break;
+                case PENDING:
+                case DAMAGED:
+                    // PENDING/DAMAGED batteries should not be in warehouse
+                    continue; // Skip
+                default:
+                    status = StationInventory.Status.AVAILABLE;
+            }
+            
+            // Tạo inventory cho pin trong kho
+            inventory.add(createStationInventory(battery, status));
         }
         
         return inventory;
     }
 
-    private StationInventory createStationInventory(Station station, Battery battery, StationInventory.Status status) {
+    private StationInventory createStationInventory(Battery battery, StationInventory.Status status) {
         StationInventory inventory = new StationInventory();
-        inventory.setStation(station);
         inventory.setBattery(battery);
         inventory.setStatus(status);
         inventory.setLastUpdate(LocalDateTime.now());
         return inventory;
     }
 
-    private List<Booking> createBookings(List<User> users, List<Vehicle> vehicles, List<Station> stations) {
+    private List<Booking> createBookings(List<User> users, List<Vehicle> vehicles, List<Station> stations, List<Battery> batteries) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
         List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
 
         // Tạo booking 24/7 để thể hiện trạm hoạt động liên tục
-        LocalDateTime baseTime = LocalDateTime.of(2025, 10, 11, 6, 0); // 6:00 AM hôm nay
+        LocalDateTime now = LocalDateTime.now();
         
         return List.of(
-            createBooking(drivers.get(0), vehicles.get(0), stations.get(0), baseTime.plusHours(2), Booking.Status.CONFIRMED, staff.get(0)),    // 8:00 AM - Sáng sớm
-            createBooking(drivers.get(1), vehicles.get(1), stations.get(1), baseTime.plusHours(16), Booking.Status.PENDING, null),           // 10:00 PM - Tối muộn
-            createBooking(drivers.get(2), vehicles.get(2), stations.get(2), baseTime.plusHours(6), Booking.Status.CONFIRMED, staff.get(1)),   // 12:00 PM - Trưa
-            createBooking(drivers.get(3), vehicles.get(3), stations.get(3), baseTime.plusHours(20), Booking.Status.CONFIRMED, staff.get(1)),  // 2:00 AM - Đêm khuya
-            createBooking(drivers.get(4), vehicles.get(4), stations.get(4), baseTime.plusHours(10), Booking.Status.PENDING, null)            // 4:00 PM - Chiều
+            // CONFIRMED bookings - Driver đã đặt và staff đã confirm
+            createBooking(drivers.get(0), vehicles.get(0), stations.get(0), now.plusHours(2), Booking.Status.CONFIRMED, staff.get(0)),    
+            createBooking(drivers.get(2), vehicles.get(2), stations.get(2), now.plusHours(6), Booking.Status.CONFIRMED, staff.get(1)),   
+            createBooking(drivers.get(3), vehicles.get(3), stations.get(3), now.plusHours(20), Booking.Status.CONFIRMED, staff.get(1)),  
+            
+            // PENDING bookings - Driver đã đặt, hệ thống đã reserve pin, chờ driver đến
+            createBooking(drivers.get(1), vehicles.get(1), stations.get(1), now.plusHours(4), Booking.Status.PENDING, null),           
+            createBooking(drivers.get(4), vehicles.get(4), stations.get(4), now.plusHours(8), Booking.Status.PENDING, null),
+            
+            // COMPLETED bookings - Đã hoàn thành swap
+            createBooking(drivers.get(0), vehicles.get(0), stations.get(0), now.minusHours(24), Booking.Status.COMPLETED, staff.get(0)),
+            createBooking(drivers.get(1), vehicles.get(1), stations.get(1), now.minusHours(48), Booking.Status.COMPLETED, staff.get(1)),
+            
+            // CANCELLED bookings - Driver hủy hoặc quá hạn
+            createBooking(drivers.get(2), vehicles.get(2), stations.get(5), now.minusHours(12), Booking.Status.CANCELLED, null)
         );
+    }
+    
+    /**
+     * Reserve batteries cho các booking PENDING
+     * - Tìm battery AVAILABLE tại station của booking
+     * - Kiểm tra: SOH >= 70%, chargeLevel >= 80%, đúng loại pin
+     * - Set battery.status = PENDING
+     * - Set battery.reservedForBooking = booking
+     * - Set battery.reservationExpiry = bookingTime + 3 hours
+     */
+    private void reserveBatteriesForPendingBookings(List<Booking> bookings, List<Battery> batteries) {
+        for (Booking booking : bookings) {
+            if (booking.getStatus() != Booking.Status.PENDING) continue;
+            
+            // Tìm battery AVAILABLE tại station này với đúng loại pin
+            BatteryType requiredType = booking.getVehicle().getBatteryType();
+            Battery availableBattery = batteries.stream()
+                .filter(b -> b.getStatus() == Battery.Status.AVAILABLE)
+                .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(booking.getStation().getId()))
+                .filter(b -> b.getBatteryType().getId().equals(requiredType.getId()))
+                .filter(b -> b.getStateOfHealth().compareTo(new BigDecimal("70")) >= 0)  // Must have SOH >= 70%
+                .filter(b -> b.getChargeLevel().compareTo(new BigDecimal("80")) >= 0)     // Pin phải đủ sạc >= 80%
+                .findFirst()
+                .orElse(null);
+            
+            if (availableBattery != null) {
+                // Reserve battery cho booking này
+                availableBattery.setStatus(Battery.Status.PENDING);
+                availableBattery.setReservedForBooking(booking);
+                availableBattery.setReservationExpiry(booking.getBookingTime().plusHours(3));  // Hết hạn sau 3 giờ
+                
+                log.info("Reserved battery {} (Type: {}, SOH: {}%, Charge: {}%) for booking at {} - Expiry: {}", 
+                    availableBattery.getId(), 
+                    availableBattery.getBatteryType().getName(),
+                    availableBattery.getStateOfHealth(),
+                    availableBattery.getChargeLevel(),
+                    booking.getStation().getName(),
+                    availableBattery.getReservationExpiry());
+            } else {
+                log.warn("No available battery (SOH >= 70%, Charge >= 80%) found for PENDING booking at {}", 
+                    booking.getStation().getName());
+            }
+        }
     }
 
     private Booking createBooking(User driver, Vehicle vehicle, Station station, LocalDateTime bookingTime, Booking.Status status, User confirmedBy) {
@@ -542,9 +778,12 @@ public class DatabaseInitializer implements CommandLineRunner {
         booking.setVehicle(vehicle);
         booking.setStation(station);
         booking.setBookingTime(bookingTime);
-        booking.setConfirmationCode(status == Booking.Status.CONFIRMED ? generateConfirmationCode() : null);
+        
+        // Tạo confirmation code cho tất cả bookings (trừ CANCELLED)
+        booking.setConfirmationCode(status != Booking.Status.CANCELLED ? generateConfirmationCode() : null);
+        
         booking.setStatus(status);
-        booking.setConfirmedBy(confirmedBy);  // ⭐ LƯU AI ĐÃ CONFIRM
+        booking.setConfirmedBy(confirmedBy);  // Chỉ CONFIRMED bookings mới có confirmedBy
         return booking;
     }
     
@@ -569,15 +808,41 @@ public class DatabaseInitializer implements CommandLineRunner {
     private List<SwapTransaction> createSwapTransactions(List<User> users, List<Vehicle> vehicles, List<Station> stations, List<Battery> batteries) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
         List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
+        LocalDateTime now = LocalDateTime.now();
         
-        // ✅ Swap MIỄN PHÍ với subscription → cost = 0
         return List.of(
+            // COMPLETED - Successful swap (has subscription, FREE)
             createSwapTransaction(drivers.get(0), vehicles.get(0), stations.get(0), staff.get(0), 
-                batteries.get(5), batteries.get(0), LocalDateTime.now().minusHours(2), 
-                LocalDateTime.now().minusHours(2).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                batteries.get(135), batteries.get(0), now.minusHours(24), 
+                now.minusHours(24).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                
             createSwapTransaction(drivers.get(1), vehicles.get(1), stations.get(1), staff.get(1), 
-                null, batteries.get(2), LocalDateTime.now().minusHours(1), 
-                LocalDateTime.now().minusHours(1).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED)
+                batteries.get(136), batteries.get(14), now.minusHours(48), 
+                now.minusHours(48).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                
+            // COMPLETED - First time swap (no old battery)
+            createSwapTransaction(drivers.get(2), vehicles.get(2), stations.get(2), staff.get(0), 
+                null, batteries.get(28), now.minusHours(72), 
+                now.minusHours(72).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                
+            // COMPLETED - Multiple swaps in one day
+            createSwapTransaction(drivers.get(3), vehicles.get(3), stations.get(3), staff.get(1), 
+                batteries.get(137), batteries.get(42), now.minusHours(12), 
+                now.minusHours(12).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                
+            createSwapTransaction(drivers.get(3), vehicles.get(3), stations.get(5), staff.get(0), 
+                batteries.get(42), batteries.get(70), now.minusHours(6), 
+                now.minusHours(6).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                
+            // IN_PROGRESS - Swap in progress
+            createSwapTransaction(drivers.get(4), vehicles.get(4), stations.get(4), staff.get(1), 
+                batteries.get(138), batteries.get(56), now.minusMinutes(5), 
+                null, BigDecimal.ZERO, SwapTransaction.Status.IN_PROGRESS),
+                
+            // CANCELLED - Cancelled (battery unsuitable, driver didn't show up, etc.)
+            createSwapTransaction(drivers.get(2), vehicles.get(2), stations.get(6), staff.get(0), 
+                null, null, now.minusHours(3), 
+                now.minusHours(3).plusMinutes(1), BigDecimal.ZERO, SwapTransaction.Status.CANCELLED)
         );
     }
 
@@ -596,7 +861,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         transaction.setCost(cost);
         transaction.setStatus(status);
         
-        // ⭐ LƯU SNAPSHOT thông tin pin tại thời điểm swap
+        // Save snapshot of battery info at swap time
         if (swapOut != null) {
             transaction.setSwapOutBatteryModel(swapOut.getModel());
             transaction.setSwapOutBatteryChargeLevel(swapOut.getChargeLevel());
@@ -609,18 +874,18 @@ public class DatabaseInitializer implements CommandLineRunner {
             transaction.setSwapInBatteryHealth(swapIn.getStateOfHealth());
         }
         
-        // ⭐ CẬP NHẬT VEHICLE.CURRENTBATTERY sau khi swap
-        // Nếu status = COMPLETED → gắn pin mới lên xe
-        if (status == SwapTransaction.Status.COMPLETED && swapOut != null) {
-            vehicle.setCurrentBattery(swapOut);
-            vehicleRepository.save(vehicle);
+        // Update vehicle current battery after swap
+        // If status = COMPLETED, mount new battery (swapIn) to vehicle
+        // Logic: swapOut = old battery removed, swapIn = new battery mounted
+        if (status == SwapTransaction.Status.COMPLETED && swapIn != null) {
+            vehicle.setCurrentBattery(swapIn);  // Must be new battery (swapIn), not old battery (swapOut)
         }
         
         return transaction;
     }
 
     private List<Payment> createPayments(List<SwapTransaction> transactions, List<DriverSubscription> subscriptions) {
-        // ✅ Payment chỉ cho SUBSCRIPTION, không có payment cho swap transaction
+        // Payment only for SUBSCRIPTION, no payment for swap transaction
         return List.of(
             // Payment cho subscription của driver1 (Gói Cơ Bản - 350k)
             createPayment(null, subscriptions.get(0), new BigDecimal("350000.00"), "MOMO", 
@@ -654,48 +919,6 @@ public class DatabaseInitializer implements CommandLineRunner {
         payment.setPaymentDate(date);
         payment.setStatus(status);
         return payment;
-    }
-
-    private List<BatteryHistory> createBatteryHistory(List<Battery> batteries, List<User> users, List<Station> stations, List<Vehicle> vehicles) {
-        List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
-        List<BatteryHistory> history = new java.util.ArrayList<>();
-        
-        // Event cho transaction 1 (driver0, vehicle0, station0)
-        Battery swapOut1 = batteries.get(5);
-        Battery swapIn1 = batteries.get(0);
-        
-        history.add(createBatteryHistory(swapOut1, "SwapOut", LocalDateTime.now().minusHours(2), 
-                                        stations.get(0), vehicles.get(0), staff.get(0)));
-        history.add(createBatteryHistory(swapIn1, "SwapIn", LocalDateTime.now().minusHours(2), 
-                                        stations.get(0), vehicles.get(0), staff.get(0)));
-        history.add(createBatteryHistory(swapIn1, "Charging", LocalDateTime.now().minusHours(2).plusMinutes(5), 
-                                        stations.get(0), null, staff.get(0)));
-        
-        // Event cho transaction 2 (driver1, vehicle1, station1)
-        Battery swapIn2 = batteries.get(2);
-        
-        history.add(createBatteryHistory(swapIn2, "SwapIn", LocalDateTime.now().minusHours(1), 
-                                        stations.get(1), vehicles.get(1), staff.get(1)));
-        history.add(createBatteryHistory(swapIn2, "Charging", LocalDateTime.now().minusHours(1).plusMinutes(5), 
-                                        stations.get(1), null, staff.get(1)));
-        
-        // Event bảo trì
-        history.add(createBatteryHistory(batteries.get(8), "Maintenance", LocalDateTime.now().minusHours(4), 
-                                        stations.get(4), null, staff.get(2)));
-        
-        return history;
-    }
-
-    private BatteryHistory createBatteryHistory(Battery battery, String eventType, LocalDateTime eventTime,
-                                              Station station, Vehicle vehicle, User staff) {
-        BatteryHistory history = new BatteryHistory();
-        history.setBattery(battery);
-        history.setEventType(eventType);
-        history.setEventTime(eventTime);
-        history.setRelatedStation(station);
-        history.setRelatedVehicle(vehicle);
-        history.setStaff(staff);
-        return history;
     }
 
     private List<SupportTicket> createSupportTickets(List<User> users, List<Station> stations) {

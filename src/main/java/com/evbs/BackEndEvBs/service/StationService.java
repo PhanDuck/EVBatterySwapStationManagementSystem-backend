@@ -69,10 +69,10 @@ public class StationService {
     }
 
     /**
-     * READ - Lấy tất cả stations
+     * READ - Lấy tất cả stations (PUBLIC - không cần đăng nhập)
      * - Admin: xem tất cả stations
      * - Staff: chỉ xem stations được assign
-     * - Driver/Public: xem tất cả stations ACTIVE
+     * - Driver/Public (không đăng nhập): xem tất cả stations ACTIVE
      */
     @Transactional(readOnly = true)
     public List<Station> getAllStations() {

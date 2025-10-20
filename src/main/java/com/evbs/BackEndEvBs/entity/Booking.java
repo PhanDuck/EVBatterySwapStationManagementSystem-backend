@@ -57,6 +57,17 @@ public class Booking {
     private Status status = Status.PENDING;
 
     @ManyToOne
+    @JoinColumn(name = "ReservedBatteryID")
+    @JsonIgnore
+    private Battery reservedBattery;
+
+    @Transient
+    private Long reservedBatteryId;
+
+    @Column(name = "ReservationExpiry")
+    private LocalDateTime reservationExpiry;
+
+    @ManyToOne
     @JoinColumn(name = "ConfirmedBy", nullable = true)
     @JsonIgnore
     private User confirmedBy;  // Staff/Admin đã confirm booking (null nếu chưa confirm)
@@ -86,6 +97,10 @@ public class Booking {
 
     public Long getConfirmedById() {
         return this.confirmedBy != null ? this.confirmedBy.getId() : null;
+    }
+
+    public Long getReservedBatteryId() {
+        return this.reservedBattery != null ? this.reservedBattery.getId() : null;
     }
 
     public Long getSwapTransactionId() {

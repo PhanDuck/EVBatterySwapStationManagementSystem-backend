@@ -36,8 +36,8 @@ public class DriverSubscriptionService {
     private final UserRepository userRepository;
 
     /**
-     * ❌ DEPRECATED - Không dùng nữa
-     * Dùng createSubscriptionAfterPayment() sau khi thanh toán thành công
+     * DEPRECATED - No longer used
+     * Use createSubscriptionAfterPayment() after successful payment
      */
     @Deprecated
     @Transactional
@@ -55,10 +55,10 @@ public class DriverSubscriptionService {
         driverSubscriptionRepository.findActiveSubscriptionByDriver(currentUser, LocalDate.now())
             .ifPresent(existing -> {
                 throw new AuthenticationException(
-                    "❌ Bạn đã có gói dịch vụ ACTIVE! " +
-                    "Gói hiện tại: " + existing.getServicePackage().getName() + " " +
-                    "(còn " + existing.getRemainingSwaps() + " lượt swap). " +
-                    "Vui lòng đợi hết hạn hoặc hủy gói cũ trước khi mua gói mới."
+                    "You already have an ACTIVE subscription! " +
+                    "Current package: " + existing.getServicePackage().getName() + " " +
+                    "(remaining " + existing.getRemainingSwaps() + " swaps). " +
+                    "Please wait for expiration or cancel old package before buying new one."
                 );
             });
 
@@ -86,22 +86,26 @@ public class DriverSubscriptionService {
     }
 
     /**
-     * ✅ TẠO SUBSCRIPTION SAU KHI THANH TOÁN THÀNH CÔNG
-     * Được gọi từ MoMoService sau khi verify payment
+     * TẠO SUBSCRIPTION SAU KHI THANH TOÁN THÀNH CÔNG
+     * 
+     * Được gọi từ MoMoService sau khi verify payment thành công
      * 
      * BUSINESS RULES:
-     * - ❌ Có gói ACTIVE + còn lượt swap → KHÔNG cho mua gói khác
-     * - ✅ Có gói ACTIVE + hết lượt swap (remainingSwaps = 0) → CHO PHÉP mua gói khác
-     * - ✅ Có gói EXPIRED → CHO PHÉP mua gói mới
-     * - ✅ Không có gói → CHO PHÉP mua gói
+     * - Có gói ACTIVE + còn lượt swap: KHÔNG cho mua gói khác
+     * - Có gói ACTIVE + hết lượt swap (remainingSwaps = 0): CHO PHÉP mua gói khác
+     * - Có gói EXPIRED: CHO PHÉP mua gói mới
+     * - Không có gói: CHO PHÉP mua gói
      * 
      * WORKFLOW:
-     * 1. Driver chọn packageId → Tạo MoMo payment URL
-     * 2. Driver thanh toán MoMo
-     * 3. MoMo callback → Gọi method này
-     * 4. Kiểm tra gói hiện tại
-     * 5. Nếu có gói active + còn lượt → reject
-     * 6. Nếu hết lượt hoặc hết hạn → expire gói cũ, tạo gói mới
+     * BUOC 1: Driver chọn packageId - Tạo MoMo payment URL
+     * BUOC 2: Driver thanh toán trên MoMo
+     * BUOC 3: MoMo callback - Gọi method này
+     * BUOC 4: Kiểm tra gói hiện tại của driver
+     * BUOC 5: Nếu có gói active + còn lượt - REJECT
+     * BUOC 6: Nếu hết lượt hoặc hết hạn - EXPIRE gói cũ + TẠO gói mới
+     * 
+     * @param packageId ID của service package
+     * @return DriverSubscription mới được tạo với status ACTIVE
      */
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId) {
@@ -116,29 +120,29 @@ public class DriverSubscriptionService {
         if (activeSubscriptionOpt.isPresent()) {
             DriverSubscription existingSub = activeSubscriptionOpt.get();
             
-            // ❌ CÒN LƯỢT SWAP → KHÔNG CHO MUA GÓI KHÁC
+            // Still has swaps remaining, not allowed to buy new package
             if (existingSub.getRemainingSwaps() > 0) {
                 throw new AuthenticationException(
-                    "❌ Bạn đã có gói dịch vụ ACTIVE và còn lượt swap! " +
-                    "Gói hiện tại: " + existingSub.getServicePackage().getName() + " " +
-                    "(còn " + existingSub.getRemainingSwaps() + " lượt swap, " +
-                    "hết hạn: " + existingSub.getEndDate() + "). " +
-                    "Vui lòng sử dụng hết lượt swap hiện tại trước khi mua gói mới."
+                    "You already have an ACTIVE subscription with remaining swaps! " +
+                    "Current package: " + existingSub.getServicePackage().getName() + " " +
+                    "(remaining " + existingSub.getRemainingSwaps() + " swaps, " +
+                    "expires: " + existingSub.getEndDate() + "). " +
+                    "Please use all remaining swaps before buying new package."
                 );
             }
             
-            // ✅ HẾT LƯỢT SWAP (remainingSwaps = 0) → CHO PHÉP MUA GÓI MỚI
-            log.info("🔄 Driver {} has active subscription but 0 remaining swaps. Expiring old subscription...", 
+            // No swaps remaining (remainingSwaps = 0), allow new package purchase
+            log.info("Driver {} has active subscription but 0 remaining swaps. Expiring old subscription...", 
                      currentUser.getEmail());
             
             // Expire gói cũ
             existingSub.setStatus(DriverSubscription.Status.EXPIRED);
             driverSubscriptionRepository.save(existingSub);
             
-            log.info("✅ Old subscription {} expired (was active but had 0 swaps)", existingSub.getId());
+            log.info("Old subscription {} expired (was active but had 0 swaps)", existingSub.getId());
         }
 
-        // ✅ TẠO GÓI MỚI (vì không có gói active hoặc gói cũ đã hết lượt)
+        // Create new subscription (no active package or old package expired)
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusDays(servicePackage.getDuration());
 
@@ -147,12 +151,12 @@ public class DriverSubscriptionService {
         subscription.setServicePackage(servicePackage);
         subscription.setStartDate(startDate);
         subscription.setEndDate(endDate);
-        subscription.setStatus(DriverSubscription.Status.ACTIVE); // ✅ ACTIVE ngay vì đã thanh toán rồi
+        subscription.setStatus(DriverSubscription.Status.ACTIVE); // Active immediately since already paid
         subscription.setRemainingSwaps(servicePackage.getMaxSwaps());
 
         DriverSubscription savedSubscription = driverSubscriptionRepository.save(subscription);
         
-        log.info("✅ Subscription created after payment: Driver {} → Package {} ({} swaps, {} VND)", 
+        log.info("Subscription created after payment: Driver {} -> Package {} ({} swaps, {} VND)", 
                  currentUser.getEmail(), 
                  servicePackage.getName(),
                  servicePackage.getMaxSwaps(),
@@ -162,14 +166,25 @@ public class DriverSubscriptionService {
     }
 
     /**
-     * ✅ TẠO SUBSCRIPTION SAU KHI THANH TOÁN (với driverId)
+     * TẠO SUBSCRIPTION SAU KHI THANH TOÁN (Overload - Không cần token)
      * 
-     * Overload method dùng cho payment gateway callback (MoMo)
-     * khi không có authentication token
+     * Được gọi từ MoMo callback khi driver KHÔNG CÓ TOKEN
      * 
-     * @param packageId ID của package
-     * @param driverId ID của driver (lấy từ extraData)
-     * @return DriverSubscription đã tạo
+     * TẠI SAO CẦN METHOD NÀY?
+     * - Khi driver thanh toán - redirect ra MoMo app/website
+     * - Sau khi thanh toán - MoMo callback về server
+     * - Lúc này driver KHÔNG CÓ JWT TOKEN!
+     * - Giải pháp: Lưu driverId vào extraData, lấy ra khi callback
+     * 
+     * LOGIC GIỐNG METHOD TRÊN:
+     * - Validate package tồn tại
+     * - Kiểm tra gói hiện tại
+     * - Expire gói cũ nếu cần
+     * - Tạo gói mới ACTIVE
+     * 
+     * @param packageId ID của service package
+     * @param driverId ID của driver (lấy từ extraData trong MoMo callback)
+     * @return DriverSubscription mới được tạo với status ACTIVE
      */
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId, Long driverId) {
@@ -186,28 +201,28 @@ public class DriverSubscriptionService {
         if (activeSubscriptionOpt.isPresent()) {
             DriverSubscription existingSub = activeSubscriptionOpt.get();
             
-            // ❌ CÒN LƯỢT SWAP → KHÔNG CHO MUA GÓI KHÁC
+            // Still has swaps remaining, not allowed to buy new package
             if (existingSub.getRemainingSwaps() > 0) {
                 throw new AuthenticationException(
-                    "❌ Driver đã có gói dịch vụ ACTIVE và còn lượt swap! " +
-                    "Gói hiện tại: " + existingSub.getServicePackage().getName() + " " +
-                    "(còn " + existingSub.getRemainingSwaps() + " lượt swap, " +
-                    "hết hạn: " + existingSub.getEndDate() + "). "
+                    "Driver already has ACTIVE subscription with remaining swaps! " +
+                    "Current package: " + existingSub.getServicePackage().getName() + " " +
+                    "(remaining " + existingSub.getRemainingSwaps() + " swaps, " +
+                    "expires: " + existingSub.getEndDate() + "). "
                 );
             }
             
-            // ✅ HẾT LƯỢT SWAP (remainingSwaps = 0) → CHO PHÉP MUA GÓI MỚI
-            log.info("🔄 Driver {} has active subscription but 0 swaps remaining. Expiring old subscription...", 
+            // No swaps remaining (remainingSwaps = 0), allow new package purchase
+            log.info("Driver {} has active subscription but 0 swaps remaining. Expiring old subscription...", 
                      driver.getEmail());
             
             // Expire gói cũ
             existingSub.setStatus(DriverSubscription.Status.EXPIRED);
             driverSubscriptionRepository.save(existingSub);
             
-            log.info("✅ Old subscription {} expired (was active but had 0 swaps)", existingSub.getId());
+            log.info("Old subscription {} expired (was active but had 0 swaps)", existingSub.getId());
         }
 
-        // ✅ TẠO GÓI MỚI (vì không có gói active hoặc gói cũ đã hết lượt)
+        // Create new subscription (no active package or old package expired)
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusDays(servicePackage.getDuration());
 
@@ -221,7 +236,7 @@ public class DriverSubscriptionService {
 
         DriverSubscription savedSubscription = driverSubscriptionRepository.save(subscription);
         
-        log.info("✅ Subscription created after payment (callback): Driver {} → Package {} ({} swaps, {} VND)", 
+        log.info("Subscription created after payment (callback): Driver {} -> Package {} ({} swaps, {} VND)", 
                  driver.getEmail(), 
                  servicePackage.getName(),
                  servicePackage.getMaxSwaps(),

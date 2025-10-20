@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.entity.Booking;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.BookingRequest;
 import com.evbs.BackEndEvBs.service.BookingService;
+import com.evbs.BackEndEvBs.service.StaffStationAssignmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,9 @@ public class BookingController {
 
     @Autowired
     private BookingService bookingService;
+
+    @Autowired
+    private StaffStationAssignmentService staffStationAssignmentService;
 
     // ==================== COMPATIBILITY ENDPOINTS ====================
 
@@ -99,42 +103,20 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 
-    /**
-     * PATCH /api/booking/{id}/status : Update booking status (Admin/Staff only)
-     */
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update booking status",
-            description = "Update booking status with validation for status transitions (Admin/Staff only)")
-    public ResponseEntity<Booking> updateBookingStatus(
-            @PathVariable Long id,
-            @RequestParam Booking.Status status) {
-        Booking booking = bookingService.updateBookingStatus(id, status);
-        return ResponseEntity.ok(booking);
-    }
-
-    /**
-     * DELETE /api/booking/{id} : Delete booking (Admin only)
-     */
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete booking",
-            description = "Permanently delete a booking (Admin only)")
-    public ResponseEntity<Void> deleteBooking(@PathVariable Long id) {
-        bookingService.deleteBooking(id);
-        return ResponseEntity.noContent().build();
-    }
-
     // ==================== UTILITY ENDPOINTS ====================
 
     /**
      * GET /api/booking/station/{stationId} : Get bookings by station (Admin/Staff only)
+     * Staff chỉ xem được bookings của stations mình quản lý
      */
     @GetMapping("/station/{stationId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get bookings by station",
-            description = "Get all bookings for a specific station (Admin/Staff only)")
+            description = "Get all bookings for a specific station. Staff can only view bookings for their assigned stations.")
     public ResponseEntity<List<Booking>> getBookingsByStation(@PathVariable Long stationId) {
+        // Validate station access for staff
+        staffStationAssignmentService.validateStationAccess(stationId);
+        
         List<Booking> bookings = bookingService.getBookingsByStation(stationId);
         return ResponseEntity.ok(bookings);
     }
@@ -148,6 +130,23 @@ public class BookingController {
             description = "Get all bookings with specific status (Admin/Staff only)")
     public ResponseEntity<List<Booking>> getBookingsByStatus(@PathVariable Booking.Status status) {
         List<Booking> bookings = bookingService.getBookingsByStatus(status);
+        return ResponseEntity.ok(bookings);
+    }
+
+    /**
+     * GET /api/booking/my-stations : Get bookings cua cac tram Staff quan ly (Staff only)
+     * 
+     * Staff chi xem duoc bookings cua cac tram minh duoc assign
+     * Admin xem duoc tat ca bookings
+     * 
+     * Dung de hien thi danh sach booking can confirm
+     */
+    @GetMapping("/my-stations")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Get bookings for my managed stations (Staff only)",
+            description = "Staff xem bookings cua cac tram minh quan ly. Admin xem tat ca bookings.")
+    public ResponseEntity<List<Booking>> getBookingsForMyStations() {
+        List<Booking> bookings = bookingService.getBookingsForMyStations();
         return ResponseEntity.ok(bookings);
     }
 
@@ -169,31 +168,27 @@ public class BookingController {
     }
 
     /**
-     * GET /api/booking/verify/{confirmationCode} : Verify booking by confirmation code (Driver uses at station)
+     * DELETE /api/booking/staff/{id}/cancel : Cancel booking by Staff/Admin (Special cases)
      * 
-     * Driver nhập mã code (ABC123) vào máy tại trạm → Kiểm tra booking hợp lệ
-     * Endpoint này có thể được gọi bởi Driver hoặc hệ thống tự động tại trạm
-     */
-    @GetMapping("/verify/{confirmationCode}")
-    @Operation(summary = "Verify booking by confirmation code",
-            description = "Driver nhập mã xác nhận 6 ký tự (ABC123) tại trạm để verify booking")
-    public ResponseEntity<Booking> verifyBookingByCode(@PathVariable String confirmationCode) {
-        Booking booking = bookingService.verifyBookingByCode(confirmationCode);
-        return ResponseEntity.ok(booking);
-    }
-
-    /**
-     * PATCH /api/booking/confirm/{confirmationCode} : Confirm booking by code (DEPRECATED)
+     * Staff/Admin co the huy bat ky booking nao (PENDING hoac CONFIRMED)
+     * Truong hop dac biet: Tram bao tri, pin hong, khan cap, etc.
      * 
-     * @deprecated Use PATCH /api/booking/{id}/confirm instead
+     * Neu huy CONFIRMED booking:
+     * - Giai phong pin ve AVAILABLE
+     * - KHONG TRU luot swap cua driver (loi tu phia tram)
+     * 
+     * @param id Booking ID can huy
+     * @param reason (Optional) Ly do huy - truyen qua request param
      */
-    @Deprecated
-    @PatchMapping("/confirm/{confirmationCode}")
-    @PreAuthorize("hasRole('STAFF')")
-    @Operation(summary = "[DEPRECATED] Confirm booking by confirmation code",
-            description = "Use PATCH /api/booking/{id}/confirm instead")
-    public ResponseEntity<Booking> confirmBookingByCode(@PathVariable String confirmationCode) {
-        Booking booking = bookingService.confirmBookingByCode(confirmationCode);
+    @DeleteMapping("/staff/{id}/cancel")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Cancel booking by Staff/Admin (Special cases)",
+            description = "Staff/Admin huy booking trong truong hop dac biet (tram bao tri, pin hong, khan cap). " +
+                         "Neu huy CONFIRMED booking se giai phong pin va KHONG tru luot swap cua driver.")
+    public ResponseEntity<?> cancelBookingByStaff(
+            @PathVariable Long id,
+            @RequestParam(required = false) String reason) {
+        Booking booking = bookingService.cancelBookingByStaff(id, reason);
         return ResponseEntity.ok(booking);
     }
 }

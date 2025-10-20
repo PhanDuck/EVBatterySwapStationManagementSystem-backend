@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -522,6 +523,54 @@ public class BookingService {
         booking.setConfirmedBy(currentUser);  // LUU NGUOI CONFIRM
         
         return bookingRepository.save(booking);
+    }
+
+
+    /**
+     * Gửi email xác nhận booking đã được approve với confirmation code
+     */
+    private void sendBookingConfirmedEmail(Booking booking, User confirmedBy) {
+        try {
+            User driver = booking.getDriver();
+            Vehicle vehicle = booking.getVehicle();
+            Station station = booking.getStation();
+
+            // Tạo email detail
+            EmailDetail emailDetail = new EmailDetail();
+            emailDetail.setRecipient(driver.getEmail());
+            emailDetail.setSubject("Booking được xác nhận - Mã swap pin: " + booking.getConfirmationCode());
+            emailDetail.setFullName(driver.getFullName());
+
+            // Thông tin booking
+            emailDetail.setBookingId(booking.getId());
+            emailDetail.setStationName(station.getName());
+            emailDetail.setStationLocation(
+                    station.getLocation() != null ? station.getLocation() :
+                            (station.getDistrict() + ", " + station.getCity())
+            );
+            emailDetail.setStationContact(station.getContactInfo() != null ? station.getContactInfo() : "Chưa cập nhật");
+
+            // Format thời gian
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+            emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
+
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : vehicle.getPlateNumber());
+            emailDetail.setBatteryType(
+                    station.getBatteryType().getName() +
+                            (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
+            );
+            emailDetail.setStatus(booking.getStatus().toString());
+
+            // ⭐ THÊM CONFIRMATION CODE VÀO EMAIL
+            emailDetail.setConfirmationCode(booking.getConfirmationCode());
+            emailDetail.setConfirmedBy(confirmedBy.getFullName());
+
+            // Gửi email bất đồng bộ
+            emailService.sendBookingConfirmedEmail(emailDetail);
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không ảnh hưởng đến booking
+            System.err.println("Failed to send booking confirmed email: " + e.getMessage());
+        }
     }
 
     // ==================== HELPER METHODS ====================

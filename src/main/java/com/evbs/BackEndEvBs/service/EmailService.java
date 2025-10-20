@@ -84,4 +84,43 @@ public class EmailService {
             e.printStackTrace();
         }
     }
+
+
+    /**
+     * Gửi email thông báo booking đã được confirm với confirmation code
+     */
+    public void sendBookingConfirmedEmail(EmailDetail emailDetail){
+        try {
+            Context context = new Context();
+            context.setVariable("customerName", emailDetail.getFullName());
+            context.setVariable("bookingId", emailDetail.getBookingId());
+            context.setVariable("stationName", emailDetail.getStationName());
+            context.setVariable("stationLocation", emailDetail.getStationLocation());
+            context.setVariable("stationContact", emailDetail.getStationContact());
+            context.setVariable("bookingTime", emailDetail.getBookingTime());
+            context.setVariable("vehicleModel", emailDetail.getVehicleModel());
+            context.setVariable("batteryType", emailDetail.getBatteryType());
+            context.setVariable("status", emailDetail.getStatus());
+            context.setVariable("confirmationCode", emailDetail.getConfirmationCode());
+            context.setVariable("confirmedBy", emailDetail.getConfirmedBy());
+
+            String text = templateEngine.process("booking-confirmed", context);
+
+            // creating a simple mail message
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            // setting up necessary details
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(emailDetail.getRecipient());
+            mimeMessageHelper.setText(text , true);
+            mimeMessageHelper.setSubject(emailDetail.getSubject());
+            mailSender.send(mimeMessage);
+
+        } catch (MessagingException e) {
+            // Log error nhưng không throw exception để không ảnh hưởng đến luồng booking
+            System.err.println("Failed to send booking confirmed email: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

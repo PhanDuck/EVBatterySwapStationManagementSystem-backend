@@ -16,4 +16,6 @@ public class EmailDetail {
     String vehicleModel;
     String batteryType;
     String status;
+    String confirmationCode;  // Mã xác nhận swap pin
+    String confirmedBy;       // Người xác nhận booking
 }

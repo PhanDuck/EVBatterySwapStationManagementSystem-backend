@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.repository;
 
 import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BatteryRepository extends JpaRepository<Battery, Long> {
@@ -24,11 +26,14 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
     // Tìm batteries theo battery type
     List<Battery> findByBatteryType_Id(Long batteryTypeId);
     
-    // ✅ Tìm pin AVAILABLE TRONG KHO theo BatteryType (currentStation = NULL)
+    // Find AVAILABLE batteries in warehouse by type (currentStation = NULL)
     List<Battery> findByBatteryType_IdAndStatusAndCurrentStationIsNull(Long batteryTypeId, Battery.Status status);
     
-    // ✅ Tìm pin AVAILABLE ở station với chargeLevel >= minCharge (cho swap transaction)
-    // ORDER BY chargeLevel DESC để lấy pin đầy nhất trước
+    // Find reserved (PENDING) battery for a specific booking
+    Optional<Battery> findByStatusAndReservedForBooking(Battery.Status status, Booking booking);
+    
+    // Find AVAILABLE batteries at station with chargeLevel >= minCharge (for swap)
+    // ORDER BY chargeLevel DESC to get fullest battery first
     @Query("SELECT b FROM Battery b WHERE b.currentStation.id = :stationId " +
            "AND b.status = :status " +
            "AND b.chargeLevel >= :minChargeLevel " +

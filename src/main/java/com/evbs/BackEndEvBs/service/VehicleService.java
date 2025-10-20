@@ -48,7 +48,7 @@ public class VehicleService {
         BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
 
-        // ✅ Tạo vehicle mới thủ công thay vì dùng ModelMapper (tránh conflict)
+        // Create vehicle manually to avoid ModelMapper conflicts
         Vehicle vehicle = new Vehicle();
         vehicle.setVin(vehicleRequest.getVin());
         vehicle.setPlateNumber(vehicleRequest.getPlateNumber());

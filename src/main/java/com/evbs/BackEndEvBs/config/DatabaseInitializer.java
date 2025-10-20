@@ -26,7 +26,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     private final ServicePackageRepository servicePackageRepository;
     private final DriverSubscriptionRepository driverSubscriptionRepository;
     private final StationInventoryRepository stationInventoryRepository;
-    private final StaffStationAssignmentRepository staffStationAssignmentRepository;  // ⭐ THÊM
+    private final StaffStationAssignmentRepository staffStationAssignmentRepository;
     private final BookingRepository bookingRepository;
     private final SwapTransactionRepository swapTransactionRepository;
     private final PaymentRepository paymentRepository;
@@ -39,7 +39,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                               ServicePackageRepository servicePackageRepository, 
                               DriverSubscriptionRepository driverSubscriptionRepository,
                               StationInventoryRepository stationInventoryRepository, 
-                              StaffStationAssignmentRepository staffStationAssignmentRepository,  // ⭐ THÊM
+                              StaffStationAssignmentRepository staffStationAssignmentRepository,
                               BookingRepository bookingRepository,
                               SwapTransactionRepository swapTransactionRepository, PaymentRepository paymentRepository,
                               SupportTicketRepository supportTicketRepository,
@@ -52,7 +52,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         this.servicePackageRepository = servicePackageRepository;
         this.driverSubscriptionRepository = driverSubscriptionRepository;
         this.stationInventoryRepository = stationInventoryRepository;
-        this.staffStationAssignmentRepository = staffStationAssignmentRepository;  // ⭐ THÊM
+        this.staffStationAssignmentRepository = staffStationAssignmentRepository;
         this.bookingRepository = bookingRepository;
         this.swapTransactionRepository = swapTransactionRepository;
         this.paymentRepository = paymentRepository;
@@ -81,73 +81,73 @@ public class DatabaseInitializer implements CommandLineRunner {
         // 2. Tạo BatteryTypes TRƯỚC (vì Station và Battery cần)
         List<BatteryType> batteryTypes = createBatteryTypes();
         batteryTypeRepository.saveAll(batteryTypes);
-        log.info("✓ Đã tạo {} battery types", batteryTypes.size());
+        log.info("Created {} battery types", batteryTypes.size());
 
         // 3. Tạo Stations (cần BatteryTypes)
         List<Station> stations = createStations(batteryTypes);
         stationRepository.saveAll(stations);
-        log.info("✓ Đã tạo {} stations", stations.size());
+        log.info("Created {} stations", stations.size());
 
         // 4. Tạo Service Packages
         List<ServicePackage> packages = createServicePackages();
         servicePackageRepository.saveAll(packages);
-        log.info("✓ Đã tạo {} service packages", packages.size());
+        log.info("Created {} service packages", packages.size());
 
         // 5. Tạo Batteries (cần BatteryTypes)
         List<Battery> batteries = createBatteries(stations, batteryTypes);
         batteryRepository.saveAll(batteries);
-        log.info("✓ Đã tạo {} batteries", batteries.size());
+        log.info("Created {} batteries", batteries.size());
 
         // 5. Tạo Vehicles (cần batteries để lấy batteryType)
         List<Vehicle> vehicles = createVehicles(users, batteries);
         vehicleRepository.saveAll(vehicles);
-        log.info("✓ Đã tạo {} vehicles", vehicles.size());
+        log.info("Created {} vehicles", vehicles.size());
 
         // 6. Tạo Driver Subscriptions
         List<DriverSubscription> subscriptions = createDriverSubscriptions(users, packages);
         driverSubscriptionRepository.saveAll(subscriptions);
-        log.info("✓ Đã tạo {} subscriptions", subscriptions.size());
+        log.info("Created {} subscriptions", subscriptions.size());
 
         // 7. Tạo Staff Station Assignments (Staff được assign vào stations)
         List<StaffStationAssignment> assignments = createStaffStationAssignments(users, stations);
         staffStationAssignmentRepository.saveAll(assignments);
-        log.info("✓ Đã tạo {} staff station assignments", assignments.size());
+        log.info("Created {} staff station assignments", assignments.size());
 
         // 8. Tạo Station Inventory
         List<StationInventory> inventory = createStationInventory(stations, batteries);
         stationInventoryRepository.saveAll(inventory);
-        log.info("✓ Đã tạo {} station inventory records", inventory.size());
+        log.info("Created {} station inventory records", inventory.size());
 
         // 9. Tạo Bookings
         List<Booking> bookings = createBookings(users, vehicles, stations, batteries);
         bookingRepository.saveAll(bookings);
-        log.info("✓ Đã tạo {} bookings", bookings.size());
+        log.info("Created {} bookings", bookings.size());
         
         // 9b. Reserve batteries cho PENDING bookings
         reserveBatteriesForPendingBookings(bookings, batteries);
         batteryRepository.saveAll(batteries);
-        log.info("✓ Đã reserve batteries cho {} PENDING bookings", 
+        log.info("Reserved batteries for {} PENDING bookings", 
             bookings.stream().filter(b -> b.getStatus() == Booking.Status.PENDING).count());
 
         // 10. Tạo Swap Transactions
         List<SwapTransaction> transactions = createSwapTransactions(users, vehicles, stations, batteries);
         swapTransactionRepository.saveAll(transactions);
-        log.info("✓ Đã tạo {} swap transactions", transactions.size());
+        log.info("Created {} swap transactions", transactions.size());
 
         // 11. Tạo Payments
         List<Payment> payments = createPayments(transactions, subscriptions);
         paymentRepository.saveAll(payments);
-        log.info("✓ Đã tạo {} payments", payments.size());
+        log.info("Created {} payments", payments.size());
 
         // 12. Tạo Support Tickets
         List<SupportTicket> tickets = createSupportTickets(users, stations);
         supportTicketRepository.saveAll(tickets);
-        log.info("✓ Đã tạo {} support tickets", tickets.size());
+        log.info("Created {} support tickets", tickets.size());
 
         // 13. Tạo Ticket Responses
         List<TicketResponse> responses = createTicketResponses(tickets, users);
         ticketResponseRepository.saveAll(responses);
-        log.info("✓ Đã tạo {} ticket responses", responses.size());
+        log.info("Created {} ticket responses", responses.size());
     }
 
     private List<User> createUsers() {
@@ -240,7 +240,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         station.setLatitude(lat);
         station.setLongitude(lng);
         station.setStatus(status);
-        station.setBatteryType(batteryType);  // ⭐ QUAN TRỌNG
+        station.setBatteryType(batteryType);
         return station;
     }
 
@@ -528,7 +528,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         battery.setStateOfHealth(stateOfHealth);
         battery.setChargeLevel(chargeLevel);
         battery.setStatus(status);
-        battery.setCurrentStation(station); // ⭐ PIN Ở TRẠM
+        battery.setCurrentStation(station); // Pin at station
         battery.setBatteryType(batteryType);
         battery.setManufactureDate(LocalDate.now().minusMonths((long) (Math.random() * 12)));
         battery.setUsageCount((int) (Math.random() * 100));
@@ -536,9 +536,9 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     /**
-     * TAO PIN O KHO hoac DANG DUOC MUON (currentStation = null)
-     * - Nếu status = AVAILABLE/CHARGING/MAINTENANCE → Pin trong KHO (sẽ có StationInventory)
-     * - Nếu status = IN_USE → Pin đang được mượn (xe đang dùng)
+     * Create battery in warehouse or borrowed by driver (currentStation = null)
+     * - If status = AVAILABLE/CHARGING/MAINTENANCE -> Battery in warehouse (will have StationInventory)
+     * - If status = IN_USE -> Battery borrowed by driver (on vehicle)
      */
     private Battery createUnassignedBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status, BatteryType batteryType) {
         Battery battery = new Battery();
@@ -547,7 +547,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         battery.setStateOfHealth(stateOfHealth);
         battery.setChargeLevel(BigDecimal.valueOf(100.0));
         battery.setStatus(status);
-        battery.setCurrentStation(null); // ⭐ PIN KHÔNG Ở TRẠM (trong kho hoặc đang được mượn)
+        battery.setCurrentStation(null); // Not at any station (warehouse or borrowed)
         battery.setBatteryType(batteryType);
         battery.setManufactureDate(LocalDate.now().minusMonths((long) (Math.random() * 6)));
         battery.setUsageCount(0);
@@ -583,11 +583,11 @@ public class DatabaseInitializer implements CommandLineRunner {
         vehicle.setBatteryType(batteryType);
         vehicle.setCurrentBattery(currentBattery);
         
-        // ⭐ Cập nhật battery status khi gắn lên xe
+        // Update battery status when mounted on vehicle
         if (currentBattery != null) {
             currentBattery.setStatus(Battery.Status.IN_USE);
-            currentBattery.setCurrentStation(null);  // ⭐ Pin đang trên xe, KHÔNG thuộc trạm nào
-            // Pin IN_USE cũng KHÔNG có trong StationInventory (kho)
+            currentBattery.setCurrentStation(null); // Battery on vehicle, not at any station
+            // IN_USE batteries are also not in StationInventory
         }
         
         return vehicle;
@@ -648,25 +648,25 @@ public class DatabaseInitializer implements CommandLineRunner {
     private List<StationInventory> createStationInventory(List<Station> stations, List<Battery> batteries) {
         List<StationInventory> inventory = new java.util.ArrayList<>();
         
-        // ⭐⭐⭐ QUY TẮC QUAN TRỌNG: 1 BATTERY CHỈ Ở 1 CHỖ ⭐⭐⭐
-        // - Battery ở TRẠM (currentStation != null) → KHÔNG có trong StationInventory
-        // - Battery ở XE (status = IN_USE) → KHÔNG có trong StationInventory
-        // - Battery ở KHO (currentStation = null, status != IN_USE) → CÓ trong StationInventory
+        // IMPORTANT RULE: 1 BATTERY IN ONLY 1 LOCATION
+        // - Battery at STATION (currentStation != null) -> NOT in StationInventory
+        // - Battery on VEHICLE (status = IN_USE) -> NOT in StationInventory
+        // - Battery in WAREHOUSE (currentStation = null, status != IN_USE) -> IN StationInventory
         
-        // ⭐ StationInventory = KHO TỔNG
-        // CHỈ TẠO CHO PIN TRONG KHO (currentStation = NULL và status != IN_USE)
+        // StationInventory = Central Warehouse
+        // Only create for batteries in warehouse (currentStation = NULL and status != IN_USE)
         for (Battery battery : batteries) {
-            // BỎ QUA: Pin đang ở trạm
+            // Skip: Battery at station
             if (battery.getCurrentStation() != null) {
-                continue; // Pin đang ở trạm → KHÔNG có trong kho
+                continue; // Battery at station -> not in warehouse
             }
             
-            // BỎ QUA: Pin đang được dùng trên xe
+            // Skip: Battery on vehicle
             if (battery.getStatus() == Battery.Status.IN_USE) {
-                continue; // Pin đang trên xe → KHÔNG có trong kho
+                continue; // Battery on vehicle -> not in warehouse
             }
             
-            // CHỈ LẤY: Pin trong kho (currentStation = null, status != IN_USE)
+            // Only include: Batteries in warehouse (currentStation = null, status != IN_USE)
             StationInventory.Status status;
             
             // Map Battery.Status -> StationInventory.Status
@@ -675,14 +675,14 @@ public class DatabaseInitializer implements CommandLineRunner {
                     status = StationInventory.Status.AVAILABLE;
                     break;
                 case CHARGING:
-                    status = StationInventory.Status.AVAILABLE; // Pin đang sạc trong kho
+                    status = StationInventory.Status.AVAILABLE; // Battery charging in warehouse
                     break;
                 case MAINTENANCE:
                     status = StationInventory.Status.MAINTENANCE;
                     break;
                 case PENDING:
                 case DAMAGED:
-                    // Pin PENDING/DAMAGED không nên có trong kho
+                    // PENDING/DAMAGED batteries should not be in warehouse
                     continue; // Skip
                 default:
                     status = StationInventory.Status.AVAILABLE;
@@ -747,7 +747,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 .filter(b -> b.getStatus() == Battery.Status.AVAILABLE)
                 .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(booking.getStation().getId()))
                 .filter(b -> b.getBatteryType().getId().equals(requiredType.getId()))
-                .filter(b -> b.getStateOfHealth().compareTo(new BigDecimal("70")) >= 0)  // ⭐ PHẢI CÓ SOH >= 70%
+                .filter(b -> b.getStateOfHealth().compareTo(new BigDecimal("70")) >= 0)  // Must have SOH >= 70%
                 .filter(b -> b.getChargeLevel().compareTo(new BigDecimal("80")) >= 0)     // Pin phải đủ sạc >= 80%
                 .findFirst()
                 .orElse(null);
@@ -758,7 +758,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                 availableBattery.setReservedForBooking(booking);
                 availableBattery.setReservationExpiry(booking.getBookingTime().plusHours(3));  // Hết hạn sau 3 giờ
                 
-                log.info("  → Reserved battery {} (Type: {}, SOH: {}%, Charge: {}%) for booking at {} - Expiry: {}", 
+                log.info("Reserved battery {} (Type: {}, SOH: {}%, Charge: {}%) for booking at {} - Expiry: {}", 
                     availableBattery.getId(), 
                     availableBattery.getBatteryType().getName(),
                     availableBattery.getStateOfHealth(),
@@ -766,7 +766,7 @@ public class DatabaseInitializer implements CommandLineRunner {
                     booking.getStation().getName(),
                     availableBattery.getReservationExpiry());
             } else {
-                log.warn("  ⚠ No available battery (SOH >= 70%, Charge >= 80%) found for PENDING booking at {}", 
+                log.warn("No available battery (SOH >= 70%, Charge >= 80%) found for PENDING booking at {}", 
                     booking.getStation().getName());
             }
         }
@@ -811,7 +811,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         LocalDateTime now = LocalDateTime.now();
         
         return List.of(
-            // ✅ COMPLETED - Swap thành công (có subscription → FREE)
+            // COMPLETED - Successful swap (has subscription, FREE)
             createSwapTransaction(drivers.get(0), vehicles.get(0), stations.get(0), staff.get(0), 
                 batteries.get(135), batteries.get(0), now.minusHours(24), 
                 now.minusHours(24).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
@@ -820,12 +820,12 @@ public class DatabaseInitializer implements CommandLineRunner {
                 batteries.get(136), batteries.get(14), now.minusHours(48), 
                 now.minusHours(48).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
                 
-            // ✅ COMPLETED - Swap lần đầu tiên (không có battery cũ)
+            // COMPLETED - First time swap (no old battery)
             createSwapTransaction(drivers.get(2), vehicles.get(2), stations.get(2), staff.get(0), 
                 null, batteries.get(28), now.minusHours(72), 
                 now.minusHours(72).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
                 
-            // ✅ COMPLETED - Swap nhiều lần trong ngày
+            // COMPLETED - Multiple swaps in one day
             createSwapTransaction(drivers.get(3), vehicles.get(3), stations.get(3), staff.get(1), 
                 batteries.get(137), batteries.get(42), now.minusHours(12), 
                 now.minusHours(12).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
@@ -834,12 +834,12 @@ public class DatabaseInitializer implements CommandLineRunner {
                 batteries.get(42), batteries.get(70), now.minusHours(6), 
                 now.minusHours(6).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
                 
-            // ✅ IN_PROGRESS - Đang thực hiện swap
+            // IN_PROGRESS - Swap in progress
             createSwapTransaction(drivers.get(4), vehicles.get(4), stations.get(4), staff.get(1), 
                 batteries.get(138), batteries.get(56), now.minusMinutes(5), 
                 null, BigDecimal.ZERO, SwapTransaction.Status.IN_PROGRESS),
                 
-            // ✅ CANCELLED - Hủy vì lý do nào đó (battery không phù hợp, driver không đến...)
+            // CANCELLED - Cancelled (battery unsuitable, driver didn't show up, etc.)
             createSwapTransaction(drivers.get(2), vehicles.get(2), stations.get(6), staff.get(0), 
                 null, null, now.minusHours(3), 
                 now.minusHours(3).plusMinutes(1), BigDecimal.ZERO, SwapTransaction.Status.CANCELLED)
@@ -861,7 +861,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         transaction.setCost(cost);
         transaction.setStatus(status);
         
-        // ⭐ LƯU SNAPSHOT thông tin pin tại thời điểm swap
+        // Save snapshot of battery info at swap time
         if (swapOut != null) {
             transaction.setSwapOutBatteryModel(swapOut.getModel());
             transaction.setSwapOutBatteryChargeLevel(swapOut.getChargeLevel());
@@ -874,18 +874,18 @@ public class DatabaseInitializer implements CommandLineRunner {
             transaction.setSwapInBatteryHealth(swapIn.getStateOfHealth());
         }
         
-        // ⭐ CẬP NHẬT VEHICLE.CURRENTBATTERY sau khi swap
-        // Nếu status = COMPLETED → gắn pin MỚI (swapIn) lên xe
-        // Logic: swapOut = pin cũ lấy ra, swapIn = pin mới gắn vào
+        // Update vehicle current battery after swap
+        // If status = COMPLETED, mount new battery (swapIn) to vehicle
+        // Logic: swapOut = old battery removed, swapIn = new battery mounted
         if (status == SwapTransaction.Status.COMPLETED && swapIn != null) {
-            vehicle.setCurrentBattery(swapIn);  // ⭐ PHẢI LÀ PIN MỚI (swapIn), không phải pin cũ (swapOut)
+            vehicle.setCurrentBattery(swapIn);  // Must be new battery (swapIn), not old battery (swapOut)
         }
         
         return transaction;
     }
 
     private List<Payment> createPayments(List<SwapTransaction> transactions, List<DriverSubscription> subscriptions) {
-        // ✅ Payment chỉ cho SUBSCRIPTION, không có payment cho swap transaction
+        // Payment only for SUBSCRIPTION, no payment for swap transaction
         return List.of(
             // Payment cho subscription của driver1 (Gói Cơ Bản - 350k)
             createPayment(null, subscriptions.get(0), new BigDecimal("350000.00"), "MOMO", 

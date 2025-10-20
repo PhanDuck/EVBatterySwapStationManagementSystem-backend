@@ -42,8 +42,8 @@ public class BatteryService {
     private final AuthenticationService authenticationService;
 
     /**
-     * CREATE - Tạo battery mới (Admin/Staff only)
-     * ⭐ TỰ ĐỘNG thêm vào StationInventory nếu pin không thuộc trạm nào
+     * CREATE - Create new battery (Admin/Staff only)
+     * Auto-add to StationInventory if battery not assigned to any station
      */
     @Transactional
     public Battery createBattery(BatteryRequest request) {
@@ -56,7 +56,7 @@ public class BatteryService {
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
 
-        // ✅ Tạo battery thủ công thay vì dùng ModelMapper (tránh conflict)
+        // Create battery manually to avoid ModelMapper conflicts
         Battery battery = new Battery();
         battery.setModel(request.getModel());
         battery.setCapacity(request.getCapacity());
@@ -65,18 +65,18 @@ public class BatteryService {
         battery.setLastMaintenanceDate(request.getLastMaintenanceDate());
         battery.setBatteryType(batteryType);
         battery.setStatus(request.getStatus() != null ? request.getStatus() : Battery.Status.AVAILABLE);
-        battery.setChargeLevel(BigDecimal.valueOf(100.0)); // Default: pin mới = 100% charge
+        battery.setChargeLevel(BigDecimal.valueOf(100.0)); // Default: new battery = 100% charge
 
-        // Set current station nếu có
+        // Set current station if provided
         if (request.getCurrentStationId() != null) {
             battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
                     .orElseThrow(() -> new NotFoundException("Station not found")));
         }
 
-        // Save battery trước
+        // Save battery first
         Battery savedBattery = batteryRepository.save(battery);
 
-        // ⭐ TỰ ĐỘNG thêm vào StationInventory nếu pin KHÔNG thuộc trạm và KHÔNG đang IN_USE
+        // Auto-add to StationInventory if battery NOT at station and NOT IN_USE
         if (savedBattery.getCurrentStation() == null && savedBattery.getStatus() != Battery.Status.IN_USE) {
             StationInventory inventory = new StationInventory();
             inventory.setBattery(savedBattery);
@@ -96,7 +96,7 @@ public class BatteryService {
     }
 
     /**
-     * READ - Lấy tất cả batteries (Admin/Staff only)
+     * READ - Get all batteries (Admin/Staff only)
      */
     @Transactional(readOnly = true)
     public List<Battery> getAllBatteries() {

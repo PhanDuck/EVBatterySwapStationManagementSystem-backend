@@ -122,8 +122,8 @@ public class BookingService {
         booking.setStation(station);
         booking.setBookingTime(request.getBookingTime());
         
-        // ⭐ THAY ĐỔI: KHÔNG generate code khi tạo booking
-        // Code sẽ được generate khi Staff/Admin CONFIRM booking
+        // No confirmation code when creating booking
+        // Code will be generated when Staff/Admin confirms booking
         booking.setConfirmationCode(null);
         booking.setStatus(Booking.Status.PENDING);
 
@@ -396,7 +396,7 @@ public class BookingService {
      * 
      * Khi Staff/Admin confirm booking:
      * 1. Generate ma xac nhan 6 ky tu (ABC123)
-     * 2. TU DONG LAY PIN >80% TAI TRAM
+     *
      * 3. RESERVE PIN CHO DRIVER (status = PENDING)
      * 4. DAT THOI HAN 3 TIENG (auto-cancel neu khong swap)
      * 5. Chuyen status: PENDING → CONFIRMED
@@ -421,7 +421,7 @@ public class BookingService {
             );
         }
 
-        // BUOC 1: TIM PIN AVAILABLE, DIEN >= 80%, SUCK KHOE >= 70% TAI TRAM, DUNG LOAI PIN
+        // BUOC 1: TIM PIN AVAILABLE, , SUCK KHOE >= 70% TAI TRAM, DUNG LOAI PIN
         BatteryType requiredBatteryType = booking.getVehicle().getBatteryType();
         
         List<Battery> availableBatteries = batteryRepository.findAll()
@@ -430,7 +430,7 @@ public class BookingService {
                         && b.getCurrentStation().getId().equals(booking.getStation().getId())
                         && b.getBatteryType().getId().equals(requiredBatteryType.getId())
                         && b.getStatus() == Battery.Status.AVAILABLE
-                        && b.getChargeLevel().compareTo(BigDecimal.valueOf(80)) >= 0
+                        && b.getChargeLevel().compareTo(BigDecimal.valueOf(95)) >= 0
                         && b.getStateOfHealth() != null 
                         && b.getStateOfHealth().compareTo(BigDecimal.valueOf(70)) >= 0)  // ⭐ Health >= 70%
                 .sorted((b1, b2) -> {
@@ -443,7 +443,7 @@ public class BookingService {
 
         if (availableBatteries.isEmpty()) {
             throw new NotFoundException(
-                    "Khong co pin nao du dien (>= 80%) tai tram nay. " +
+                    "Khong co pin nao du dien (>= 95%) tai tram nay. " +
                     "Vui long chon tram khac hoac doi sau."
             );
         }

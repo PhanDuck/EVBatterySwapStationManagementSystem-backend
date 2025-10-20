@@ -86,22 +86,26 @@ public class DriverSubscriptionService {
     }
 
     /**
-     * ✅ TẠO SUBSCRIPTION SAU KHI THANH TOÁN THÀNH CÔNG
-     * Được gọi từ MoMoService sau khi verify payment
+     * TẠO SUBSCRIPTION SAU KHI THANH TOÁN THÀNH CÔNG
+     * 
+     * Được gọi từ MoMoService sau khi verify payment thành công
      * 
      * BUSINESS RULES:
-     * - ❌ Có gói ACTIVE + còn lượt swap → KHÔNG cho mua gói khác
-     * - ✅ Có gói ACTIVE + hết lượt swap (remainingSwaps = 0) → CHO PHÉP mua gói khác
-     * - ✅ Có gói EXPIRED → CHO PHÉP mua gói mới
-     * - ✅ Không có gói → CHO PHÉP mua gói
+     * - Có gói ACTIVE + còn lượt swap: KHÔNG cho mua gói khác
+     * - Có gói ACTIVE + hết lượt swap (remainingSwaps = 0): CHO PHÉP mua gói khác
+     * - Có gói EXPIRED: CHO PHÉP mua gói mới
+     * - Không có gói: CHO PHÉP mua gói
      * 
      * WORKFLOW:
-     * 1. Driver chọn packageId → Tạo MoMo payment URL
-     * 2. Driver thanh toán MoMo
-     * 3. MoMo callback → Gọi method này
-     * 4. Kiểm tra gói hiện tại
-     * 5. Nếu có gói active + còn lượt → reject
-     * 6. Nếu hết lượt hoặc hết hạn → expire gói cũ, tạo gói mới
+     * BUOC 1: Driver chọn packageId - Tạo MoMo payment URL
+     * BUOC 2: Driver thanh toán trên MoMo
+     * BUOC 3: MoMo callback - Gọi method này
+     * BUOC 4: Kiểm tra gói hiện tại của driver
+     * BUOC 5: Nếu có gói active + còn lượt - REJECT
+     * BUOC 6: Nếu hết lượt hoặc hết hạn - EXPIRE gói cũ + TẠO gói mới
+     * 
+     * @param packageId ID của service package
+     * @return DriverSubscription mới được tạo với status ACTIVE
      */
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId) {
@@ -162,14 +166,25 @@ public class DriverSubscriptionService {
     }
 
     /**
-     * ✅ TẠO SUBSCRIPTION SAU KHI THANH TOÁN (với driverId)
+     * TẠO SUBSCRIPTION SAU KHI THANH TOÁN (Overload - Không cần token)
      * 
-     * Overload method dùng cho payment gateway callback (MoMo)
-     * khi không có authentication token
+     * Được gọi từ MoMo callback khi driver KHÔNG CÓ TOKEN
      * 
-     * @param packageId ID của package
-     * @param driverId ID của driver (lấy từ extraData)
-     * @return DriverSubscription đã tạo
+     * TẠI SAO CẦN METHOD NÀY?
+     * - Khi driver thanh toán - redirect ra MoMo app/website
+     * - Sau khi thanh toán - MoMo callback về server
+     * - Lúc này driver KHÔNG CÓ JWT TOKEN!
+     * - Giải pháp: Lưu driverId vào extraData, lấy ra khi callback
+     * 
+     * LOGIC GIỐNG METHOD TRÊN:
+     * - Validate package tồn tại
+     * - Kiểm tra gói hiện tại
+     * - Expire gói cũ nếu cần
+     * - Tạo gói mới ACTIVE
+     * 
+     * @param packageId ID của service package
+     * @param driverId ID của driver (lấy từ extraData trong MoMo callback)
+     * @return DriverSubscription mới được tạo với status ACTIVE
      */
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId, Long driverId) {

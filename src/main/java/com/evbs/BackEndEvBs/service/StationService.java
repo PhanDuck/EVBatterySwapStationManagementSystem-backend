@@ -69,14 +69,21 @@ public class StationService {
     }
 
     /**
-     * READ - Lấy tất cả stations
+     * READ - Lấy tất cả stations (PUBLIC - không cần đăng nhập)
      * - Admin: xem tất cả stations
      * - Staff: chỉ xem stations được assign
-     * - Driver/Public: xem tất cả stations ACTIVE
+     * - Driver/Public (không đăng nhập): xem tất cả stations ACTIVE
      */
     @Transactional(readOnly = true)
     public List<Station> getAllStations() {
-        User currentUser = authenticationService.getCurrentUser();
+        // Lấy current user, có thể null nếu chưa đăng nhập
+        User currentUser = null;
+        try {
+            currentUser = authenticationService.getCurrentUser();
+        } catch (Exception e) {
+            // User chưa đăng nhập hoặc token không hợp lệ → currentUser = null
+            currentUser = null;
+        }
 
         // Admin thấy tất cả
         if (currentUser != null && currentUser.getRole() == User.Role.ADMIN) {
@@ -88,7 +95,7 @@ public class StationService {
             return staffStationAssignmentRepository.findStationsByStaff(currentUser);
         }
 
-        // Driver hoặc Public chỉ thấy stations ACTIVE
+        // Driver hoặc Public (không đăng nhập) chỉ thấy stations ACTIVE
         return stationRepository.findByStatus(Station.Status.ACTIVE);
     }
 

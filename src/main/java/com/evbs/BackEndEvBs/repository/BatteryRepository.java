@@ -24,6 +24,9 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
     // Tìm batteries theo battery type
     List<Battery> findByBatteryType_Id(Long batteryTypeId);
     
+    // ✅ Tìm pin AVAILABLE TRONG KHO theo BatteryType (currentStation = NULL)
+    List<Battery> findByBatteryType_IdAndStatusAndCurrentStationIsNull(Long batteryTypeId, Battery.Status status);
+    
     // ✅ Tìm pin AVAILABLE ở station với chargeLevel >= minCharge (cho swap transaction)
     // ORDER BY chargeLevel DESC để lấy pin đầy nhất trước
     @Query("SELECT b FROM Battery b WHERE b.currentStation.id = :stationId " +

@@ -61,9 +61,6 @@ public class SwapTransactionService {
     @Autowired
     private final BatteryHealthService batteryHealthService;
 
-    @Autowired
-    private final BatteryHistoryService batteryHistoryService;
-
     /**
      * CREATE - Tạo transaction mới (Driver)
      */
@@ -399,15 +396,7 @@ public class SwapTransactionService {
             // ✅ Kiểm tra và giảm SOH sau mỗi lần sử dụng
             batteryHealthService.degradeSOHAfterUsage(swapOutBattery);
             
-            // 📝 GHI LỊCH SỬ: Pin ra khỏi trạm
-            batteryHistoryService.logSwapEvent(
-                swapOutBattery, 
-                "SWAP_OUT", 
-                transaction.getStation(), 
-                transaction.getVehicle(), 
-                staff
-            );
-            log.info("✅ Logged SWAP_OUT event for battery {}", swapOutBattery.getId());
+            log.info("✅ Processed SWAP_OUT for battery {}", swapOutBattery.getId());
         }
 
         // Xử lý pin được đem vào trạm (pin cũ xuống xe)
@@ -415,26 +404,27 @@ public class SwapTransactionService {
             Battery swapInBattery = transaction.getSwapInBattery();
             swapInBattery.setCurrentStation(transaction.getStation()); // Gán vào trạm
             
-            // ✅ Nếu chargeLevel < 100%, đặt status = CHARGING để tự động sạc
-            BigDecimal currentCharge = swapInBattery.getChargeLevel();
-            if (currentCharge != null && currentCharge.compareTo(BigDecimal.valueOf(100)) < 0) {
-                swapInBattery.setStatus(Battery.Status.CHARGING); // Bắt đầu sạc
-                swapInBattery.setLastChargedTime(LocalDateTime.now()); // Ghi nhận thời điểm bắt đầu sạc
+            // ⭐ KIỂM TRA SỨC KHỎE TRƯỚC: Nếu health < 70% → MAINTENANCE
+            BigDecimal health = swapInBattery.getStateOfHealth();
+            if (health != null && health.compareTo(BigDecimal.valueOf(70)) < 0) {
+                swapInBattery.setStatus(Battery.Status.MAINTENANCE);
+                swapInBattery.setLastChargedTime(null);
+                log.warn("⚠️ Swap-in battery {} has low health {:.1f}% < 70% → MAINTENANCE", 
+                         swapInBattery.getId(), health.doubleValue());
             } else {
-                swapInBattery.setStatus(Battery.Status.AVAILABLE); // Đã đầy, sẵn sàng sử dụng
+                // Sức khỏe tốt → Kiểm tra chargeLevel
+                BigDecimal currentCharge = swapInBattery.getChargeLevel();
+                if (currentCharge != null && currentCharge.compareTo(BigDecimal.valueOf(100)) < 0) {
+                    swapInBattery.setStatus(Battery.Status.CHARGING); // Bắt đầu sạc
+                    swapInBattery.setLastChargedTime(LocalDateTime.now());
+                } else {
+                    swapInBattery.setStatus(Battery.Status.AVAILABLE); // Đã đầy, sẵn sàng sử dụng
+                }
             }
             
             batteryRepository.save(swapInBattery);
             
-            // 📝 GHI LỊCH SỬ: Pin vào trạm
-            batteryHistoryService.logSwapEvent(
-                swapInBattery, 
-                "SWAP_IN", 
-                transaction.getStation(), 
-                transaction.getVehicle(), 
-                staff
-            );
-            log.info("✅ Logged SWAP_IN event for battery {}", swapInBattery.getId());
+            log.info("✅ Processed SWAP_IN for battery {}", swapInBattery.getId());
         }
         
         // ⭐ CẬP NHẬT VEHICLE.CURRENTBATTERY
@@ -636,26 +626,6 @@ public class SwapTransactionService {
     }
 
     /**
-     * ⭐ XEM LỊCH SỬ ĐỔI PIN CỦA XE CỦA TÔI (Driver only)
-     * 
-     * Driver xem lịch sử đổi pin của xe mình sở hữu
-     */
-    @Transactional(readOnly = true)
-    public List<SwapTransaction> getMyVehicleSwapHistory(Long vehicleId) {
-        User currentDriver = authenticationService.getCurrentUser();
-        
-        Vehicle vehicle = vehicleRepository.findByIdAndDriver(vehicleId, currentDriver)
-                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy xe của bạn với ID: " + vehicleId));
-        
-        List<SwapTransaction> history = swapTransactionRepository.findByVehicleOrderByStartTimeDesc(vehicle);
-        
-        log.info("📜 Driver {} retrieved {} swap transactions for their vehicle {}", 
-                currentDriver.getUsername(), history.size(), vehicleId);
-        
-        return history;
-    }
-
-    /**
      * 🔋 XEM LỊCH SỬ SỬ DỤNG CỦA PIN
      * 
      * Xem pin đã được dùng bởi những driver/xe nào, tại trạm nào
@@ -695,58 +665,6 @@ public class SwapTransactionService {
                 allHistory.size(), batteryId, battery.getModel());
         
         return allHistory;
-    }
-    
-    /**
-     * 🔋 XEM PIN ĐÃ ĐƯỢC LẤY RA BAO NHIÊU LẦN
-     * 
-     * Chỉ xem các lần pin được swap OUT (lấy ra từ trạm để lên xe)
-     * 
-     * @param batteryId ID của pin
-     * @return List<SwapTransaction>
-     */
-    @Transactional(readOnly = true)
-    public List<SwapTransaction> getBatterySwapOutHistory(Long batteryId) {
-        User currentUser = authenticationService.getCurrentUser();
-        
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("❌ Chỉ Staff/Admin mới có quyền xem lịch sử pin");
-        }
-        
-        Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy pin với ID: " + batteryId));
-        
-        List<SwapTransaction> history = swapTransactionRepository.findBySwapOutBatteryOrderByStartTimeDesc(battery);
-        
-        log.info("🔋 Pin {} đã được lấy ra {} lần", battery.getModel(), history.size());
-        
-        return history;
-    }
-    
-    /**
-     * 🔋 XEM PIN ĐÃ ĐƯỢC TRẢ VỀ BAO NHIÊU LẦN
-     * 
-     * Chỉ xem các lần pin được swap IN (đem vào trạm từ xe)
-     * 
-     * @param batteryId ID của pin
-     * @return List<SwapTransaction>
-     */
-    @Transactional(readOnly = true)
-    public List<SwapTransaction> getBatterySwapInHistory(Long batteryId) {
-        User currentUser = authenticationService.getCurrentUser();
-        
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("❌ Chỉ Staff/Admin mới có quyền xem lịch sử pin");
-        }
-        
-        Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy pin với ID: " + batteryId));
-        
-        List<SwapTransaction> history = swapTransactionRepository.findBySwapInBatteryOrderByStartTimeDesc(battery);
-        
-        log.info("🔋 Pin {} đã được trả về {} lần", battery.getModel(), history.size());
-        
-        return history;
     }
 
     private boolean isAdminOrStaff(User user) {

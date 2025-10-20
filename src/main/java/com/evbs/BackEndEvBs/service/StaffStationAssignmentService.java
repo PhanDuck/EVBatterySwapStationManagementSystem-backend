@@ -199,4 +199,34 @@ public class StaffStationAssignmentService {
 
         return false;
     }
+
+    /**
+     * VALIDATION - Kiểm tra current user có quyền truy cập station không
+     * Throws exception nếu không có quyền
+     */
+    public void validateStationAccess(Long stationId) {
+        User currentUser = authenticationService.getCurrentUser();
+        
+        // Admin có quyền truy cập tất cả
+        if (currentUser.getRole() == User.Role.ADMIN) {
+            return;
+        }
+        
+        // Staff chỉ được truy cập stations được assign
+        if (currentUser.getRole() == User.Role.STAFF) {
+            Station station = stationRepository.findById(stationId)
+                    .orElseThrow(() -> new NotFoundException("Station not found with ID: " + stationId));
+            
+            boolean hasAccess = assignmentRepository.existsByStaffAndStation(currentUser, station);
+            
+            if (!hasAccess) {
+                throw new AuthenticationException(
+                    "Access denied. You are not assigned to manage this station (ID: " + stationId + ")"
+                );
+            }
+            return;
+        }
+        
+        throw new AuthenticationException("Access denied");
+    }
 }

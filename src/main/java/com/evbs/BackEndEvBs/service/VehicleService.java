@@ -10,6 +10,7 @@ import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,9 @@ public class VehicleService {
 
     @Autowired
     private final AuthenticationService authenticationService;
+
+    @Autowired
+    private final ModelMapper modelMapper;
 
     /**
      * Creates a new Vehicle

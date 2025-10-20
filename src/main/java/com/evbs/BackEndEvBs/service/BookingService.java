@@ -7,6 +7,7 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.Vehicle;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
+import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.BookingRequest;
 import com.evbs.BackEndEvBs.repository.BookingRepository;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -38,6 +40,9 @@ public class BookingService {
 
     @Autowired
     private final AuthenticationService authenticationService;
+
+    @Autowired
+    private EmailService emailService;
 
     /**
      * CREATE - Tạo booking mới (Driver)
@@ -106,7 +111,51 @@ public class BookingService {
         booking.setConfirmationCode(null);
         booking.setStatus(Booking.Status.PENDING);
 
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Gửi email xác nhận booking
+        sendBookingConfirmationEmail(savedBooking, currentUser, vehicle, station);
+
+        return savedBooking;
+    }
+
+    /**
+     * Gửi email xác nhận đặt lịch
+     */
+    private void sendBookingConfirmationEmail(Booking booking, User driver, Vehicle vehicle, Station station) {
+        try {
+            //Tạo email detail
+            EmailDetail emailDetail = new EmailDetail();
+            emailDetail.setRecipient(driver.getEmail());
+            emailDetail.setSubject("Xác nhận đặt lịch thay pin - EV Battery Swap");
+            emailDetail.setFullName(driver.getFullName());
+
+            // Thông tin booking
+            emailDetail.setBookingId(booking.getId());
+            emailDetail.setStationName(station.getName());
+            emailDetail.setStationLocation(
+                    station.getLocation() != null ? station.getLocation() :
+                            (station.getDistrict() + ", " + station.getCity())
+            );
+            emailDetail.setStationContact(station.getContactInfo() != null ? station.getContactInfo() : "Chưa cập nhật");
+
+            // Format thời gian
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+            emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
+
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : vehicle.getPlateNumber());
+            emailDetail.setBatteryType(
+                    station.getBatteryType().getName() +
+                            (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
+            );
+            emailDetail.setStatus(booking.getStatus().toString());
+
+            // Gửi email bất đồng bộ (không chặn luồng chính)
+            emailService.sendBookingConfirmationEmail(emailDetail);
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không ảnh hưởng đến booking
+            System.err.println("Failed to send booking confirmation email: " + e.getMessage());
+        }
     }
 
     /**

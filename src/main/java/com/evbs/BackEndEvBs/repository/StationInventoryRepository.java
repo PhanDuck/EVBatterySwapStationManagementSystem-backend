@@ -7,24 +7,21 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * StationInventoryRepository - Quản lý KHO TỔNG
+ * 
+ * StationInventory không còn liên kết với Station.
+ * Chỉ quản lý pin trong kho (Battery.currentStation = NULL)
+ */
 @Repository
 public interface StationInventoryRepository extends JpaRepository<StationInventory, Long> {
 
-    // Tìm inventory theo station
-    List<StationInventory> findByStationId(Long stationId);
-
     // Tìm inventory theo battery
-    Optional<StationInventory> findByBatteryId(Long batteryId);
+    Optional<StationInventory> findByBattery_Id(Long batteryId);
 
-    // Tìm available batteries trong station
-    List<StationInventory> findByStationIdAndStatus(Long stationId, StationInventory.Status status);
+    // Tìm inventory theo status
+    List<StationInventory> findByStatus(StationInventory.Status status);
 
-    // Kiểm tra battery đã tồn tại trong inventory
-    boolean existsByBatteryId(Long batteryId);
-
-    // Đếm số lượng battery trong station
-    int countByStationId(Long stationId);
-
-    // Kiểm tra battery có trong station cụ thể không
-    boolean existsByStationIdAndBatteryId(Long stationId, Long batteryId);
+    // Kiểm tra battery đã tồn tại trong kho
+    boolean existsByBattery_Id(Long batteryId);
 }

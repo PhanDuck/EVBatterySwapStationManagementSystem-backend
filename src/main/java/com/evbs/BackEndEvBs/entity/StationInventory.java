@@ -7,6 +7,13 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * StationInventory = KHO TỔNG (Central Warehouse)
+ * - Nơi tạo pin mới
+ * - Nơi bảo trì tất cả các pin
+ * - Pin trong kho: Battery.currentStation = NULL
+ * - Pin ở trạm: Battery.currentStation != NULL (KHÔNG có trong StationInventory)
+ */
 @Entity
 @Table(name = "StationInventory")
 @Getter
@@ -14,7 +21,8 @@ import java.time.LocalDateTime;
 public class StationInventory {
 
     public enum Status {
-        AVAILABLE, RESERVED, MAINTENANCE
+        AVAILABLE,  // Pin sẵn sàng để gửi đến trạm
+        MAINTENANCE // Pin đang bảo trì trong kho
     }
 
     @Id
@@ -23,12 +31,7 @@ public class StationInventory {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "StationID", nullable = false)
-    @JsonIgnore
-    private Station station;
-
-    @ManyToOne
-    @JoinColumn(name = "BatteryID", nullable = false)
+    @JoinColumn(name = "BatteryID", nullable = false, unique = true)
     @JsonIgnore
     private Battery battery;
 

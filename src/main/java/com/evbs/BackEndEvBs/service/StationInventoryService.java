@@ -1,197 +1,157 @@
 package com.evbs.BackEndEvBs.service;
 
-import com.evbs.BackEndEvBs.entity.*;
-import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
+import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.Station;
+import com.evbs.BackEndEvBs.entity.StationInventory;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
-import com.evbs.BackEndEvBs.model.request.StationInventoryRequest;
-import com.evbs.BackEndEvBs.repository.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.evbs.BackEndEvBs.repository.BatteryRepository;
+import com.evbs.BackEndEvBs.repository.StationInventoryRepository;
+import com.evbs.BackEndEvBs.repository.StationRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class StationInventoryService {
 
-    @Autowired
     private final StationInventoryRepository stationInventoryRepository;
-
-    @Autowired
+    private final BatteryRepository batteryRepository;
     private final StationRepository stationRepository;
 
-    @Autowired
-    private final BatteryRepository batteryRepository;
-
-    @Autowired
-    private final AuthenticationService authenticationService;
-
-    /**
-     * CREATE - Thêm battery vào station (Admin/Staff only)
-     */
-    @Transactional
-    public StationInventory addBatteryToStation(StationInventoryRequest request) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin or Staff role required.");
-        }
-
-        // Validate station
-        Station station = stationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new NotFoundException("Station not found with id: " + request.getStationId()));
-
-        // Validate battery
-        Battery battery = batteryRepository.findById(request.getBatteryId())
-                .orElseThrow(() -> new NotFoundException("Battery not found with id: " + request.getBatteryId()));
-
-        // Kiểm tra battery đã có trong station khác chưa
-        if (stationInventoryRepository.existsByBatteryId(request.getBatteryId())) {
-            throw new AuthenticationException("Battery already exists in another station");
-        }
-        // Kiểm tra battery đã có trong station này chưa
-        if (stationInventoryRepository.existsByStationIdAndBatteryId(request.getStationId(), request.getBatteryId())) {
-            throw new AuthenticationException("Battery already exists in this station");
-        }
-
-        // Kiểm tra capacity của station
-        validateStationCapacity(station);
-
-        StationInventory stationInventory = new StationInventory();
-        stationInventory.setStation(station);
-        stationInventory.setBattery(battery);
-        stationInventory.setStatus(request.getStatus() != null ? request.getStatus() : StationInventory.Status.AVAILABLE);
-        stationInventory.setLastUpdate(LocalDateTime.now());
-
-        // Cập nhật current station của battery
-        battery.setCurrentStation(station);
-        batteryRepository.save(battery);
-        return stationInventoryRepository.save(stationInventory);
+    public StationInventoryService(StationInventoryRepository stationInventoryRepository,
+                                  BatteryRepository batteryRepository,
+                                  StationRepository stationRepository) {
+        this.stationInventoryRepository = stationInventoryRepository;
+        this.batteryRepository = batteryRepository;
+        this.stationRepository = stationRepository;
     }
 
-    /**
-     * READ - Lấy tất cả inventory (Admin/Staff only)
-     */
     @Transactional(readOnly = true)
-    public List<StationInventory> getAllInventory() {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin or Staff role required.");
-        }
+    public List<StationInventory> getAllBatteriesInWarehouse() {
         return stationInventoryRepository.findAll();
     }
 
     /**
-     * READ - Lấy inventory theo station (Public)
+     * Thay pin bảo trì ở trạm bằng pin từ kho tổng
+     * 
+     * Điều kiện:
+     * - Pin cũ: Ở trạm, status = MAINTENANCE
+     * - Pin mới: Trong kho (currentStation = NULL), CÙNG BatteryType, health >= 90%
+     * 
+     * Kết quả:
+     * - Pin mới → Vào trạm (currentStation = stationId)
+     * - Pin cũ → Về kho (currentStation = NULL, thêm vào StationInventory)
      */
-    @Transactional(readOnly = true)
-    public List<StationInventory> getStationInventory(Long stationId) {
-
-        // Validate station exists
-        if (!stationRepository.existsById(stationId)) {
-            throw new NotFoundException("Station not found with id: " + stationId);
-        }
-        return stationInventoryRepository.findByStationId(stationId);
-    }
-
-    /**
-     * READ - Lấy available batteries trong station (Public)
-     */
-    @Transactional(readOnly = true)
-    public List<StationInventory> getAvailableBatteries(Long stationId) {
-
-        // Validate station exists
-        if (!stationRepository.existsById(stationId)) {
-            throw new NotFoundException("Station not found with id: " + stationId);
-        }
-        return stationInventoryRepository.findByStationIdAndStatus(stationId, StationInventory.Status.AVAILABLE);
-    }
-
-    /**
-     * READ - Lấy thông tin capacity của station (Public)
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> getStationCapacityInfo(Long stationId) {
+    @Transactional
+    public Map<String, Object> replaceBatteryForMaintenance(
+            Long maintenanceBatteryId, 
+            Long availableBatteryId, 
+            Long stationId) {
+        
+        // 1. Kiểm tra trạm
         Station station = stationRepository.findById(stationId)
-
-                .orElseThrow(() -> new NotFoundException("Station not found with id: " + stationId));
-
-        int currentCount = stationInventoryRepository.countByStationId(stationId);
-        int maxCapacity = station.getCapacity();
-        int availableSlots = Math.max(0, maxCapacity - currentCount);
-
-        Map<String, Object> capacityInfo = new HashMap<>();
-        capacityInfo.put("stationId", stationId);
-        capacityInfo.put("stationName", station.getName());
-        capacityInfo.put("maxCapacity", maxCapacity);
-        capacityInfo.put("currentCount", currentCount);
-        capacityInfo.put("availableSlots", availableSlots);
-        capacityInfo.put("isFull", currentCount >= maxCapacity);
-
-        capacityInfo.put("utilizationRate", maxCapacity > 0 ? (double) currentCount / maxCapacity * 100 : 0);
-
-        return capacityInfo;
-    }
-
-    /**
-     * UPDATE - Cập nhật battery status (Admin/Staff only)
-     */
-    @Transactional
-    public StationInventory updateBatteryStatus(Long id, StationInventory.Status status) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin or Staff role required.");
+                .orElseThrow(() -> new NotFoundException("Khong tim thay tram voi ID: " + stationId));
+        
+        // 2. Kiểm tra pin cũ (MAINTENANCE ở trạm)
+        Battery maintenanceBattery = batteryRepository.findById(maintenanceBatteryId)
+                .orElseThrow(() -> new NotFoundException("Khong tim thay pin voi ID: " + maintenanceBatteryId));
+        
+        // 3. Kiểm tra pin mới (AVAILABLE trong kho)
+        Battery availableBattery = batteryRepository.findById(availableBatteryId)
+                .orElseThrow(() -> new NotFoundException("Khong tim thay pin voi ID: " + availableBatteryId));
+        
+        // 4. Validate pin cũ: Phải ở TRẠM này
+        if (maintenanceBattery.getCurrentStation() == null || 
+            !maintenanceBattery.getCurrentStation().getId().equals(stationId)) {
+            throw new RuntimeException("Pin cu khong o tram nay");
         }
-        StationInventory inventory = stationInventoryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Station inventory not found with id: " + id));
-
-        inventory.setStatus(status);
-        inventory.setLastUpdate(LocalDateTime.now());
-
-        return stationInventoryRepository.save(inventory);
-    }
-
-    /**
-     * DELETE - Xóa battery khỏi station (Admin only)
-     */
-    @Transactional
-    public void removeBatteryFromStation(Long id) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+        
+        // 5. Validate pin cũ: Phải MAINTENANCE
+        if (maintenanceBattery.getStatus() != Battery.Status.MAINTENANCE) {
+            throw new RuntimeException("Pin cu khong o trang thai MAINTENANCE");
         }
-
-        StationInventory inventory = stationInventoryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Station inventory not found with id: " + id));
-
-        // Cập nhật current station của battery thành null
-        Battery battery = inventory.getBattery();
-        battery.setCurrentStation(null);
-        batteryRepository.save(battery);
-
-        stationInventoryRepository.delete(inventory);
-    }
-
-    // ==================== HELPER METHODS ====================
-
-    private boolean isAdminOrStaff(User user) {
-        return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
-    }
-
-    /**
-     * Kiểm tra station đã đầy chưa
-     */
-    private void validateStationCapacity(Station station) {
-        int currentBatteryCount = stationInventoryRepository.countByStationId(station.getId());
-        if (currentBatteryCount >= station.getCapacity()) {
-            throw new AuthenticationException(
-                    String.format("Station '%s' is full! Current: %d/%d batteries. Cannot add more batteries.",
-                            station.getName(), currentBatteryCount, station.getCapacity())
+        
+        // 6. Validate pin mới: Phải TRONG KHO (currentStation = NULL)
+        if (availableBattery.getCurrentStation() != null) {
+            throw new RuntimeException("Pin moi da o tram " + availableBattery.getCurrentStation().getName());
+        }
+        
+        // 7. Validate pin mới: Sức khỏe >= 90%
+        if (availableBattery.getStateOfHealth() == null || 
+            availableBattery.getStateOfHealth().compareTo(new BigDecimal("90.00")) < 0) {
+            throw new RuntimeException("Pin moi suc khoe khong du (can >= 90%)");
+        }
+        
+        // 8. Validate: CÙNG LOẠI PIN (BatteryType phải giống nhau)
+        if (!maintenanceBattery.getBatteryType().getId().equals(availableBattery.getBatteryType().getId())) {
+            throw new RuntimeException(
+                String.format("Khong duoc thay pin khac loai! Pin cu: %s, Pin moi: %s", 
+                    maintenanceBattery.getBatteryType().getName(),
+                    availableBattery.getBatteryType().getName())
             );
         }
+        
+        // 9. Đưa pin mới VÀO TRẠM
+        availableBattery.setCurrentStation(station);
+        availableBattery.setStatus(Battery.Status.AVAILABLE);
+        
+        // 10. Đưa pin cũ VỀ KHO
+        maintenanceBattery.setCurrentStation(null);
+        maintenanceBattery.setStatus(Battery.Status.MAINTENANCE);
+        maintenanceBattery.setLastMaintenanceDate(LocalDate.now());
+        
+        // 11. Lưu cả hai pin
+        batteryRepository.save(maintenanceBattery);
+        batteryRepository.save(availableBattery);
+        
+        // 12. Tạo StationInventory cho pin cũ về kho
+        StationInventory inventory = new StationInventory();
+        inventory.setBattery(maintenanceBattery);
+        inventory.setStatus(StationInventory.Status.MAINTENANCE);
+        inventory.setLastUpdate(LocalDateTime.now());
+        stationInventoryRepository.save(inventory);
+        
+        // 13. Xóa pin mới khỏi StationInventory (nếu có)
+        stationInventoryRepository.findAll().stream()
+                .filter(inv -> inv.getBattery().getId().equals(availableBatteryId))
+                .findFirst()
+                .ifPresent(stationInventoryRepository::delete);
+        
+        log.info("✅ Da thay pin tai tram {}. Pin cu {} VE KHO, Pin moi {} VAO TRAM", 
+                station.getName(), maintenanceBattery.getId(), availableBattery.getId());
+        
+        // 14. Trả về kết quả
+        Map<String, Object> result = new HashMap<>();
+        result.put("stationId", station.getId());
+        result.put("stationName", station.getName());
+        result.put("oldBattery", Map.of(
+            "batteryId", maintenanceBattery.getId(),
+            "model", maintenanceBattery.getModel(),
+            "batteryType", maintenanceBattery.getBatteryType().getName(),
+            "oldLocation", "TRAM " + station.getName(),
+            "newLocation", "KHO TONG",
+            "status", "MAINTENANCE",
+            "stateOfHealth", maintenanceBattery.getStateOfHealth()
+        ));
+        result.put("newBattery", Map.of(
+            "batteryId", availableBattery.getId(),
+            "model", availableBattery.getModel(),
+            "batteryType", availableBattery.getBatteryType().getName(),
+            "oldLocation", "KHO TONG",
+            "newLocation", "TRAM " + station.getName(),
+            "status", "AVAILABLE",
+            "stateOfHealth", availableBattery.getStateOfHealth()
+        ));
+        result.put("replacedAt", LocalDateTime.now());
+        
+        return result;
     }
 }

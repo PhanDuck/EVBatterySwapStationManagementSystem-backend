@@ -39,7 +39,10 @@ public class Filter extends OncePerRequestFilter {
             "GET:/swagger-ui/**",
             "GET:/v3/api-docs/**",
             "GET:/swagger-resources/**",
-            "GET:/api/station/**",
+            // Station PUBLIC endpoints (chỉ list, detail và batteries list - không bao gồm needs-maintenance)
+            "GET:/api/station",
+            "GET:/api/station/*",
+            "GET:/api/station/*/batteries",
             "GET:/api/stations/active",
             "GET:/api/stations/available",
             "GET:/api/stations/search",
@@ -47,7 +50,10 @@ public class Filter extends OncePerRequestFilter {
             "GET:/api/service-package/**",
             "GET:/api/station-inventory/station/**",
             "GET:/api/station-inventory/station/*/available",
-            "GET:/api/station-inventory/station/*/capacity"
+            "GET:/api/station-inventory/station/*/capacity",
+            // ⚠️ PAYMENT CALLBACKS - Không cần token vì user bị redirect từ payment gateway
+            "GET:/api/payment/momo-return",
+            "POST:/api/payment/momo-ipn"
     );
 
     public boolean isPublicAPI(String uri, String method) {

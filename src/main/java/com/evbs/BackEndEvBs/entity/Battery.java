@@ -19,7 +19,12 @@ import java.util.List;
 public class Battery {
 
     public enum Status {
-        AVAILABLE, IN_USE, CHARGING, MAINTENANCE, DAMAGED
+        AVAILABLE,    // Pin sẵn sàng để đổi
+        PENDING,      // Pin đang được giữ cho booking (reserved)
+        IN_USE,       // Pin đang được sử dụng bởi tài xế
+        CHARGING,     // Pin đang sạc
+        MAINTENANCE,  // Pin đang bảo trì
+        DAMAGED       // Pin hỏng
     }
 
     @Id
@@ -35,6 +40,14 @@ public class Battery {
 
     @Column(name = "StateOfHealth", precision = 5, scale = 2)
     private BigDecimal stateOfHealth;
+
+    // ✅ State of Charge (SOC) - Mức pin hiện tại (0-100%)
+    @Column(name = "ChargeLevel", precision = 5, scale = 2)
+    private BigDecimal chargeLevel = BigDecimal.valueOf(100.0);  // Default 100% khi mới
+
+    // ✅ Thời điểm bắt đầu sạc (để tính thời gian sạc)
+    @Column(name = "LastChargedTime")
+    private LocalDateTime lastChargedTime;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
@@ -53,6 +66,16 @@ public class Battery {
     @Column(name = "CreatedAt")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    // ========== BOOKING RESERVATION FIELDS ==========
+    // Khi pin được reserve cho booking (status = PENDING)
+    @ManyToOne
+    @JoinColumn(name = "ReservedForBookingID")
+    @JsonIgnore
+    private Booking reservedForBooking;
+
+    @Column(name = "ReservationExpiry")
+    private LocalDateTime reservationExpiry;  // Hết hạn sau 3 giờ
+
     @ManyToOne
     @JoinColumn(name = "CurrentStationID")
     @JsonIgnore
@@ -62,10 +85,6 @@ public class Battery {
     @JoinColumn(name = "BatteryTypeID", nullable = false)
     @JsonIgnore
     private BatteryType batteryType;
-
-    @OneToMany(mappedBy = "battery")
-    @JsonIgnore
-    private List<BatteryHistory> batteryHistories = new ArrayList<>();
 
     @OneToMany(mappedBy = "battery")
     @JsonIgnore

@@ -21,5 +21,4 @@ public class EmailController {
     public void sendMail(@RequestBody EmailDetail emailDetail){
         emailService.sendMailTemplate(emailDetail);
     }
-
 }

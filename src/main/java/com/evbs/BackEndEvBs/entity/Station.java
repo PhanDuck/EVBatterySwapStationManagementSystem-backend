@@ -71,9 +71,8 @@ public class Station {
     @JsonIgnore
     private List<Battery> batteries = new ArrayList<>();
 
-    @OneToMany(mappedBy = "station")
-    @JsonIgnore
-    private List<StationInventory> inventory = new ArrayList<>();
+    // StationInventory = KHO TỔNG (không thuộc trạm cụ thể nào)
+    // Đã XÓA relationship với Station
 
     @OneToMany(mappedBy = "station")
     @JsonIgnore
@@ -86,10 +85,6 @@ public class Station {
     @OneToMany(mappedBy = "station")
     @JsonIgnore
     private List<SupportTicket> supportTickets = new ArrayList<>();
-
-    @OneToMany(mappedBy = "relatedStation")
-    @JsonIgnore
-    private List<BatteryHistory> batteryHistories = new ArrayList<>();
 
     // Getter để serialize batteryTypeId
     public Long getBatteryTypeId() {

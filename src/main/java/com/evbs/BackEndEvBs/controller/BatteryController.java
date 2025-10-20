@@ -97,42 +97,4 @@ public class BatteryController {
         return ResponseEntity.ok(batteries);
     }
 
-    // ==================== UTILITY ENDPOINTS ====================
-
-    /**
-     * GET /api/battery/search/model : Search batteries by model (Admin/Staff only)
-     */
-    @GetMapping("/search/model")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Search batteries by model")
-    public ResponseEntity<List<Battery>> searchBatteriesByModel(@RequestParam String model) {
-        List<Battery> batteries = batteryService.searchBatteriesByModel(model);
-        return ResponseEntity.ok(batteries);
-    }
-
-    /**
-     * PATCH /api/battery/{id}/status : Update battery status (Admin/Staff only)
-     */
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update battery status")
-    public ResponseEntity<Battery> updateBatteryStatus(
-            @PathVariable Long id,
-            @RequestParam Battery.Status status) {
-        Battery battery = batteryService.updateBatteryStatus(id, status);
-        return ResponseEntity.ok(battery);
-    }
-
-    /**
-     * PATCH /api/battery/{id}/health : Update battery health (Admin/Staff only)
-     */
-    @PatchMapping("/{id}/health")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update battery health")
-    public ResponseEntity<Battery> updateBatteryHealth(
-            @PathVariable Long id,
-            @RequestParam BigDecimal stateOfHealth) {
-        Battery battery = batteryService.updateBatteryHealth(id, stateOfHealth);
-        return ResponseEntity.ok(battery);
-    }
 }

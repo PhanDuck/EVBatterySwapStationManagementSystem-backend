@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class BatteryRequest {
@@ -27,9 +28,16 @@ public class BatteryRequest {
     @Digits(integer = 3, fraction = 2, message = "State of health must have max 3 integer and 2 fraction digits")
     private BigDecimal stateOfHealth;
 
-
     @Enumerated(EnumType.STRING)
     private Battery.Status status = Battery.Status.AVAILABLE;
+
+    // Thêm các trường mới
+    private LocalDate manufactureDate;
+
+    private LocalDate lastMaintenanceDate;
+
+    @NotNull(message = "Battery type ID cannot be null!")
+    private Long batteryTypeId;
 
     private Long currentStationId;
 }

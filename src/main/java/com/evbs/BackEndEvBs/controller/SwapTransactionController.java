@@ -37,6 +37,19 @@ public class SwapTransactionController {
     }
 
     /**
+     * ⭐ POST /api/swap-transaction/swap-by-code : Driver tự swap bằng confirmation code
+     * 
+     * Driver nhập mã xác nhận (ABC123) tại trạm → Tự động tạo swap transaction
+     */
+    @PostMapping("/swap-by-code")
+    @Operation(summary = "Self-service swap by confirmation code",
+            description = "Driver nhập mã xác nhận 6 ký tự tại trạm để tự động swap pin")
+    public ResponseEntity<SwapTransaction> swapByConfirmationCode(@RequestParam String confirmationCode) {
+        SwapTransaction transaction = swapTransactionService.createSwapByConfirmationCode(confirmationCode);
+        return new ResponseEntity<>(transaction, HttpStatus.CREATED);
+    }
+
+    /**
      * GET /api/swap-transaction/my-transactions : Get my transactions (Driver)
      */
     @GetMapping("/my-transactions")
@@ -56,15 +69,9 @@ public class SwapTransactionController {
         return ResponseEntity.ok(transaction);
     }
 
-    /**
-     * PATCH /api/swap-transaction/my-transactions/{id}/complete : Complete my transaction (Driver)
-     */
-    @PatchMapping("/my-transactions/{id}/complete")
-    @Operation(summary = "Complete my transaction")
-    public ResponseEntity<SwapTransaction> completeMyTransaction(@PathVariable Long id) {
-        SwapTransaction transaction = swapTransactionService.completeMyTransaction(id);
-        return ResponseEntity.ok(transaction);
-    }
+    // ❌ REMOVED: Driver self-complete (security risk)
+    // Transaction will be auto-completed after payment
+    // Only staff can manually complete if needed
 
     // ==================== ADMIN/STAFF ENDPOINTS ====================
 
@@ -103,5 +110,33 @@ public class SwapTransactionController {
             @RequestParam SwapTransaction.Status status) {
         SwapTransaction transaction = swapTransactionService.updateTransactionStatus(id, status);
         return ResponseEntity.ok(transaction);
+    }
+
+    /**
+     * ⭐ GET /api/swap-transaction/vehicle/{vehicleId}/history : Xem lịch sử đổi pin của xe
+     * 
+     * Staff/Admin: Xem được tất cả xe
+     * Driver: Chỉ xem được xe của mình
+     */
+    @GetMapping("/vehicle/{vehicleId}/history")
+    @Operation(summary = "Get vehicle swap history",
+            description = "Xem lịch sử đổi pin của 1 xe cụ thể (Driver chỉ xem xe mình, Staff/Admin xem tất cả)")
+    public ResponseEntity<List<SwapTransaction>> getVehicleSwapHistory(@PathVariable Long vehicleId) {
+        List<SwapTransaction> history = swapTransactionService.getVehicleSwapHistory(vehicleId);
+        return ResponseEntity.ok(history);
+    }
+
+    /**
+     * 🔋 GET /api/swap-transaction/battery/{batteryId}/history : Xem lịch sử sử dụng của pin
+     * 
+     * Staff/Admin xem pin đã được dùng bởi driver nào, xe nào, ở đâu
+     * Bao gồm cả swap OUT (lấy ra) và swap IN (trả về)
+     */
+    @GetMapping("/battery/{batteryId}/history")
+    @Operation(summary = "Get battery usage history",
+            description = "Xem lịch sử sử dụng của pin (bao gồm swap-out và swap-in) - Staff/Admin only")
+    public ResponseEntity<List<SwapTransaction>> getBatteryUsageHistory(@PathVariable Long batteryId) {
+        List<SwapTransaction> history = swapTransactionService.getBatteryUsageHistory(batteryId);
+        return ResponseEntity.ok(history);
     }
 }

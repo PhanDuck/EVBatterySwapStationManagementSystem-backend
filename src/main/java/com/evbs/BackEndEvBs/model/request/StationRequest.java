@@ -34,4 +34,7 @@ public class StationRequest {
     private Double latitude;
 
     private Double longitude;
+
+    @NotNull(message = "Battery type ID cannot be null!")
+    private Long batteryTypeId;
 }

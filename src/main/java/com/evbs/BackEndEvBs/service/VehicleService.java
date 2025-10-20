@@ -1,11 +1,13 @@
 package com.evbs.BackEndEvBs.service;
 
+import com.evbs.BackEndEvBs.entity.BatteryType;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.Vehicle;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.VehicleRequest;
 import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
+import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -23,6 +25,9 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
 
     @Autowired
+    private final BatteryTypeRepository batteryTypeRepository;
+
+    @Autowired
     private final AuthenticationService authenticationService;
 
     @Autowired
@@ -33,16 +38,28 @@ public class VehicleService {
      */
     @Transactional
     public Vehicle createVehicle(VehicleRequest vehicleRequest) {
+        // Validate VIN unique
         if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
             throw new AuthenticationException("VIN already exists!");
         }
 
+        // Validate PlateNumber unique
         if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
             throw new AuthenticationException("Plate number already exists!");
         }
 
-        Vehicle vehicle = modelMapper.map(vehicleRequest, Vehicle.class);
+        // Validate battery type exists
+        BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
+                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+
+        // ✅ Tạo vehicle mới thủ công thay vì dùng ModelMapper (tránh conflict)
+        Vehicle vehicle = new Vehicle();
+        vehicle.setVin(vehicleRequest.getVin());
+        vehicle.setPlateNumber(vehicleRequest.getPlateNumber());
+        vehicle.setModel(vehicleRequest.getModel());
         vehicle.setDriver(authenticationService.getCurrentUser());
+        vehicle.setBatteryType(batteryType);
+
         return vehicleRepository.save(vehicle);
     }
 
@@ -81,6 +98,13 @@ public class VehicleService {
             existingVehicle.setModel(vehicleRequest.getModel());
         }
 
+        // Driver có thể update battery type
+        if (vehicleRequest.getBatteryTypeId() != null) {
+            BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
+                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+            existingVehicle.setBatteryType(batteryType);
+        }
+
         return vehicleRepository.save(existingVehicle);
     }
 
@@ -116,6 +140,19 @@ public class VehicleService {
                 throw new AuthenticationException("Plate number already exists!");
             }
             existingVehicle.setPlateNumber(vehicleRequest.getPlateNumber());
+        }
+
+        // Update battery type nếu có
+        if (vehicleRequest.getBatteryTypeId() != null) {
+            BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
+                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+            existingVehicle.setBatteryType(batteryType);
+        }
+
+        // Update driver nếu có (chỉ admin/staff)
+        if (vehicleRequest.getDriverId() != null) {
+            // Cần thêm logic để lấy User từ driverId, nhưng hiện tại chưa có UserService inject
+            // Có thể thêm UserRepository vào đây nếu cần
         }
 
         return vehicleRepository.save(existingVehicle);

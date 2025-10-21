@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class Payment {
 
     public enum Status {
-        PENDING, COMPLETED, FAILED, CANCELLED, REFUNDED
+        COMPLETED, FAILED, CANCELLED
     }
 
     @Id

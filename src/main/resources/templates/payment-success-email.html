@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh toán thành công</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .success-icon {
+            text-align: center;
+            font-size: 48px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: bold;
+            color: #333;
+            flex: 1;
+        }
+        .value {
+            color: #666;
+            flex: 1;
+            text-align: right;
+        }
+        .highlight {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 10px 10px;
+            color: #666;
+        }
+        .success-message {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .success-message h4 {
+            margin: 0;
+            color: #2e7d32;
+        }
+        .success-message p {
+            margin: 10px 0 0 0;
+            color: #2e7d32;
+        }
+        .note-section {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .note-section h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        .note-section ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #856404;
+        }
+        .note-section li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🔋 EV Battery Swap Station</h1>
+        <p>Hệ thống trạm đổi pin xe điện</p>
+    </div>
+
+    <div class="content">
+        <div class="success-icon">✅</div>
+
+        <h2 style="text-align: center; color: #4CAF50;">Thanh toán thành công!</h2>
+
+        <p>Chào <strong th:text="${driverName}">Driver Name</strong>,</p>
+
+        <p>Cảm ơn bạn đã mua gói dịch vụ tại hệ thống EV Battery Swap Station. Thanh toán của bạn đã được xử lý thành công!</p>
+
+        <div class="info-card">
+            <h3 style="margin-top: 0; color: #007bff;">📄 Thông tin hóa đơn</h3>
+
+            <div class="info-row">
+                <span class="label">Mã thanh toán:</span>
+                <span class="value highlight" th:text="${paymentId}">PAY123456</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Mã giao dịch:</span>
+                <span class="value" th:text="${transactionId}">TXN123456</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Thời gian thanh toán:</span>
+                <span class="value" th:text="${paymentDate}">22/10/2025 14:30</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Phương thức thanh toán:</span>
+                <span class="value" th:text="${paymentMethod}">MoMo</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Trạng thái:</span>
+                <span class="value highlight" th:text="${paymentStatus}">COMPLETED</span>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3 style="margin-top: 0; color: #007bff;">🎁 Thông tin gói dịch vụ</h3>
+
+            <div class="info-row">
+                <span class="label">Tên gói:</span>
+                <span class="value highlight" th:text="${packageName}">Package Name</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Mô tả:</span>
+                <span class="value" th:text="${packageDescription}">Package Description</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Số tiền:</span>
+                <span class="value highlight" th:text="${amount}">500,000 VNĐ</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Thời hạn sử dụng:</span>
+                <span class="value" th:text="${validDays} + ' ngày'">30 ngày</span>
+            </div>
+
+            <div class="info-row">
+                <span class="label">Giới hạn đổi pin:</span>
+                <span class="value" th:text="${swapLimit} + ' lần'">10 lần</span>
+            </div>
+        </div>
+
+        <div class="success-message">
+            <h4>🎉 Gói dịch vụ đã được kích hoạt!</h4>
+            <p>Bạn có thể bắt đầu sử dụng dịch vụ đổi pin ngay bây giờ.</p>
+        </div>
+
+        <div class="note-section">
+            <h4>📋 Lưu ý quan trọng:</h4>
+            <ul>
+                <li>Gói dịch vụ có hiệu lực trong <strong th:text="${validDays}">30</strong> ngày kể từ ngày kích hoạt</li>
+                <li>Bạn có thể đổi pin tối đa <strong th:text="${swapLimit}">10</strong> lần trong thời gian có hiệu lực</li>
+                <li>Vui lòng xuất trình mã QR trong ứng dụng khi đến trạm đổi pin</li>
+                <li>Liên hệ hotline support nếu cần hỗ trợ: <span th:text="${supportEmail}">support@evbatteryswap.com</span></li>
+            </ul>
+        </div>
+
+        <p style="margin-top: 30px;">
+            <strong>Cảm ơn bạn đã tin tưởng và lựa chọn dịch vụ của chúng tôi!</strong><br>
+            Chúc bạn có những chuyến đi an toàn và tiết kiệm!
+        </p>
+    </div>
+
+    <div class="footer">
+        <p><strong>EV Battery Swap Station Management System</strong></p>
+        <p>🚗⚡ Dịch vụ đổi pin xe điện nhanh chóng, tiện lợi</p>
+        <p style="font-size: 12px; color: #999; margin-top: 15px;">
+            Email này được gửi tự động từ hệ thống. Vui lòng không trả lời trực tiếp email này.<br>
+            Mọi thắc mắc xin liên hệ: <span th:text="${supportEmail}">support@evbatteryswap.com</span>
+        </p>
+    </div>
+</div>
+</body>
+</html>

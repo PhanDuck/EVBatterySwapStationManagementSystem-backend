@@ -12,35 +12,25 @@ public class ConfirmationCodeGenerator {
     private static final String NUMBERS = "0123456789";
     private static final SecureRandom random = new SecureRandom();
 
-    /**
-     * Generate confirmation code format: ABC123
-     * - 3 ký tự chữ cái in hoa
-     * - 3 ký tự số
-     * 
-     * @return Mã xác nhận 6 ký tự
-     */
+    // Sinh mã 6 ký tự, ví dụ: ABC123
     public static String generate() {
         StringBuilder code = new StringBuilder(6);
-        
-        // 3 chữ cái đầu
+
+
         for (int i = 0; i < 3; i++) {
             code.append(LETTERS.charAt(random.nextInt(LETTERS.length())));
         }
-        
-        // 3 số cuối
+
+
         for (int i = 0; i < 3; i++) {
             code.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
         }
-        
+
         return code.toString();
     }
 
-    /**
-     * Generate confirmation code với retry để đảm bảo unique
-     * @param maxAttempts số lần thử tối đa
-     * @param codeValidator function kiểm tra code đã tồn tại chưa
-     * @return Mã xác nhận unique
-     */
+
+    // Sinh mã unique với số lần thử tối đa
     public static String generateUnique(int maxAttempts, CodeValidator codeValidator) {
         for (int i = 0; i < maxAttempts; i++) {
             String code = generate();
@@ -53,6 +43,7 @@ public class ConfirmationCodeGenerator {
 
     @FunctionalInterface
     public interface CodeValidator {
+        // Kiểm tra mã đã tồn tại chưa (true = đã tồn tại)
         boolean exists(String code);
     }
 }

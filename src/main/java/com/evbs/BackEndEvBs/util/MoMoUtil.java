@@ -8,19 +8,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.TreeMap;
 
-/**
- * MoMo Payment Utility Class
- * Xử lý mã hóa và build query string cho MoMo API
- */
 public class MoMoUtil {
 
-    /**
-     * Generate HMAC SHA256 signature
-     * 
-     * @param data Data to sign
-     * @param secretKey Secret key
-     * @return Hex string signature
-     */
+
+    // Tạo HMAC-SHA256 từ dữ liệu và secret key (dùng để tạo/kiểm tra signature)
     public static String hmacSHA256(String data, String secretKey) {
         try {
             Mac sha256HMAC = Mac.getInstance("HmacSHA256");
@@ -33,9 +24,7 @@ public class MoMoUtil {
         }
     }
 
-    /**
-     * Convert byte array to hex string
-     */
+    // Chuyển mảng byte sang chuỗi hex (dùng để biểu diễn HMAC)
     private static String bytesToHex(byte[] bytes) {
         StringBuilder result = new StringBuilder();
         for (byte b : bytes) {
@@ -44,17 +33,11 @@ public class MoMoUtil {
         return result.toString();
     }
 
-    /**
-     * Build raw signature string từ parameters
-     * Format: key1=value1&key2=value2&...
-     * 
-     * @param params Parameters sorted by key
-     * @return Raw signature string
-     */
+    // Tạo chuỗi raw signature: sort params theo key rồi nối key=value bằng '&'
     public static String buildRawSignature(Map<String, String> params) {
         // Sort parameters by key
         Map<String, String> sortedParams = new TreeMap<>(params);
-        
+
         StringBuilder rawSignature = new StringBuilder();
         for (Map.Entry<String, String> entry : sortedParams.entrySet()) {
             if (rawSignature.length() > 0) {
@@ -62,24 +45,18 @@ public class MoMoUtil {
             }
             rawSignature.append(entry.getKey()).append("=").append(entry.getValue());
         }
-        
+
         return rawSignature.toString();
     }
 
-    /**
-     * Generate random order ID
-     * Format: timestamp + random 6 digits
-     */
+    // Tạo orderId: timestamp + 6 chữ số ngẫu nhiên
     public static String generateOrderId() {
         long timestamp = System.currentTimeMillis();
         int random = (int) (Math.random() * 900000) + 100000;
         return timestamp + "" + random;
     }
 
-    /**
-     * Generate random request ID
-     * Format: timestamp + random 6 digits
-     */
+    // Tạo requestId (giống orderId)
     public static String generateRequestId() {
         return generateOrderId();
     }

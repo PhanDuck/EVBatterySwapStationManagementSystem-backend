@@ -16,7 +16,7 @@ import java.util.List;
 public class DriverSubscription {
 
     public enum Status {
-        ACTIVE, EXPIRED, CANCELLED, SUSPENDED
+        ACTIVE, EXPIRED, CANCELLED
     }
 
     @Id

@@ -41,16 +41,6 @@ public class DriverSubscriptionController {
         return ResponseEntity.ok(subscriptions);
     }
 
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Update subscription", description = "Update subscription information (Admin only)")
-    public ResponseEntity<DriverSubscription> updateSubscription(
-            @PathVariable Long id,
-            @Valid @RequestBody DriverSubscriptionRequest request) {
-        DriverSubscription subscription = driverSubscriptionService.updateSubscription(id, request);
-        return ResponseEntity.ok(subscription);
-    }
-
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete subscription", description = "Delete subscription (Admin only)")

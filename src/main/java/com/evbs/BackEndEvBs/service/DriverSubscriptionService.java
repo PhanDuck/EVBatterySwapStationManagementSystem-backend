@@ -264,32 +264,6 @@ public class DriverSubscriptionService {
     }
 
     @Transactional
-    public DriverSubscription updateSubscription(Long id, DriverSubscriptionRequest request) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
-        }
-
-        DriverSubscription existingSubscription = driverSubscriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
-
-        if (request.getPackageId() != null) {
-            ServicePackage servicePackage = servicePackageRepository.findById(request.getPackageId())
-                    .orElseThrow(() -> new NotFoundException("Service package not found with id: " + request.getPackageId()));
-            existingSubscription.setServicePackage(servicePackage);
-
-            // Tính lại end date khi đổi gói
-            LocalDate endDate = existingSubscription.getStartDate().plusDays(servicePackage.getDuration());
-            existingSubscription.setEndDate(endDate);
-
-            // ✅ Reset remainingSwaps khi đổi gói
-            existingSubscription.setRemainingSwaps(servicePackage.getMaxSwaps());
-        }
-
-        return driverSubscriptionRepository.save(existingSubscription);
-    }
-
-    @Transactional
     public void deleteSubscription(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
@@ -299,6 +273,8 @@ public class DriverSubscriptionService {
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
 
-        driverSubscriptionRepository.delete(subscription);
+        // Chuyển status thành CANCELLED
+        subscription.setStatus(DriverSubscription.Status.CANCELLED);
+        driverSubscriptionRepository.save(subscription);
     }
 }

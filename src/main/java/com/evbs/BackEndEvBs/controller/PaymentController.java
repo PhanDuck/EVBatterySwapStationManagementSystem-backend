@@ -74,9 +74,7 @@ public class PaymentController {
 
      * Webhook từ MoMo để confirm payment
      * Xử lý giống /momo-return
-     * 
      * QUAN TRỌNG: KHÔNG CẦN TOKEN - Đây là webhook từ MoMo server
-
 
      */
     @PostMapping("/momo-ipn")

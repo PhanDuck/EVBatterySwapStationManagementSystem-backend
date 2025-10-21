@@ -138,7 +138,6 @@ public class DriverSubscriptionService {
         return driverSubscriptionRepository.save(existingSubscription);
     }
 
-    @Transactional
     public void deleteSubscription(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
@@ -148,6 +147,8 @@ public class DriverSubscriptionService {
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
 
-        driverSubscriptionRepository.delete(subscription);
+        // Chuyển status thành CANCELLED
+        subscription.setStatus(DriverSubscription.Status.CANCELLED);
+        driverSubscriptionRepository.save(subscription);
     }
 }

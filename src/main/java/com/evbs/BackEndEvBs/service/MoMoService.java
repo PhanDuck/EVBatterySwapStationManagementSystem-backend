@@ -11,8 +11,6 @@ import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.PaymentRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
 import com.evbs.BackEndEvBs.util.MoMoUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,25 +49,9 @@ public class MoMoService {
     private final AuthenticationService authenticationService;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * TẠO MOMO PAYMENT URL CHO GÓI DỊCH VỤ
-     * 
-     * WORKFLOW:
-     * BUOC 1: Driver chọn gói (packageId) → Gọi API này
-     * BUOC 2: System tạo MoMo payment URL
-     * BUOC 3: Driver redirect đến MoMo app/website
-     * BUOC 4: Driver thanh toán
-     * BUOC 5: MoMo callback về /api/payment/momo-return
-     * BUOC 6: System TẠO subscription ACTIVE tự động
-     * 
-     * QUAN TRỌNG: Lưu driverId vào extraData vì callback KHÔNG CÓ TOKEN!
-     * 
-     * @param packageId ID của service package muốn mua
-     * @return Map chứa paymentUrl để redirect driver
-     */
-    public Map<String, String> createPaymentUrl(Long packageId) {
+    // Tạo URL thanh toán MoMo cho gói dịch vụ (trả về paymentUrl để frontend redirect)
+    public Map<String, String> createPaymentUrl(Long packageId, String customRedirectUrl) {
         // BUOC 1: Validate service package tồn tại
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + packageId));
@@ -103,6 +85,13 @@ public class MoMoService {
         // LƯU DRIVER ID vào extraData vì callback không có token!
         String extraData = "packageId=" + packageId + "&driverId=" + currentDriver.getId();
 
+        // Xác định redirectUrl: Frontend gửi thì dùng, không thì dùng config fallback
+        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty()) 
+                ? customRedirectUrl 
+                : moMoConfig.getRedirectUrl();
+        
+        log.info("Using redirect URL: {}", finalRedirectUrl);
+
         // Parameters for signature (sorted by key)
         Map<String, String> signatureParams = new LinkedHashMap<>();
         signatureParams.put("accessKey", moMoConfig.getAccessKey());
@@ -112,7 +101,7 @@ public class MoMoService {
         signatureParams.put("orderId", orderId);
         signatureParams.put("orderInfo", "Thanh toan goi dich vu: " + servicePackage.getName());
         signatureParams.put("partnerCode", moMoConfig.getPartnerCode());
-        signatureParams.put("redirectUrl", moMoConfig.getRedirectUrl());
+        signatureParams.put("redirectUrl", finalRedirectUrl);
         signatureParams.put("requestId", requestId);
         signatureParams.put("requestType", moMoConfig.getRequestType());
 
@@ -129,7 +118,7 @@ public class MoMoService {
         requestBody.put("amount", amount);
         requestBody.put("orderId", orderId);
         requestBody.put("orderInfo", "Thanh toan goi dich vu: " + servicePackage.getName());
-        requestBody.put("redirectUrl", moMoConfig.getRedirectUrl());
+        requestBody.put("redirectUrl", finalRedirectUrl); // Dùng redirectUrl từ frontend hoặc config
         requestBody.put("ipnUrl", moMoConfig.getIpnUrl());
         requestBody.put("lang", "vi");
         requestBody.put("extraData", extraData); // Dùng extraData có cả packageId và driverId
@@ -175,49 +164,31 @@ public class MoMoService {
         }
     }
 
-    /**
-     * XỬ LÝ CALLBACK TỪ MOMO SAU KHI THANH TOÁN
-     * 
-     * WORKFLOW:
-     * BUOC 1: MoMo gửi callback với thông tin thanh toán
-     * BUOC 2: System verify signature để đảm bảo request từ MoMo thật
-     * BUOC 3: Nếu thanh toán THÀNH CÔNG (resultCode = 0):
-     *    - Tạo Payment record
-     *    - Tạo DriverSubscription ACTIVE tự động
-     *    - Driver có thể swap miễn phí ngay lập tức
-     * BUOC 4: Nếu thanh toán THẤT BẠI:
-     *    - KHÔNG tạo subscription
-     *    - Trả về thông báo lỗi
-     * 
-     * QUAN TRỌNG: Callback KHÔNG CÓ TOKEN nên lấy driverId từ extraData!
-     * 
-     * @param request HttpServletRequest chứa callback params từ MoMo
-     * @return Map chứa kết quả xử lý (success/error)
-     */
+    // Xử lý IPN từ MoMo (JSON body) - tạo subscription nếu thanh toán thành công
     @Transactional
-    public Map<String, Object> handleMoMoReturn(HttpServletRequest request) {
+    public Map<String, Object> handleMoMoIPN(Map<String, String> momoData) {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            // BUOC 1: Lấy parameters từ MoMo callback
-            String partnerCode = request.getParameter("partnerCode");
-            String orderId = request.getParameter("orderId");
-            String requestId = request.getParameter("requestId");
-            String amount = request.getParameter("amount");
-            String orderInfo = request.getParameter("orderInfo");
-            String orderType = request.getParameter("orderType");
-            String transId = request.getParameter("transId");
-            String resultCode = request.getParameter("resultCode");
-            String message = request.getParameter("message");
-            String payType = request.getParameter("payType");
-            String responseTime = request.getParameter("responseTime");
-            String extraData = request.getParameter("extraData");
-            String signature = request.getParameter("signature");
+            // BUOC 1: Lấy data từ JSON
+            String partnerCode = momoData.get("partnerCode");
+            String orderId = momoData.get("orderId");
+            String requestId = momoData.get("requestId");
+            String amount = momoData.get("amount");
+            String orderInfo = momoData.get("orderInfo");
+            String orderType = momoData.get("orderType");
+            String transId = momoData.get("transId");
+            String resultCode = momoData.get("resultCode");
+            String message = momoData.get("message");
+            String payType = momoData.get("payType");
+            String responseTime = momoData.get("responseTime");
+            String extraData = momoData.get("extraData");
+            String signature = momoData.get("signature");
 
-            log.info("Nhận callback từ MoMo: orderId={}, resultCode={}, message={}",
+            log.info(" IPN - Nhận callback từ MoMo: orderId={}, resultCode={}, message={}",
                     orderId, resultCode, message);
 
-            // BUOC 2: Verify signature để đảm bảo request từ MoMo thật
+            // BUOC 2: Verify signature
             Map<String, String> signatureParams = new LinkedHashMap<>();
             signatureParams.put("accessKey", moMoConfig.getAccessKey());
             signatureParams.put("amount", amount);
@@ -237,13 +208,13 @@ public class MoMoService {
             String calculatedSignature = MoMoUtil.hmacSHA256(rawSignature, moMoConfig.getSecretKey());
 
             if (!calculatedSignature.equals(signature)) {
+                log.error(" IPN - Signature không hợp lệ!");
                 throw new SecurityException("Chữ ký MoMo không hợp lệ! Có thể bị giả mạo.");
             }
 
-            log.info("Signature hợp lệ - Request từ MoMo thật");
+            log.info(" IPN - Signature hợp lệ - Request từ MoMo thật");
 
-            // BUOC 3: Lấy packageId và driverId từ extraData
-            // Format: "packageId=1&driverId=13"
+            // BUOC 3: Parse extraData
             Map<String, String> extraDataMap = parseExtraData(extraData);
             Long packageId = extractLong(extraDataMap, "packageId");
             Long driverId = extractLong(extraDataMap, "driverId");
@@ -258,9 +229,10 @@ public class MoMoService {
             // BUOC 4: Xử lý kết quả thanh toán
             if ("0".equals(resultCode)) {
                 // THANH TOÁN THÀNH CÔNG
-                log.info("Thanh toán MoMo thành công: orderId={}, transId={}, driverId={}", orderId, transId, driverId);
+                log.info(" IPN - Thanh toán MoMo thành công: orderId={}, transId={}, driverId={}", 
+                         orderId, transId, driverId);
 
-                // Tạo subscription tự động (dùng overload method vì KHÔNG CÓ TOKEN)
+                // Tạo subscription tự động
                 DriverSubscription subscription = driverSubscriptionService.createSubscriptionAfterPayment(packageId, driverId);
 
                 // Lưu Payment record
@@ -272,7 +244,7 @@ public class MoMoService {
                 payment.setStatus(Payment.Status.COMPLETED);
                 paymentRepository.save(payment);
 
-                log.info("Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
+                log.info(" IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
 
                 result.put("success", true);
                 result.put("message", "Thanh toán thành công! Gói dịch vụ đã được kích hoạt.");
@@ -287,7 +259,7 @@ public class MoMoService {
 
             } else {
                 // THANH TOÁN THẤT BẠI
-                log.warn("Thanh toán MoMo thất bại: orderId={}, resultCode={}, message={}",
+                log.warn(" IPN - Thanh toán MoMo thất bại: orderId={}, resultCode={}, message={}",
                         orderId, resultCode, message);
 
                 result.put("success", false);
@@ -296,7 +268,7 @@ public class MoMoService {
             }
 
         } catch (Exception e) {
-            log.error("Lỗi xử lý callback MoMo: {}", e.getMessage());
+            log.error(" IPN - Lỗi xử lý callback MoMo: {}", e.getMessage());
             result.put("success", false);
             result.put("message", "Lỗi xử lý thanh toán: " + e.getMessage());
         }

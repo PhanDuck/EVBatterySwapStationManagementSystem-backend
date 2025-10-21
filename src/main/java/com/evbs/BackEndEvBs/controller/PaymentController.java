@@ -6,7 +6,6 @@ import com.evbs.BackEndEvBs.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -77,33 +76,6 @@ public class PaymentController {
     }
 
     /**
-     * MOMO CALLBACK - XỬ LÝ SAU KHI THANH TOÁN
-     * 
-     * QUAN TRỌNG: KHÔNG CẦN TOKEN - Endpoint này public vì callback từ MoMo
-     * 
-     * AUTO-CREATE SUBSCRIPTION:
-     * - Thanh toán thành công (resultCode=0):
-     *   + Verify signature từ MoMo
-     *   + Tạo Payment record
-     *   + Tạo DriverSubscription ACTIVE tự động
-     *   + Driver có thể swap miễn phí ngay
-     * 
-     * - Thanh toán thất bại:
-     *   + KHÔNG tạo subscription
-     *   + Trả về thông báo lỗi
-     * 
-     * @param request HttpServletRequest chứa callback params từ MoMo
-     * @return Map chứa kết quả xử lý
-     */
-    @GetMapping("/momo-return")
-    @Operation(summary = "MoMo callback - Xử lý kết quả thanh toán",
-            description = "Endpoint nhận callback từ MoMo sau khi thanh toán. Tự động tạo subscription nếu thành công.")
-    public ResponseEntity<Map<String, Object>> moMoReturn(HttpServletRequest request) {
-        Map<String, Object> result = moMoService.handleMoMoReturn(request);
-        return ResponseEntity.ok(result);
-    }
-
-    /**
      * MOMO IPN (INSTANT PAYMENT NOTIFICATION)
      * 
      * Webhook từ MoMo để confirm payment
@@ -117,8 +89,8 @@ public class PaymentController {
     @PostMapping("/momo-ipn")
     @Operation(summary = "MoMo IPN webhook", 
             description = "Webhook từ MoMo để confirm payment. Xử lý giống momo-return.")
-    public ResponseEntity<Map<String, Object>> moMoIPN(HttpServletRequest request) {
-        Map<String, Object> result = moMoService.handleMoMoReturn(request);
+    public ResponseEntity<Map<String, Object>> moMoIPN(@RequestBody Map<String, String> momoData) {
+        Map<String, Object> result = moMoService.handleMoMoIPN(momoData);
         return ResponseEntity.ok(result);
     }
 }

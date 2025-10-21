@@ -36,7 +36,7 @@ public class StaffStationAssignmentService {
     private static final int MAX_STATIONS_PER_STAFF = 5;
 
     // Giới hạn số staff tối đa 1 trạm có thể có
-    private static final int MAX_STAFF_PER_STATION = 2;
+    private static final int MAX_STAFF_PER_STATION = 3;
 
     /**
      * CREATE - Admin assign station cho staff

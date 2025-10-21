@@ -254,6 +254,19 @@ public class MoMoService {
 
                 log.info("IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
 
+                // Gửi email thông báo thanh toán thành công
+                try {
+                    User driver = userRepository.findById(driverId)
+                            .orElseThrow(() -> new NotFoundException("Không tìm thấy driver ID: " + driverId));
+
+                    emailService.sendPaymentSuccessEmail(driver, payment, servicePackage);
+                    log.info("📧 Email thanh toán thành công đã được gửi cho driver: {}", driver.getEmail());
+
+                } catch (Exception emailException) {
+                    log.error("❌ Lỗi khi gửi email thanh toán thành công: {}", emailException.getMessage());
+                    // Không throw exception để không ảnh hưởng đến flow thanh toán chính
+                }
+
                 result.put("success", true);
                 result.put("message", "Thanh toán thành công! Gói dịch vụ đã được kích hoạt.");
                 result.put("subscriptionId", subscription.getId());

@@ -33,13 +33,7 @@ public class AuthenticationController {
         return ResponseEntity.ok(newuser);
     }
 
-    // Deprecated: Sử dụng /api/users thay thế
-//    @GetMapping("/api/getall")
-//    @Deprecated
-//    public ResponseEntity getAllUser(){
-//        List<User> users = authenticationService.getAllUser();
-//        return ResponseEntity.ok(users);
-//    }
+
 
     @PostMapping("/api/login")
     public ResponseEntity login(@Valid @RequestBody LoginRequest loginRequest){

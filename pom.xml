@@ -100,11 +100,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Spring Boot Mail (Jakarta Mail) -->
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
-
+            <version>4.0.0-M3</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.thymeleaf/thymeleaf -->

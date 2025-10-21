@@ -50,23 +50,7 @@ public class MoMoService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * TẠO MOMO PAYMENT URL CHO GÓI DỊCH VỤ
-     * 
-     * WORKFLOW:
-     * BUOC 1: Driver chọn gói (packageId) → Gọi API này
-     * BUOC 2: System tạo MoMo payment URL
-     * BUOC 3: Driver redirect đến MoMo app/website
-     * BUOC 4: Driver thanh toán
-     * BUOC 5: MoMo callback về redirectUrl (từ frontend hoặc config)
-     * BUOC 6: System TẠO subscription ACTIVE tự động
-     * 
-     * QUAN TRỌNG: Lưu driverId vào extraData vì callback KHÔNG CÓ TOKEN!
-     * 
-     * @param packageId ID của service package muốn mua
-     * @param customRedirectUrl URL redirect tùy chỉnh từ frontend (có thể null)
-     * @return Map chứa paymentUrl để redirect driver
-     */
+    // Tạo URL thanh toán MoMo cho gói dịch vụ (trả về paymentUrl để frontend redirect)
     public Map<String, String> createPaymentUrl(Long packageId, String customRedirectUrl) {
         // BUOC 1: Validate service package tồn tại
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
@@ -180,14 +164,7 @@ public class MoMoService {
         }
     }
 
-    /**
-     * XỬ LÝ MOMO IPN CALLBACK (JSON FORMAT)
-     * 
-     * MoMo IPN gửi data dưới dạng JSON trong request body, không phải URL params
-     * 
-     * @param momoData Map chứa JSON data từ MoMo
-     * @return Map chứa kết quả xử lý
-     */
+    // Xử lý IPN từ MoMo (JSON body) - tạo subscription nếu thanh toán thành công
     @Transactional
     public Map<String, Object> handleMoMoIPN(Map<String, String> momoData) {
         Map<String, Object> result = new HashMap<>();

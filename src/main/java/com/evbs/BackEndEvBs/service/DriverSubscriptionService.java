@@ -148,6 +148,8 @@ public class DriverSubscriptionService {
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
 
-        driverSubscriptionRepository.delete(subscription);
+        // Chuyển status thành CANCELLED
+        subscription.setStatus(DriverSubscription.Status.CANCELLED);
+        driverSubscriptionRepository.save(subscription);
     }
 }

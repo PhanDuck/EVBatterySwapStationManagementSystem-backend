@@ -10,7 +10,9 @@ import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.PaymentRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
+import com.evbs.BackEndEvBs.repository.UserRepository;
 import com.evbs.BackEndEvBs.util.MoMoUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +49,12 @@ public class MoMoService {
 
     @Autowired
     private final AuthenticationService authenticationService;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -244,7 +252,7 @@ public class MoMoService {
                 payment.setStatus(Payment.Status.COMPLETED);
                 paymentRepository.save(payment);
 
-                log.info(" IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
+                log.info("IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
 
                 result.put("success", true);
                 result.put("message", "Thanh toán thành công! Gói dịch vụ đã được kích hoạt.");

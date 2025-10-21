@@ -78,10 +78,12 @@ public class SupportTicketController {
 
     /**
      * GET /api/support-ticket : Get all tickets (Admin/Staff only)
+     * - Admin: Lấy TẤT CẢ tickets
+     * - Staff: Lấy tickets của các stations họ quản lý
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get all tickets")
+    @Operation(summary = "Get all tickets (Admin gets all, Staff gets tickets from their stations)")
     public ResponseEntity<List<SupportTicket>> getAllTickets() {
         List<SupportTicket> tickets = supportTicketService.getAllTickets();
         return ResponseEntity.ok(tickets);

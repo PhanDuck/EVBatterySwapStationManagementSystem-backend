@@ -6,10 +6,10 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.TicketResponseRequest;
+import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import com.evbs.BackEndEvBs.repository.SupportTicketRepository;
 import com.evbs.BackEndEvBs.repository.TicketResponseRepository;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,10 +28,17 @@ public class TicketResponseService {
     private final SupportTicketRepository supportTicketRepository;
 
     @Autowired
+    private final StaffStationAssignmentRepository staffStationAssignmentRepository;
+
+    @Autowired
     private final AuthenticationService authenticationService;
 
     /**
      * CREATE - Tạo response cho ticket (Staff/Admin only)
+     * 
+     * VALIDATION:
+     * - Admin: Có thể trả lời TẤT CẢ tickets
+     * - Staff: Chỉ có thể trả lời tickets của stations mà họ quản lý
      */
     @Transactional
     public TicketResponse createResponse(TicketResponseRequest request) {
@@ -43,6 +50,9 @@ public class TicketResponseService {
         // Validate ticket trong cùng transaction
         SupportTicket ticket = supportTicketRepository.findById(request.getTicketId())
                 .orElseThrow(() -> new NotFoundException("Ticket not found with id: " + request.getTicketId()));
+
+        // Kiểm tra quyền trả lời ticket
+        validateTicketAccess(currentUser, ticket);
 
         // Tạo response mới thay vì dùng modelMapper
         TicketResponse response = new TicketResponse();
@@ -63,6 +73,8 @@ public class TicketResponseService {
 
     /**
      * READ - Lấy tất cả responses (Admin/Staff only)
+     * - Admin: Lấy TẤT CẢ responses
+     * - Staff: Chỉ lấy responses của tickets thuộc stations họ quản lý
      */
     @Transactional(readOnly = true)
     public List<TicketResponse> getAllResponses() {
@@ -70,11 +82,25 @@ public class TicketResponseService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
         }
-        return ticketResponseRepository.findAll();
+
+        // Admin có thể xem tất cả responses
+        if (currentUser.getRole() == User.Role.ADMIN) {
+            return ticketResponseRepository.findAll();
+        }
+
+        // Staff chỉ xem responses của tickets thuộc stations họ quản lý
+        var myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
+        if (myStations.isEmpty()) {
+            throw new AuthenticationException("Staff not assigned to any station");
+        }
+
+        return ticketResponseRepository.findByTicketStationIn(myStations);
     }
 
     /**
      * READ - Lấy responses theo ticket (Admin/Staff only)
+     * - Admin: Lấy responses của bất kỳ ticket nào
+     * - Staff: Chỉ lấy responses nếu ticket thuộc stations họ quản lý
      */
     @Transactional(readOnly = true)
     public List<TicketResponse> getResponsesByTicket(Long ticketId) {
@@ -82,6 +108,29 @@ public class TicketResponseService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
         }
+
+        // Validate ticket exists
+        SupportTicket ticket = supportTicketRepository.findById(ticketId)
+                .orElseThrow(() -> new NotFoundException("Ticket not found with id: " + ticketId));
+
+        // Staff phải check quyền truy cập ticket
+        if (currentUser.getRole() == User.Role.STAFF) {
+            if (ticket.getStation() == null) {
+                throw new AuthenticationException(
+                    "Cannot view responses for ticket without station assignment."
+                );
+            }
+
+            boolean hasAccess = staffStationAssignmentRepository
+                .existsByStaffAndStation(currentUser, ticket.getStation());
+
+            if (!hasAccess) {
+                throw new AuthenticationException(
+                    "Access denied. You can only view responses for tickets from stations you manage."
+                );
+            }
+        }
+
         return ticketResponseRepository.findByTicketId(ticketId);
     }
 
@@ -159,5 +208,39 @@ public class TicketResponseService {
 
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
+    }
+
+    /**
+     * Validate quyền trả lời ticket
+     * - Admin: Có thể trả lời TẤT CẢ tickets
+     * - Staff: Chỉ có thể trả lời tickets của stations họ quản lý
+     */
+    private void validateTicketAccess(User user, SupportTicket ticket) {
+        // Admin có thể trả lời tất cả tickets
+        if (user.getRole() == User.Role.ADMIN) {
+            return;
+        }
+
+        // Staff phải check xem ticket có thuộc station họ quản lý không
+        if (user.getRole() == User.Role.STAFF) {
+            // Nếu ticket không có station, staff không thể trả lời
+            if (ticket.getStation() == null) {
+                throw new AuthenticationException(
+                    "Cannot respond to ticket without station assignment. " +
+                    "Please contact admin to assign this ticket to a station."
+                );
+            }
+
+            // Kiểm tra staff có được assign cho station của ticket không
+            boolean hasAccess = staffStationAssignmentRepository
+                .existsByStaffAndStation(user, ticket.getStation());
+
+            if (!hasAccess) {
+                throw new AuthenticationException(
+                    "Access denied. You can only respond to tickets from stations you manage. " +
+                    "This ticket belongs to station: " + ticket.getStation().getName()
+                );
+            }
+        }
     }
 }

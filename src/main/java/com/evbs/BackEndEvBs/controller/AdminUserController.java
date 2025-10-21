@@ -33,7 +33,7 @@ public class AdminUserController {
      * Lấy danh sách tất cả user (Admin only)
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get all users", description = "Get list of all users (Admin only)")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userService.getAllUsersSimple();

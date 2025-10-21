@@ -35,7 +35,7 @@ public class ServicePackageService {
             throw new IllegalArgumentException("Service package with name '" + request.getName() + "' already exists");
         }
 
-        // ✅ Tạo service package thủ công thay vì dùng ModelMapper (tránh conflict)
+        //  Tạo service package thủ công thay vì dùng ModelMapper (tránh conflict)
         ServicePackage servicePackage = new ServicePackage();
         servicePackage.setName(request.getName());
         servicePackage.setDescription(request.getDescription());

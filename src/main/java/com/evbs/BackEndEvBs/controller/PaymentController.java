@@ -44,7 +44,7 @@ public class PaymentController {
         return ResponseEntity.ok(payments);
     }
 
-    // ==================== 💳 MOMO PAYMENT ====================
+    // ====================  MOMO PAYMENT ====================
 
     /**
      * TẠO MOMO PAYMENT URL
@@ -57,11 +57,6 @@ public class PaymentController {
      * BUOC 5: MoMo redirect về redirectUrl (callback - có thể từ frontend)
      * BUOC 6: System TỰ ĐỘNG TẠO subscription ACTIVE
      * BUOC 7: Driver có thể swap pin MIỄN PHÍ ngay lập tức
-     * 
-     * @param packageId ID của gói dịch vụ muốn mua
-     * @param redirectUrl (Optional) URL để MoMo redirect sau thanh toán. 
-     *                    Nếu không truyền, dùng URL mặc định từ config.
-     *                    Ví dụ: http://localhost:3000/payment-result
      * @return Map chứa paymentUrl để redirect driver
      */
     @PostMapping("/momo/create")
@@ -76,15 +71,13 @@ public class PaymentController {
     }
 
     /**
-     * MOMO IPN (INSTANT PAYMENT NOTIFICATION)
-     * 
+
      * Webhook từ MoMo để confirm payment
      * Xử lý giống /momo-return
      * 
      * QUAN TRỌNG: KHÔNG CẦN TOKEN - Đây là webhook từ MoMo server
-     * 
-     * @param request HttpServletRequest chứa IPN params từ MoMo
-     * @return Map chứa kết quả xử lý
+
+
      */
     @PostMapping("/momo-ipn")
     @Operation(summary = "MoMo IPN webhook", 

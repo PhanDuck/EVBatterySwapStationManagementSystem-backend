@@ -22,8 +22,8 @@ public interface DriverSubscriptionRepository extends JpaRepository<DriverSubscr
     List<DriverSubscription> findByDriver_Id(Long driverId);
 
     // Tìm subscription ACTIVE của driver (có remainingSwaps > 0 và chưa hết hạn)
-    // ✅ Lấy subscription gần hết hạn nhất (sử dụng trước subscription còn lâu)
-    // ✅ Dùng findFirst để đảm bảo chỉ lấy 1 kết quả dù có nhiều subscriptions
+    // Lấy subscription gần hết hạn nhất (sử dụng trước subscription còn lâu)
+    // Dùng findFirst để đảm bảo chỉ lấy 1 kết quả dù có nhiều subscriptions
     @Query("SELECT ds FROM DriverSubscription ds WHERE ds.driver = :driver " +
            "AND ds.status = 'ACTIVE' " +
            "AND ds.remainingSwaps > 0 " +

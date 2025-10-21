@@ -453,7 +453,7 @@ public class SwapTransactionService {
     }
 
     /**
-     * ⭐ CREATE SWAP BY CONFIRMATION CODE - Driver tự swap tại trạm
+     *  CREATE SWAP BY CONFIRMATION CODE - Driver tự swap tại trạm
      * 
      * Driver nhập confirmationCode vào máy tại trạm
      * → Hệ thống tự động:
@@ -471,25 +471,25 @@ public class SwapTransactionService {
         // 1. Tìm booking bằng confirmationCode
         Booking booking = bookingRepository.findByConfirmationCode(confirmationCode)
                 .orElseThrow(() -> new NotFoundException(
-                        "❌ Không tìm thấy booking với mã: " + confirmationCode
+                        "Không tìm thấy booking với mã: " + confirmationCode
                 ));
 
         // 2. Validate booking - Code chỉ dùng 1 lần
         if (booking.getStatus() == Booking.Status.COMPLETED) {
             throw new AuthenticationException(
-                    "❌ Mã xác nhận đã được sử dụng. Booking này đã hoàn thành."
+                    "Mã xác nhận đã được sử dụng. Booking này đã hoàn thành."
             );
         }
         
         if (booking.getStatus() == Booking.Status.CANCELLED) {
             throw new AuthenticationException(
-                    "❌ Mã xác nhận không còn hiệu lực. Booking đã bị hủy."
+                    "Mã xác nhận không còn hiệu lực. Booking đã bị hủy."
             );
         }
         
         if (booking.getStatus() != Booking.Status.CONFIRMED) {
             throw new AuthenticationException(
-                    "❌ Mã xác nhận chưa được kích hoạt. Vui lòng chờ staff xác nhận. " +
+                    " Mã xác nhận chưa được kích hoạt. Vui lòng chờ staff xác nhận. " +
                     "Trạng thái hiện tại: " + booking.getStatus()
             );
         }
@@ -499,7 +499,7 @@ public class SwapTransactionService {
                 .orElse(null);
         if (existingTransaction != null) {
             throw new AuthenticationException(
-                    "❌ Mã xác nhận đã được sử dụng lúc " + 
+                    " Mã xác nhận đã được sử dụng lúc " +
                     existingTransaction.getEndTime() + ". Không thể swap lại."
             );
         }
@@ -507,7 +507,7 @@ public class SwapTransactionService {
         // 3. Kiểm tra driver có phải owner của booking không
         if (!booking.getDriver().getId().equals(currentDriver.getId())) {
             throw new AuthenticationException(
-                    "❌ Booking này không thuộc về bạn"
+                    " Booking này không thuộc về bạn"
             );
         }
 
@@ -515,11 +515,11 @@ public class SwapTransactionService {
         DriverSubscription activeSubscription = driverSubscriptionRepository
                 .findActiveSubscriptionByDriver(currentDriver, LocalDate.now())
                 .orElseThrow(() -> new AuthenticationException(
-                        "❌ Bạn không có subscription ACTIVE"
+                        " Bạn không có subscription ACTIVE"
                 ));
 
         if (activeSubscription.getRemainingSwaps() <= 0) {
-            throw new AuthenticationException("❌ Bạn đã hết lượt swap");
+            throw new AuthenticationException(" Bạn đã hết lượt swap");
         }
 
         // 5. Lấy thông tin từ booking
@@ -529,7 +529,7 @@ public class SwapTransactionService {
         // 6. Validate battery type compatibility
         if (!station.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
             throw new AuthenticationException(
-                    "❌ KHÔNG TƯƠNG THÍCH! Trạm '" + station.getName() + 
+                    " KHÔNG TƯƠNG THÍCH! Trạm '" + station.getName() +
                     "' chỉ hỗ trợ pin loại '" + station.getBatteryType().getName() + 
                     "', nhưng xe '" + vehicle.getPlateNumber() + 
                     "' cần pin loại '" + vehicle.getBatteryType().getName() + "'."
@@ -554,7 +554,7 @@ public class SwapTransactionService {
         User staffWhoConfirmed = booking.getConfirmedBy();
         if (staffWhoConfirmed == null) {
             throw new AuthenticationException(
-                    "❌ Lỗi hệ thống: Booking đã CONFIRMED nhưng không có thông tin người confirm"
+                    " Lỗi hệ thống: Booking đã CONFIRMED nhưng không có thông tin người confirm"
             );
         }
 
@@ -563,7 +563,7 @@ public class SwapTransactionService {
         transaction.setDriver(currentDriver);
         transaction.setVehicle(vehicle);
         transaction.setStation(station);
-        transaction.setStaff(staffWhoConfirmed);  // ⭐ Dùng Staff đã confirm booking
+        transaction.setStaff(staffWhoConfirmed);  //  Dùng Staff đã confirm booking
         transaction.setSwapOutBattery(swapOutBattery);
         transaction.setSwapInBattery(swapInBattery);
         transaction.setBooking(booking);
@@ -572,7 +572,7 @@ public class SwapTransactionService {
         transaction.setEndTime(LocalDateTime.now());
         transaction.setStatus(SwapTransaction.Status.COMPLETED);
         
-        // ⭐ LƯU SNAPSHOT thông tin pin tại thời điểm swap
+        // LƯU SNAPSHOT thông tin pin tại thời điểm swap
         if (swapOutBattery != null) {
             transaction.setSwapOutBatteryModel(swapOutBattery.getModel());
             transaction.setSwapOutBatteryChargeLevel(swapOutBattery.getChargeLevel());
@@ -589,14 +589,14 @@ public class SwapTransactionService {
         // 11. Xử lý hoàn tất: pin, subscription, booking
         handleTransactionCompletion(savedTransaction, activeSubscription, booking);
 
-        log.info("✅ Self-service swap completed by driver {} with code {} (confirmed by staff {})", 
+        log.info(" Self-service swap completed by driver {} with code {} (confirmed by staff {})",
                 currentDriver.getUsername(), confirmationCode, staffWhoConfirmed.getUsername());
 
         return savedTransaction;
     }
 
     /**
-     * ⭐ XEM LỊCH SỬ ĐỔI PIN CỦA XE
+     *  XEM LỊCH SỬ ĐỔI PIN CỦA XE
      * 
      * Trả về danh sách tất cả các lần đổi pin của 1 xe cụ thể
      * Sắp xếp theo thời gian mới nhất đến cũ nhất
@@ -610,27 +610,27 @@ public class SwapTransactionService {
         
         // Tìm xe
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy xe với ID: " + vehicleId));
+                .orElseThrow(() -> new NotFoundException(" Không tìm thấy xe với ID: " + vehicleId));
         
         // Kiểm tra quyền:
         // - Driver chỉ xem được xe của mình
         // - Staff/Admin xem được tất cả
         if (currentUser.getRole() == User.Role.DRIVER) {
             if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
-                throw new AuthenticationException("❌ Bạn không có quyền xem lịch sử xe này");
+                throw new AuthenticationException(" Bạn không có quyền xem lịch sử xe này");
             }
         }
         
         // Lấy tất cả swap transactions của xe, sắp xếp mới nhất trước
         List<SwapTransaction> history = swapTransactionRepository.findByVehicleOrderByStartTimeDesc(vehicle);
         
-        log.info("📜 Retrieved {} swap transactions for vehicle {}", history.size(), vehicleId);
+        log.info(" Retrieved {} swap transactions for vehicle {}", history.size(), vehicleId);
         
         return history;
     }
 
     /**
-     * 🔋 XEM LỊCH SỬ SỬ DỤNG CỦA PIN
+     *  XEM LỊCH SỬ SỬ DỤNG CỦA PIN
      * 
      * Xem pin đã được dùng bởi những driver/xe nào, tại trạm nào
      * Bao gồm cả lần pin được lấy ra (swapOut) và đem vào (swapIn)
@@ -644,12 +644,12 @@ public class SwapTransactionService {
         
         // Chỉ Staff/Admin mới xem được lịch sử pin
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("❌ Chỉ Staff/Admin mới có quyền xem lịch sử sử dụng pin");
+            throw new AuthenticationException(" Chỉ Staff/Admin mới có quyền xem lịch sử sử dụng pin");
         }
         
         // Kiểm tra pin có tồn tại không
         Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("❌ Không tìm thấy pin với ID: " + batteryId));
+                .orElseThrow(() -> new NotFoundException(" Không tìm thấy pin với ID: " + batteryId));
         
         // Lấy tất cả lần pin được SWAP OUT (lấy ra từ trạm)
         List<SwapTransaction> swapOutHistory = swapTransactionRepository.findBySwapOutBatteryOrderByStartTimeDesc(battery);
@@ -665,7 +665,7 @@ public class SwapTransactionService {
         // Sắp xếp theo startTime từ mới đến cũ
         allHistory.sort((t1, t2) -> t2.getStartTime().compareTo(t1.getStartTime()));
         
-        log.info("🔋 Retrieved {} swap transactions for battery {} (model: {})", 
+        log.info(" Retrieved {} swap transactions for battery {} (model: {})",
                 allHistory.size(), batteryId, battery.getModel());
         
         return allHistory;

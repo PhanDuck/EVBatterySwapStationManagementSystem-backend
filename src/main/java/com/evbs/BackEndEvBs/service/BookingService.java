@@ -524,7 +524,7 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        // ⭐ GỬI EMAIL CONFIRMATION VỚI CODE
+        //  GỬI EMAIL CONFIRMATION VỚI CODE
         sendBookingConfirmedEmail(savedBooking, currentUser);
 
         return savedBooking;
@@ -566,7 +566,7 @@ public class BookingService {
             );
             emailDetail.setStatus(booking.getStatus().toString());
 
-            // ⭐ THÊM CONFIRMATION CODE VÀO EMAIL
+            //  THÊM CONFIRMATION CODE VÀO EMAIL
             emailDetail.setConfirmationCode(booking.getConfirmationCode());
             emailDetail.setConfirmedBy(confirmedBy.getFullName());
 

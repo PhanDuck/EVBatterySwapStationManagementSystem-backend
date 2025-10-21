@@ -43,7 +43,7 @@ public class PaymentService {
     }
 
     /**
-     * ❌ DEPRECATED - Swap không cần thanh toán riêng
+     *  DEPRECATED - Swap không cần thanh toán riêng
      * Thanh toán chỉ khi MUA GÓI (DriverSubscription)
      * 
      * Method này giữ lại để backward compatibility
@@ -53,7 +53,7 @@ public class PaymentService {
     @Transactional
     public Payment createPayment(PaymentRequest request) {
         throw new AuthenticationException(
-            "❌ Swap không cần thanh toán riêng! " +
+            " Swap không cần thanh toán riêng! " +
             "Thanh toán chỉ khi MUA GÓI dịch vụ. " +
             "Vui lòng sử dụng POST /api/driver-subscription để mua gói."
         );

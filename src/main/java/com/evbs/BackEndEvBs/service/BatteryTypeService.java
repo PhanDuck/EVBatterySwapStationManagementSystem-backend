@@ -34,7 +34,7 @@ public class BatteryTypeService {
             throw new AuthenticationException("Battery type name already exists");
         }
 
-        // ✅ Tạo battery type thủ công thay vì dùng ModelMapper (tránh conflict)
+        //  Tạo battery type thủ công thay vì dùng ModelMapper (tránh conflict)
         BatteryType batteryType = new BatteryType();
         batteryType.setName(request.getName());
         batteryType.setDescription(request.getDescription());

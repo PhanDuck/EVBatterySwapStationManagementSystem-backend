@@ -11,7 +11,6 @@ import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.PaymentRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
 import com.evbs.BackEndEvBs.util.MoMoUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +50,6 @@ public class MoMoService {
     private final AuthenticationService authenticationService;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * TẠO MOMO PAYMENT URL CHO GÓI DỊCH VỤ
@@ -61,15 +59,16 @@ public class MoMoService {
      * BUOC 2: System tạo MoMo payment URL
      * BUOC 3: Driver redirect đến MoMo app/website
      * BUOC 4: Driver thanh toán
-     * BUOC 5: MoMo callback về /api/payment/momo-return
+     * BUOC 5: MoMo callback về redirectUrl (từ frontend hoặc config)
      * BUOC 6: System TẠO subscription ACTIVE tự động
      * 
      * QUAN TRỌNG: Lưu driverId vào extraData vì callback KHÔNG CÓ TOKEN!
      * 
      * @param packageId ID của service package muốn mua
+     * @param customRedirectUrl URL redirect tùy chỉnh từ frontend (có thể null)
      * @return Map chứa paymentUrl để redirect driver
      */
-    public Map<String, String> createPaymentUrl(Long packageId) {
+    public Map<String, String> createPaymentUrl(Long packageId, String customRedirectUrl) {
         // BUOC 1: Validate service package tồn tại
         ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + packageId));
@@ -103,6 +102,13 @@ public class MoMoService {
         // LƯU DRIVER ID vào extraData vì callback không có token!
         String extraData = "packageId=" + packageId + "&driverId=" + currentDriver.getId();
 
+        // Xác định redirectUrl: dùng từ frontend nếu có, không thì dùng config
+        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty()) 
+                ? customRedirectUrl 
+                : moMoConfig.getRedirectUrl();
+        
+        log.info("Using redirect URL: {}", finalRedirectUrl);
+
         // Parameters for signature (sorted by key)
         Map<String, String> signatureParams = new LinkedHashMap<>();
         signatureParams.put("accessKey", moMoConfig.getAccessKey());
@@ -112,7 +118,7 @@ public class MoMoService {
         signatureParams.put("orderId", orderId);
         signatureParams.put("orderInfo", "Thanh toan goi dich vu: " + servicePackage.getName());
         signatureParams.put("partnerCode", moMoConfig.getPartnerCode());
-        signatureParams.put("redirectUrl", moMoConfig.getRedirectUrl());
+        signatureParams.put("redirectUrl", finalRedirectUrl);
         signatureParams.put("requestId", requestId);
         signatureParams.put("requestType", moMoConfig.getRequestType());
 
@@ -129,7 +135,7 @@ public class MoMoService {
         requestBody.put("amount", amount);
         requestBody.put("orderId", orderId);
         requestBody.put("orderInfo", "Thanh toan goi dich vu: " + servicePackage.getName());
-        requestBody.put("redirectUrl", moMoConfig.getRedirectUrl());
+        requestBody.put("redirectUrl", finalRedirectUrl); // Dùng redirectUrl từ frontend hoặc config
         requestBody.put("ipnUrl", moMoConfig.getIpnUrl());
         requestBody.put("lang", "vi");
         requestBody.put("extraData", extraData); // Dùng extraData có cả packageId và driverId

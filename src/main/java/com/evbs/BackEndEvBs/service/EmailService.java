@@ -177,7 +177,7 @@ public class EmailService {
 
         // Thông tin hệ thống
         context.setVariable("systemName", "EV Battery Swap Station");
-        context.setVariable("supportEmail", "support@evbatteryswap.com");
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
 
         return context;
     }

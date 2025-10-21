@@ -82,7 +82,7 @@ public class Booking {
     @Transient
     private Long swapTransactionId;
 
-    // 🔑 Expose IDs
+    // Expose IDs
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
     }
@@ -107,7 +107,7 @@ public class Booking {
         return this.swapTransaction != null ? this.swapTransaction.getId() : null;
     }
 
-    // 🔋 Expose Battery Info từ SwapTransaction
+    // Expose Battery Info từ SwapTransaction
     @Transient
     public Long getSwapOutBatteryId() {
         return this.swapTransaction != null && this.swapTransaction.getSwapOutBattery() != null 

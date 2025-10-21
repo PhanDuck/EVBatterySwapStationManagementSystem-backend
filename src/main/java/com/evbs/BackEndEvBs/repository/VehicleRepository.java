@@ -15,7 +15,4 @@ public interface VehicleRepository extends JpaRepository<Vehicle,Long> {
 
     // Tìm tất cả vehicles của một driver
     List<Vehicle> findByDriver(User driver);
-
-    // Tìm vehicles theo battery type
-    List<Vehicle> findByBatteryType_Id(Long batteryTypeId);
 }

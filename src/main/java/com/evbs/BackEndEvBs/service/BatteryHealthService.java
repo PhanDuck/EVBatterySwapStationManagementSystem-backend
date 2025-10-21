@@ -103,7 +103,7 @@ public class BatteryHealthService {
         BigDecimal soh = battery.getStateOfHealth();
         
         if (soh == null) {
-            log.warn("🏥 [Battery {}] SOH is null, setting to 100%", battery.getId());
+            log.warn("[Battery {}] SOH is null, setting to 100%", battery.getId());
             battery.setStateOfHealth(BigDecimal.valueOf(100.0));
             batteryRepository.save(battery);
             return HealthStatus.HEALTHY;

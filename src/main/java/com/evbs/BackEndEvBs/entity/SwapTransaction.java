@@ -41,7 +41,7 @@ public class SwapTransaction {
     @JsonIgnore
     private User staff;
 
-    // 🔑 Expose các IDs quan trọng cho JSON response
+    // Expose các IDs quan trọng cho JSON response
     @Transient
     public Long getDriverId() {
         return driver != null ? driver.getId() : null;
@@ -94,7 +94,7 @@ public class SwapTransaction {
     @Column(name = "SwapInBatteryHealth", precision = 5, scale = 2)
     private BigDecimal swapInBatteryHealth;
 
-    // 🔑 Expose Battery IDs cho JSON response
+    // Expose Battery IDs cho JSON response
     @Transient
     public Long getSwapOutBatteryId() {
         return swapOutBattery != null ? swapOutBattery.getId() : null;

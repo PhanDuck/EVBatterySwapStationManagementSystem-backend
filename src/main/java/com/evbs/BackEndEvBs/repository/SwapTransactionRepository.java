@@ -16,21 +16,12 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
     // Tìm transactions theo driver
     List<SwapTransaction> findByDriver(User driver);
 
-    // Tìm transactions theo station (phải dùng station_id vì station là relationship)
-    List<SwapTransaction> findByStation_Id(Long stationId);
-
-    // Tìm transactions theo status
-    List<SwapTransaction> findByStatus(SwapTransaction.Status status);
-
     // Tìm transaction của driver cụ thể
     Optional<SwapTransaction> findByIdAndDriver(Long id, User driver);
 
     // tìm swap transaction gần nhất của vehicle (để biết pin nào đang trên xe)
     Optional<SwapTransaction> findTopByVehicleOrderByStartTimeDesc(Vehicle vehicle);
-    
-    // Tìm swap transaction gần nhất của vehicle có status COMPLETED
-    Optional<SwapTransaction> findTopByVehicleAndStatusOrderByStartTimeDesc(Vehicle vehicle, SwapTransaction.Status status);
-    
+
     //  Tìm tất cả swap transactions của vehicle (lịch sử đổi pin)
     List<SwapTransaction> findByVehicleOrderByStartTimeDesc(Vehicle vehicle);
     

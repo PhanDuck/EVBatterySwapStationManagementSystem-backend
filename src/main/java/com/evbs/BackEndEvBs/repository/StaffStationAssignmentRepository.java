@@ -50,19 +50,4 @@ public interface StaffStationAssignmentRepository extends JpaRepository<StaffSta
      * Lấy tất cả assignments của 1 staff
      */
     List<StaffStationAssignment> findByStaff(User staff);
-
-    /**
-     * Lấy tất cả assignments của 1 station
-     */
-    List<StaffStationAssignment> findByStation(Station station);
-
-    /**
-     * Xóa tất cả assignments của 1 staff (khi xóa staff)
-     */
-    void deleteByStaff(User staff);
-
-    /**
-     * Xóa tất cả assignments của 1 station (khi xóa station)
-     */
-    void deleteByStation(Station station);
 }

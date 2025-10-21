@@ -47,7 +47,7 @@ public class User implements UserDetails {
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
             message = "Phone invalid!"
     )
-    @Column(name = "PhoneNumber", unique = true, length = 30) // 👈 nên unique để login
+    @Column(name = "PhoneNumber", unique = true, length = 30) // nên unique để login
     private String phoneNumber;
 
     @NotEmpty(message = "Password cannot be empty!")

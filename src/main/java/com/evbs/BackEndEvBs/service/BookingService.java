@@ -423,7 +423,7 @@ public class BookingService {
                         && b.getStatus() == Battery.Status.AVAILABLE
                         && b.getChargeLevel().compareTo(BigDecimal.valueOf(95)) >= 0
                         && b.getStateOfHealth() != null 
-                        && b.getStateOfHealth().compareTo(BigDecimal.valueOf(70)) >= 0)  // ⭐ Health >= 70%
+                        && b.getStateOfHealth().compareTo(BigDecimal.valueOf(70)) >= 0)  //Health >= 70%
                 .sorted((b1, b2) -> {
                     // Ưu tiên: Sức khỏe cao nhất → Điện cao nhất
                     int healthCompare = b2.getStateOfHealth().compareTo(b1.getStateOfHealth());

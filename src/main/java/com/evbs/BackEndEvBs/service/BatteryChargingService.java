@@ -116,7 +116,7 @@ public class BatteryChargingService {
         // Tính thời gian đã sạc (phút)
         long minutesCharged = ChronoUnit.MINUTES.between(chargeStartTime, now);
         
-        // ⚠️ Chỉ update nếu đã qua ít nhất 1 phút (tránh spam update)
+        // Chỉ update nếu đã qua ít nhất 1 phút (tránh spam update)
         if (minutesCharged < 1) {
             return false;
         }

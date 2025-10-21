@@ -44,9 +44,15 @@ public class TicketResponse {
         return staff != null ? staff.getId() : null;
     }
 
-    // Getter để expose staff name trong JSON (commented out - chỉ cần staffId)
-    // @JsonProperty("staffName")
-    // public String getStaffName() {
-    //     return staff != null ? staff.getFullName() : null;
-    // }
+    // Getter để expose staff name trong JSON
+    @JsonProperty("staffName")
+    public String getStaffName() {
+        return staff != null ? staff.getFullName() : null;
+    }
+
+    // Getter để expose staff email trong JSON
+    @JsonProperty("staffEmail")
+    public String getStaffEmail() {
+        return staff != null ? staff.getEmail() : null;
+    }
 }

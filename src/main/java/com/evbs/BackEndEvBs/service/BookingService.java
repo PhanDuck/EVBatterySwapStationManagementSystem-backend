@@ -255,9 +255,7 @@ public class BookingService {
      * - Giai phong pin (PENDING → AVAILABLE)
      * - KHONG TRU luot swap (loi tu phia tram, khong phai loi driver)
      * - Clear reservation fields
-     * 
-     * @param id Booking ID can huy
-     * @param reason Ly do huy (optional, de tracking)
+
      */
     @Transactional
     public Booking cancelBookingByStaff(Long id, String reason) {
@@ -359,62 +357,6 @@ public class BookingService {
         return bookingRepository.findByStationIn(myStations);
     }
 
-    /**
-     * UPDATE - Cập nhật booking status (Admin/Staff only)
-     */
-    @Transactional
-    public Booking updateBookingStatus(Long id, Booking.Status newStatus) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
-        }
-
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
-
-        Booking.Status currentStatus = booking.getStatus();
-
-        // 🔹 Không cho đổi sang cùng trạng thái
-        if (currentStatus == newStatus) {
-            throw new AuthenticationException("Booking already has status: " + newStatus);
-        }
-
-        // 🔹 Kiểm tra logic chuyển trạng thái hợp lệ
-        switch (currentStatus) {
-            case PENDING -> {
-                if (newStatus != Booking.Status.CONFIRMED && newStatus != Booking.Status.CANCELLED) {
-                    throw new AuthenticationException("Cannot change from PENDING to " + newStatus);
-                }
-            }
-            case CONFIRMED -> {
-                if (newStatus != Booking.Status.COMPLETED && newStatus != Booking.Status.CANCELLED) {
-                    throw new AuthenticationException("Cannot change from CONFIRMED to " + newStatus);
-                }
-            }
-            case COMPLETED, CANCELLED -> {
-                throw new AuthenticationException("Cannot change status of a finished booking.");
-            }
-        }
-
-        // 🔹 Nếu hợp lệ, cập nhật
-        booking.setStatus(newStatus);
-        return bookingRepository.save(booking);
-    }
-
-    /**
-     * DELETE - Xóa booking (Admin only)
-     */
-    @Transactional
-    public void deleteBooking(Long id) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied");
-        }
-
-        Booking booking = bookingRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
-        bookingRepository.delete(booking);
-    }
 
     /**
      * READ - Lấy bookings theo station (Admin/Staff only)
@@ -524,7 +466,7 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
 
-        // ⭐ GỬI EMAIL CONFIRMATION VỚI CODE
+        //  GỬI EMAIL CONFIRMATION VỚI CODE
         sendBookingConfirmedEmail(savedBooking, currentUser);
 
         return savedBooking;
@@ -566,7 +508,7 @@ public class BookingService {
             );
             emailDetail.setStatus(booking.getStatus().toString());
 
-            // ⭐ THÊM CONFIRMATION CODE VÀO EMAIL
+            //  THÊM CONFIRMATION CODE VÀO EMAIL
             emailDetail.setConfirmationCode(booking.getConfirmationCode());
             emailDetail.setConfirmedBy(confirmedBy.getFullName());
 

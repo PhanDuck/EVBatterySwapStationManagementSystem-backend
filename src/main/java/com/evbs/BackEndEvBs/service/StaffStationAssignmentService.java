@@ -45,7 +45,7 @@ public class StaffStationAssignmentService {
     public StaffStationAssignment assignStaffToStation(StaffStationAssignmentRequest request) {
         User currentAdmin = authenticationService.getCurrentUser();
 
-        // ✅ Chỉ Admin mới có quyền assign
+        //  Chỉ Admin mới có quyền assign
         if (currentAdmin.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Access denied. Only admins can assign staff to stations.");
         }
@@ -76,7 +76,7 @@ public class StaffStationAssignmentService {
             );
         }
 
-        // ✅ Kiểm tra số lượng staff của station (max 2)
+        //  Kiểm tra số lượng staff của station (max 2)
         long staffCountAtStation = assignmentRepository.countByStation(station);
         if (staffCountAtStation >= MAX_STAFF_PER_STATION) {
             throw new AuthenticationException(
@@ -101,7 +101,7 @@ public class StaffStationAssignmentService {
     public void unassignStaffFromStation(Long staffId, Long stationId) {
         User currentAdmin = authenticationService.getCurrentUser();
 
-        // ✅ Chỉ Admin mới có quyền unassign
+        //  Chỉ Admin mới có quyền unassign
         if (currentAdmin.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Access denied. Only admins can unassign staff from stations.");
         }

@@ -125,7 +125,7 @@ public class StationInventoryService {
                 .findFirst()
                 .ifPresent(stationInventoryRepository::delete);
         
-        log.info("✅ Da thay pin tai tram {}. Pin cu {} VE KHO, Pin moi {} VAO TRAM", 
+        log.info(" Da thay pin tai tram {}. Pin cu {} VE KHO, Pin moi {} VAO TRAM",
                 station.getName(), maintenanceBattery.getId(), availableBattery.getId());
         
         // 14. Trả về kết quả

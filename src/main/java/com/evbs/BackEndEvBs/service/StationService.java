@@ -52,7 +52,7 @@ public class StationService {
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
 
-        // ✅ Tạo station thủ công thay vì dùng ModelMapper (tránh conflict)
+        //  Tạo station thủ công thay vì dùng ModelMapper (tránh conflict)
         Station station = new Station();
         station.setName(request.getName());
         station.setLocation(request.getLocation());
@@ -139,7 +139,7 @@ public class StationService {
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        // ✅ Staff chỉ update được stations được assign
+        //  Staff chỉ update được stations được assign
         if (currentUser.getRole() == User.Role.STAFF) {
             if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
                 throw new AuthenticationException("You are not assigned to manage this station");
@@ -214,7 +214,7 @@ public class StationService {
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
 
-        // ✅ Staff chỉ update được stations được assign
+        //  Staff chỉ update được stations được assign
         if (currentUser.getRole() == User.Role.STAFF) {
             if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
                 throw new AuthenticationException("You are not assigned to manage this station");

@@ -37,7 +37,7 @@ public class SwapTransactionController {
     }
 
     /**
-     * ⭐ POST /api/swap-transaction/swap-by-code : Driver tự swap bằng confirmation code
+     * POST /api/swap-transaction/swap-by-code : Driver tự swap bằng confirmation code
      * 
      * Driver nhập mã xác nhận (ABC123) tại trạm → Tự động tạo swap transaction
      */
@@ -69,7 +69,7 @@ public class SwapTransactionController {
         return ResponseEntity.ok(transaction);
     }
 
-    // ❌ REMOVED: Driver self-complete (security risk)
+    // REMOVED: Driver self-complete (security risk)
     // Transaction will be auto-completed after payment
     // Only staff can manually complete if needed
 
@@ -113,7 +113,7 @@ public class SwapTransactionController {
     }
 
     /**
-     * ⭐ GET /api/swap-transaction/vehicle/{vehicleId}/history : Xem lịch sử đổi pin của xe
+     * GET /api/swap-transaction/vehicle/{vehicleId}/history : Xem lịch sử đổi pin của xe
      * 
      * Staff/Admin: Xem được tất cả xe
      * Driver: Chỉ xem được xe của mình
@@ -127,7 +127,7 @@ public class SwapTransactionController {
     }
 
     /**
-     * 🔋 GET /api/swap-transaction/battery/{batteryId}/history : Xem lịch sử sử dụng của pin
+     * GET /api/swap-transaction/battery/{batteryId}/history : Xem lịch sử sử dụng của pin
      * 
      * Staff/Admin xem pin đã được dùng bởi driver nào, xe nào, ở đâu
      * Bao gồm cả swap OUT (lấy ra) và swap IN (trả về)

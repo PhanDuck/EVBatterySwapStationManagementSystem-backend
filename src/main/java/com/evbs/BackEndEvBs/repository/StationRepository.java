@@ -31,7 +31,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
     boolean existsByName(String name);
 
     // Tìm stations có pin AVAILABLE với health > minHealth và đúng batteryType
-    // ⭐ LOGIC MỚI: Tìm pin trực tiếp từ Battery.currentStation (không qua StationInventory)
+    // LOGIC MỚI: Tìm pin trực tiếp từ Battery.currentStation (không qua StationInventory)
     @Query("SELECT DISTINCT s FROM Station s " +
            "JOIN Battery b ON b.currentStation.id = s.id " +
            "WHERE s.batteryType = :batteryType " +

@@ -41,11 +41,11 @@ public class Battery {
     @Column(name = "StateOfHealth", precision = 5, scale = 2)
     private BigDecimal stateOfHealth;
 
-    // ✅ State of Charge (SOC) - Mức pin hiện tại (0-100%)
+    //  State of Charge (SOC) - Mức pin hiện tại (0-100%)
     @Column(name = "ChargeLevel", precision = 5, scale = 2)
     private BigDecimal chargeLevel = BigDecimal.valueOf(100.0);  // Default 100% khi mới
 
-    // ✅ Thời điểm bắt đầu sạc (để tính thời gian sạc)
+    //  Thời điểm bắt đầu sạc (để tính thời gian sạc)
     @Column(name = "LastChargedTime")
     private LocalDateTime lastChargedTime;
 

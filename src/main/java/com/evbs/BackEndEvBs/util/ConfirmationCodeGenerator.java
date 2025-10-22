@@ -8,7 +8,6 @@ import java.security.SecureRandom;
  */
 public class ConfirmationCodeGenerator {
 
-    private static final String LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     private static final String NUMBERS = "0123456789";
     private static final SecureRandom random = new SecureRandom();
 
@@ -17,12 +16,7 @@ public class ConfirmationCodeGenerator {
         StringBuilder code = new StringBuilder(6);
 
 
-        for (int i = 0; i < 3; i++) {
-            code.append(LETTERS.charAt(random.nextInt(LETTERS.length())));
-        }
-
-
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 6; i++) {
             code.append(NUMBERS.charAt(random.nextInt(NUMBERS.length())));
         }
 

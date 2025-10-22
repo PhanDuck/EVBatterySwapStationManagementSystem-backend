@@ -1,5 +1,6 @@
 package com.evbs.BackEndEvBs.model.request;
 
+import com.evbs.BackEndEvBs.entity.Station;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
@@ -27,4 +28,7 @@ public class StationUpdateRequest {
     private Double longitude;
 
     private Long batteryTypeId;
+    
+    // Optional status update
+    private Station.Status status;
 }

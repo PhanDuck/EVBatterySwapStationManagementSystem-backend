@@ -61,6 +61,9 @@ public class SwapTransactionService {
     @Autowired
     private final BatteryHealthService batteryHealthService;
 
+    @Autowired
+    private EmailService emailService;
+
     /**
      * CREATE - Tạo transaction mới (Driver)
      */
@@ -374,6 +377,14 @@ public class SwapTransactionService {
         if (subscription.getRemainingSwaps() <= 0) {
             subscription.setStatus(DriverSubscription.Status.EXPIRED);
             driverSubscriptionRepository.save(subscription);
+        }
+
+        // 5. Gửi email thông báo đổi pin thành công
+        try {
+            emailService.sendSwapSuccessEmail(transaction.getDriver(), transaction);
+            log.info("📧 Email đổi pin thành công đã được gửi cho driver: {}", transaction.getDriver().getEmail());
+        } catch (Exception emailException) {
+            log.error("❌ Lỗi khi gửi email đổi pin thành công: {}", emailException.getMessage());
         }
     }
 

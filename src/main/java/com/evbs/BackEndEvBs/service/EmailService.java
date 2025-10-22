@@ -1,9 +1,7 @@
 package com.evbs.BackEndEvBs.service;
 
+import com.evbs.BackEndEvBs.entity.*;
 import com.evbs.BackEndEvBs.model.EmailDetail;
-import com.evbs.BackEndEvBs.entity.Payment;
-import com.evbs.BackEndEvBs.entity.ServicePackage;
-import com.evbs.BackEndEvBs.entity.User;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.math.BigDecimal;
@@ -174,6 +173,105 @@ public class EmailService {
         // Format ngày giờ
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
         context.setVariable("paymentDate", payment.getPaymentDate().format(formatter));
+
+        // Thông tin hệ thống
+        context.setVariable("systemName", "EV Battery Swap Station");
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+
+        return context;
+    }
+
+
+    /**
+     * Gửi email thông báo đổi pin thành công
+     *
+     * @param driver Thông tin driver nhận email
+     * @param swapTransaction Thông tin giao dịch đổi pin
+     */
+    public void sendSwapSuccessEmail(User driver, SwapTransaction swapTransaction) {
+        try {
+            log.info("Đang gửi email đổi pin thành công cho driver: {}", driver.getEmail());
+
+            Context context = createSwapEmailContext(driver, swapTransaction);
+
+            // Render template - sử dụng template có sẵn
+            String htmlContent = templateEngine.process("payment-success-email", context);
+
+            // Tạo email message
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            // Thiết lập thông tin email
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(driver.getEmail());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject("🔋 Đổi pin thành công - EV Battery Swap Station");
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email đổi pin thành công đã được gửi thành công cho: {}", driver.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email đổi pin thành công cho {}: {}", driver.getEmail(), e.getMessage());
+            // Không throw exception để không ảnh hưởng đến luồng đổi pin
+            System.err.println("Failed to send swap success email: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Tạo context chứa dữ liệu cho email template đổi pin
+     */
+    private Context createSwapEmailContext(User driver, SwapTransaction swapTransaction) {
+        Context context = new Context();
+
+        // Thông tin driver
+        context.setVariable("driverName", driver.getFullName());
+        context.setVariable("driverEmail", driver.getEmail());
+
+        // Thông tin giao dịch đổi pin
+        context.setVariable("packageName", "Dịch vụ đổi pin"); // Tên dịch vụ
+        context.setVariable("validDays", "Theo gói đăng ký"); // Thời hạn
+        context.setVariable("swapLimit", "Theo gói đăng ký"); // Giới hạn lượt đổi
+        context.setVariable("packageDescription", "Thay thế pin cũ bằng pin mới được sạc đầy");
+
+        // Thông tin giao dịch
+        context.setVariable("paymentId", swapTransaction.getId());
+        context.setVariable("transactionId", swapTransaction.getId());
+        context.setVariable("amount", swapTransaction.getCost() != null ? formatCurrency(swapTransaction.getCost()) : "0 VNĐ");
+        context.setVariable("paymentMethod", "Gói đăng ký");
+        context.setVariable("paymentStatus", "Hoàn thành");
+
+        // Thông tin chi tiết đổi pin
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        context.setVariable("paymentDate", swapTransaction.getEndTime() != null ?
+                swapTransaction.getEndTime().format(formatter) :
+                LocalDateTime.now().format(formatter));
+
+        // Thông tin trạm và pin
+        if (swapTransaction.getStation() != null) {
+            context.setVariable("stationName", swapTransaction.getStation().getName());
+            context.setVariable("stationLocation", swapTransaction.getStation().getLocation());
+        }
+
+        // Thông tin pin
+        String batteryInfo = "";
+        if (swapTransaction.getSwapOutBattery() != null) {
+            Battery newBattery = swapTransaction.getSwapOutBattery();
+            batteryInfo = String.format("Pin mới: %s (Mức sạc: %.1f%%, Tình trạng: %.1f%%)",
+                    newBattery.getModel() != null ? newBattery.getModel() : "N/A",
+                    newBattery.getChargeLevel() != null ? newBattery.getChargeLevel().doubleValue() : 0.0,
+                    newBattery.getStateOfHealth() != null ? newBattery.getStateOfHealth().doubleValue() : 0.0);
+        }
+        context.setVariable("batteryInfo", batteryInfo);
+
+        // Thông tin xe
+        if (swapTransaction.getVehicle() != null) {
+            context.setVariable("vehicleInfo",
+                    String.format("Xe: %s (%s)",
+                            swapTransaction.getVehicle().getPlateNumber(),
+                            swapTransaction.getVehicle().getModel() != null ? swapTransaction.getVehicle().getModel() : "N/A"));
+        }
 
         // Thông tin hệ thống
         context.setVariable("systemName", "EV Battery Swap Station");

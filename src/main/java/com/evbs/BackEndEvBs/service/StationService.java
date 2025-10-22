@@ -187,7 +187,9 @@ public class StationService {
 
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
-        stationRepository.delete(station);
+        station.setStatus(Station.Status.INACTIVE);
+        stationRepository.save(station);
+        
     }
 
     /**

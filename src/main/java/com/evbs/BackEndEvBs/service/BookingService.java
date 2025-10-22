@@ -120,6 +120,28 @@ public class BookingService {
             throw new AuthenticationException("Station does not support the battery type of your vehicle");
         }
 
+        // VALIDATION: Chỉ cho phép đặt lịch trong vòng 3 tiếng tới
+        if (request.getBookingTime() == null) {
+            throw new AuthenticationException("Booking time is required");
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime maxBookingTime = now.plusHours(3);
+        
+        // Không được đặt lịch quá khứ
+        if (request.getBookingTime().isBefore(now)) {
+            throw new AuthenticationException("Không thể đặt lịch trong quá khứ");
+        }
+        
+        // Chỉ được đặt trong vòng 3 tiếng tới
+        if (request.getBookingTime().isAfter(maxBookingTime)) {
+            throw new AuthenticationException(
+                "Chỉ được đặt lịch trong vòng 3 tiếng tới. " +
+                "Thời gian muộn nhất: " + 
+                maxBookingTime.format(DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy"))
+            );
+        }
+
         // Tạo booking thủ công thay vì dùng ModelMapper để tránh conflict
         Booking booking = new Booking();
         booking.setDriver(currentUser);
@@ -242,7 +264,13 @@ public class BookingService {
 
         // Huy booking (PENDING → CANCELLED)
         booking.setStatus(Booking.Status.CANCELLED);
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        
+        // Detach entity to prevent lazy loading during JSON serialization
+        // This avoids the massive N+1 query problem
+        savedBooking.setReservedBattery(null);
+        
+        return savedBooking;
     }
 
     /**

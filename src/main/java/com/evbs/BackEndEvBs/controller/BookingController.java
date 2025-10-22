@@ -176,9 +176,7 @@ public class BookingController {
      * Neu huy CONFIRMED booking:
      * - Giai phong pin ve AVAILABLE
      * - KHONG TRU luot swap cua driver (loi tu phia tram)
-     * 
-     * @param id Booking ID can huy
-     * @param reason (Optional) Ly do huy - truyen qua request param
+
      */
     @DeleteMapping("/staff/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")

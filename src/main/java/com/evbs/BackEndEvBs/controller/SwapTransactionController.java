@@ -29,12 +29,6 @@ public class SwapTransactionController {
     /**
      * POST /api/swap-transaction : Create new swap transaction (Driver)
      */
-    @PostMapping
-    @Operation(summary = "Create new swap transaction")
-    public ResponseEntity<SwapTransaction> createTransaction(@Valid @RequestBody SwapTransactionRequest request) {
-        SwapTransaction transaction = swapTransactionService.createTransaction(request);
-        return new ResponseEntity<>(transaction, HttpStatus.CREATED);
-    }
 
     /**
      * POST /api/swap-transaction/swap-by-code : Driver tự swap bằng confirmation code

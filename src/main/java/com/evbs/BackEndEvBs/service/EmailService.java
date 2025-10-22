@@ -4,6 +4,9 @@ import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.entity.Payment;
 import com.evbs.BackEndEvBs.entity.ServicePackage;
 import com.evbs.BackEndEvBs.entity.User;
+import com.evbs.BackEndEvBs.entity.SwapTransaction;
+import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.DriverSubscription;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.math.BigDecimal;
@@ -177,6 +181,115 @@ public class EmailService {
 
         // Thông tin hệ thống
         context.setVariable("systemName", "EV Battery Swap Station");
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+
+        return context;
+    }
+
+
+    /**
+     * Gửi email thông báo đổi pin thành công
+     *
+     * @param driver Thông tin driver nhận email
+     * @param swapTransaction Thông tin giao dịch đổi pin
+     * @param subscription Thông tin subscription của driver (optional)
+     */
+    public void sendSwapSuccessEmail(User driver, SwapTransaction swapTransaction, DriverSubscription subscription) {
+        try {
+            log.info("Đang gửi email đổi pin thành công cho driver: {}", driver.getEmail());
+
+            Context context = createSwapEmailContext(driver, swapTransaction, subscription);
+
+            // Render template
+            String htmlContent = templateEngine.process("swap-success-email", context);
+
+            // Tạo email message
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            // Thiết lập thông tin email
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(driver.getEmail());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject("🔋 Đổi pin thành công - EV Battery Swap Station");
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email đổi pin thành công đã được gửi thành công cho: {}", driver.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email đổi pin thành công cho {}: {}", driver.getEmail(), e.getMessage());
+            // Không throw exception để không ảnh hưởng đến luồng đổi pin
+            System.err.println("Failed to send swap success email: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Tạo context chứa dữ liệu cho email template đổi pin
+     */
+    private Context createSwapEmailContext(User driver, SwapTransaction swapTransaction, DriverSubscription subscription) {
+        Context context = new Context();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        // Thông tin driver
+        context.setVariable("driverName", driver.getFullName());
+
+        // Thông tin giao dịch đổi pin
+        context.setVariable("swapId", swapTransaction.getId().toString());
+        context.setVariable("swapTime", swapTransaction.getEndTime() != null ?
+                swapTransaction.getEndTime().format(formatter) :
+                LocalDateTime.now().format(formatter));
+
+        // Thông tin xe
+        if (swapTransaction.getVehicle() != null) {
+            String vehicleInfo = swapTransaction.getVehicle().getPlateNumber();
+            if (swapTransaction.getVehicle().getModel() != null) {
+                vehicleInfo += " (" + swapTransaction.getVehicle().getModel() + ")";
+            }
+            context.setVariable("vehicleInfo", vehicleInfo);
+        }
+
+        // Thông tin nhân viên
+        if (swapTransaction.getStaff() != null) {
+            context.setVariable("staffName", swapTransaction.getStaff().getFullName());
+        }
+
+        // Thông tin trạm
+        if (swapTransaction.getStation() != null) {
+            context.setVariable("stationName", swapTransaction.getStation().getName());
+            context.setVariable("stationLocation", swapTransaction.getStation().getLocation());
+            context.setVariable("stationContact", swapTransaction.getStation().getContactInfo() != null ?
+                    swapTransaction.getStation().getContactInfo() : "Chưa cập nhật");
+        }
+
+        // Thông tin pin cũ (được lấy ra)
+        if (swapTransaction.getSwapInBattery() != null) {
+            Battery oldBattery = swapTransaction.getSwapInBattery();
+            context.setVariable("oldBatteryModel", oldBattery.getModel() != null ? oldBattery.getModel() : "N/A");
+            context.setVariable("oldBatteryCharge", oldBattery.getChargeLevel() != null ?
+                    oldBattery.getChargeLevel().intValue() : 0);
+            context.setVariable("oldBatteryHealth", oldBattery.getStateOfHealth() != null ?
+                    oldBattery.getStateOfHealth().intValue() : 0);
+        }
+
+        // Thông tin pin mới (được lắp vào)
+        if (swapTransaction.getSwapOutBattery() != null) {
+            Battery newBattery = swapTransaction.getSwapOutBattery();
+            context.setVariable("newBatteryModel", newBattery.getModel() != null ? newBattery.getModel() : "N/A");
+            context.setVariable("newBatteryCharge", newBattery.getChargeLevel() != null ?
+                    newBattery.getChargeLevel().intValue() : 0);
+            context.setVariable("newBatteryHealth", newBattery.getStateOfHealth() != null ?
+                    newBattery.getStateOfHealth().intValue() : 0);
+        }
+
+        // Thông tin subscription (nếu có)
+        if (subscription != null) {
+            context.setVariable("remainingSwaps", subscription.getRemainingSwaps());
+            context.setVariable("subscriptionInfo", "Gói dịch vụ đang hoạt động");
+        }
+
+        // Thông tin hệ thống
         context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
 
         return context;

@@ -267,6 +267,20 @@ public class BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Khong tim thay booking voi ID: " + id));
 
+        // STAFF CHỈ CANCEL ĐƯỢC BOOKING CỦA TRẠM MÌNH QUẢN LÝ
+        if (currentUser.getRole() == User.Role.STAFF) {
+            Station bookingStation = booking.getStation();
+            if (bookingStation == null) {
+                throw new AuthenticationException("Booking khong co station");
+            }
+            
+            // Kiểm tra staff có được assign vào station này không
+            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, bookingStation)) {
+                throw new AuthenticationException("Ban khong duoc phan cong quan ly tram nay. Chi co the huy booking cua tram minh quan ly.");
+            }
+        }
+        // Admin có thể hủy bất kỳ booking nào
+
         // Kiem tra: Khong cho huy booking da COMPLETED hoac da CANCELLED
         if (booking.getStatus() == Booking.Status.COMPLETED) {
             throw new AuthenticationException("Khong the huy booking da COMPLETED");
@@ -315,6 +329,8 @@ public class BookingService {
 
     /**
      * READ - Lấy tất cả bookings (Admin/Staff only)
+     * Staff chỉ thấy bookings của trạm mình quản lý
+     * Admin thấy tất cả
      */
     @Transactional(readOnly = true)
     public List<Booking> getAllBookings() {
@@ -322,7 +338,19 @@ public class BookingService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
         }
-        return bookingRepository.findAll();
+        
+        // Admin xem tất cả
+        if (currentUser.getRole() == User.Role.ADMIN) {
+            return bookingRepository.findAll();
+        }
+        
+        // Staff chỉ xem bookings của trạm mình quản lý
+        List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
+        if (myStations.isEmpty()) {
+            return List.of(); // Staff chưa được assign trạm nào
+        }
+        
+        return bookingRepository.findByStationIn(myStations);
     }
 
     /**
@@ -404,6 +432,20 @@ public class BookingService {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException("Khong tim thay booking voi ID: " + bookingId));
+
+        // STAFF CHỈ CONFIRM ĐƯỢC BOOKING CỦA TRẠM MÌNH QUẢN LÝ
+        if (currentUser.getRole() == User.Role.STAFF) {
+            Station bookingStation = booking.getStation();
+            if (bookingStation == null) {
+                throw new AuthenticationException("Booking khong co station");
+            }
+            
+            // Kiểm tra staff có được assign vào station này không
+            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, bookingStation)) {
+                throw new AuthenticationException("Ban khong duoc phan cong quan ly tram nay. Chi co the confirm booking cua tram minh quan ly.");
+            }
+        }
+        // Admin có thể confirm bất kỳ booking nào
 
         if (booking.getStatus() != Booking.Status.PENDING) {
             throw new AuthenticationException(

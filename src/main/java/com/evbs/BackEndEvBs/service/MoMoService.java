@@ -260,10 +260,10 @@ public class MoMoService {
                             .orElseThrow(() -> new NotFoundException("Không tìm thấy driver ID: " + driverId));
 
                     emailService.sendPaymentSuccessEmail(driver, payment, servicePackage);
-                    log.info("📧 Email thanh toán thành công đã được gửi cho driver: {}", driver.getEmail());
+                    log.info(" Email thanh toán thành công đã được gửi cho driver: {}", driver.getEmail());
 
                 } catch (Exception emailException) {
-                    log.error("❌ Lỗi khi gửi email thanh toán thành công: {}", emailException.getMessage());
+                    log.error(" Lỗi khi gửi email thanh toán thành công: {}", emailException.getMessage());
                     // Không throw exception để không ảnh hưởng đến flow thanh toán chính
                 }
 

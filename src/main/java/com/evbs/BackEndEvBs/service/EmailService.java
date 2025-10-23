@@ -7,6 +7,8 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.SwapTransaction;
 import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.DriverSubscription;
+import com.evbs.BackEndEvBs.entity.SupportTicket;
+import com.evbs.BackEndEvBs.entity.TicketResponse;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -304,5 +306,212 @@ public class EmailService {
         }
         NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
         return formatter.format(amount) + " VNĐ";
+    }
+
+
+    // ==================== SUPPORT TICKET EMAIL METHODS ====================
+
+    /**
+     * Gửi email thông báo ticket mới đến Staff (khi có stationID)
+     *
+     * @param staffList Danh sách staff của trạm
+     * @param ticket Thông tin support ticket
+     */
+    public void sendTicketCreatedToStaff(java.util.List<User> staffList, SupportTicket ticket) {
+        if (staffList == null || staffList.isEmpty()) {
+            log.warn("Không có staff nào để gửi email cho ticket: {}", ticket.getId());
+            return;
+        }
+
+        try {
+            log.info("Đang gửi email thông báo ticket mới đến {} staff cho ticket: {}",
+                    staffList.size(), ticket.getId());
+
+            Context context = createTicketEmailContext(ticket);
+
+            // Render template
+            String htmlContent = templateEngine.process("ticket-created-staff", context);
+
+            // Gửi email đến từng staff
+            for (User staff : staffList) {
+                try {
+                    MimeMessage mimeMessage = mailSender.createMimeMessage();
+                    MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+                    mimeMessageHelper.setFrom(fromEmail);
+                    mimeMessageHelper.setTo(staff.getEmail());
+                    mimeMessageHelper.setText(htmlContent, true);
+                    mimeMessageHelper.setSubject("🚨 [URGENT] Ticket hỗ trợ mới từ khách hàng - #" + ticket.getId());
+
+                    mailSender.send(mimeMessage);
+                    log.info("Email đã được gửi đến staff: {}", staff.getEmail());
+
+                } catch (MessagingException e) {
+                    log.error("Lỗi khi gửi email đến staff {}: {}", staff.getEmail(), e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo email template cho ticket {}: {}", ticket.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo ticket mới đến Admin (khi không có stationID)
+     *
+     * @param adminList Danh sách admin
+     * @param ticket Thông tin support ticket
+     */
+    public void sendTicketCreatedToAdmin(java.util.List<User> adminList, SupportTicket ticket) {
+        if (adminList == null || adminList.isEmpty()) {
+            log.warn("Không có admin nào để gửi email cho ticket: {}", ticket.getId());
+            return;
+        }
+
+        try {
+            log.info("Đang gửi email thông báo ticket mới đến {} admin cho ticket: {}",
+                    adminList.size(), ticket.getId());
+
+            Context context = createTicketEmailContext(ticket);
+
+            // Render template
+            String htmlContent = templateEngine.process("ticket-created-staff", context);
+
+            // Gửi email đến từng admin
+            for (User admin : adminList) {
+                try {
+                    MimeMessage mimeMessage = mailSender.createMimeMessage();
+                    MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+                    mimeMessageHelper.setFrom(fromEmail);
+                    mimeMessageHelper.setTo(admin.getEmail());
+                    mimeMessageHelper.setText(htmlContent, true);
+                    mimeMessageHelper.setSubject("🚨 [ADMIN] Ticket hỗ trợ tổng quát mới - #" + ticket.getId());
+
+                    mailSender.send(mimeMessage);
+                    log.info("Email đã được gửi đến admin: {}", admin.getEmail());
+
+                } catch (MessagingException e) {
+                    log.error("Lỗi khi gửi email đến admin {}: {}", admin.getEmail(), e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo email template cho ticket {}: {}", ticket.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo có phản hồi mới đến Driver
+     * @param response Thông tin ticket response
+     */
+    public void sendTicketResponseToDriver(TicketResponse response) {
+        try {
+            log.info("Đang gửi email phản hồi ticket đến driver: {} cho ticket: {}",
+                    response.getTicket().getDriver().getEmail(), response.getTicket().getId());
+
+            Context context = createResponseEmailContext(response);
+
+            // Render template
+            String htmlContent = templateEngine.process("ticket-response-driver", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(response.getTicket().getDriver().getEmail());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject("💬 Có phản hồi mới cho ticket #" + response.getTicket().getId());
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email phản hồi ticket đã được gửi thành công cho driver: {}",
+                    response.getTicket().getDriver().getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email phản hồi ticket cho driver {}: {}",
+                    response.getTicket().getDriver().getEmail(), e.getMessage());
+        }
+    }
+
+    /**
+     * Tạo context chứa dữ liệu cho email template support ticket
+     */
+    private Context createTicketEmailContext(SupportTicket ticket) {
+        Context context = new Context();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        // Thông tin ticket
+        context.setVariable("ticketId", ticket.getId().toString());
+        context.setVariable("subject", ticket.getSubject());
+        context.setVariable("description", ticket.getDescription());
+        context.setVariable("status", ticket.getStatus().toString());
+        context.setVariable("createdAt", ticket.getCreatedAt().format(formatter));
+
+        // Thông tin driver
+        context.setVariable("driverName", ticket.getDriver().getFullName());
+        context.setVariable("driverEmail", ticket.getDriver().getEmail());
+        context.setVariable("driverPhone", ticket.getDriver().getPhoneNumber() != null ?
+                ticket.getDriver().getPhoneNumber() : "Chưa cập nhật");
+
+        // Thông tin trạm (nếu có)
+        if (ticket.getStation() != null) {
+            context.setVariable("hasStation", true);
+            context.setVariable("stationName", ticket.getStation().getName());
+            context.setVariable("stationLocation", ticket.getStation().getLocation());
+            context.setVariable("stationContact", ticket.getStation().getContactInfo() != null ?
+                    ticket.getStation().getContactInfo() : "Chưa cập nhật");
+        } else {
+            context.setVariable("hasStation", false);
+            context.setVariable("ticketType", "Hỗ trợ tổng quát");
+        }
+
+        // Thông tin hệ thống
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+        context.setVariable("systemName", "EV Battery Swap Station");
+
+        return context;
+    }
+
+    /**
+     * Tạo context chứa dữ liệu cho email template ticket response
+     */
+    private Context createResponseEmailContext(TicketResponse response) {
+        Context context = new Context();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        // Thông tin response
+        context.setVariable("responseId", response.getId().toString());
+        context.setVariable("responseMessage", response.getMessage());
+        context.setVariable("responseTime", response.getResponseTime().format(formatter));
+
+        // Thông tin staff trả lời
+        context.setVariable("staffName", response.getStaff().getFullName());
+        context.setVariable("staffRole", response.getStaff().getRole().toString());
+
+        // Thông tin ticket gốc
+        SupportTicket ticket = response.getTicket();
+        context.setVariable("ticketId", ticket.getId().toString());
+        context.setVariable("ticketSubject", ticket.getSubject());
+        context.setVariable("ticketDescription", ticket.getDescription());
+        context.setVariable("ticketCreatedAt", ticket.getCreatedAt().format(formatter));
+
+        // Thông tin driver
+        context.setVariable("driverName", ticket.getDriver().getFullName());
+
+        // Thông tin trạm (nếu có)
+        if (ticket.getStation() != null) {
+            context.setVariable("hasStation", true);
+            context.setVariable("stationName", ticket.getStation().getName());
+            context.setVariable("stationLocation", ticket.getStation().getLocation());
+        } else {
+            context.setVariable("hasStation", false);
+        }
+
+        // Thông tin hệ thống
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+        context.setVariable("systemName", "EV Battery Swap Station");
+
+        return context;
     }
 }

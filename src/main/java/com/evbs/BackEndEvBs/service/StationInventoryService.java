@@ -154,4 +154,50 @@ public class StationInventoryService {
         
         return result;
     }
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAllBatteriesInWarehouseWithDetails() {
+        List<StationInventory> inventories = stationInventoryRepository.findAll();
+
+        // Map sang response với đầy đủ thông tin battery
+        List<Map<String, Object>> batteryDetails = inventories.stream()
+                .map(inv -> {
+                    Map<String, Object> detail = new HashMap<>();
+                    Battery battery = inv.getBattery();
+
+                    // Thông tin từ StationInventory
+                    detail.put("inventoryId", inv.getId());
+                    detail.put("inventoryStatus", inv.getStatus());
+                    detail.put("lastUpdate", inv.getLastUpdate());
+
+                    // Thông tin đầy đủ từ Battery
+                    detail.put("id", battery.getId());
+                    detail.put("model", battery.getModel());
+                    detail.put("capacity", battery.getCapacity());
+                    detail.put("stateOfHealth", battery.getStateOfHealth());
+                    detail.put("chargeLevel", battery.getChargeLevel());
+                    detail.put("lastChargedTime", battery.getLastChargedTime());
+                    detail.put("status", battery.getStatus());
+                    detail.put("manufactureDate", battery.getManufactureDate());
+                    detail.put("usageCount", battery.getUsageCount());
+                    detail.put("lastMaintenanceDate", battery.getLastMaintenanceDate());
+                    detail.put("createdAt", battery.getCreatedAt());
+                    detail.put("reservationExpiry", battery.getReservationExpiry());
+                    detail.put("batteryTypeId", battery.getBatteryType() != null ? battery.getBatteryType().getId() : null);
+                    detail.put("batteryTypeName", battery.getBatteryType() != null ? battery.getBatteryType().getName() : null);
+                    detail.put("currentStation", battery.getCurrentStation()); // Sẽ là null vì ở trong kho
+
+                    return detail;
+                })
+                .toList();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("location", "WAREHOUSE");
+        response.put("total", batteryDetails.size());
+        response.put("batteries", batteryDetails);
+        response.put("message", batteryDetails.isEmpty()
+                ? "Kho không có pin nào"
+                : "Có " + batteryDetails.size() + " pin trong kho");
+
+        return response;
+    }
 }

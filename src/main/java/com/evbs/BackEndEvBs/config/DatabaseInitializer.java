@@ -157,16 +157,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         
         return List.of(
             // Admin users
-            createUser("System Admin", "admin@evbs.com", "0901000001", encodedPassword, User.Role.ADMIN, User.Status.ACTIVE),
-            createUser("Super Admin", "superadmin@evbs.com", "0901000002", encodedPassword, User.Role.ADMIN, User.Status.ACTIVE),
+            createUser("Vinh Admin", "vinhmtse180031@fpt.edu.vn", "0901000001", encodedPassword, User.Role.ADMIN, User.Status.ACTIVE),
+            createUser("Trí Admin", "lephuoctri2205@gmail.com", "0901000002", encodedPassword, User.Role.ADMIN, User.Status.ACTIVE),
             
             // Staff users
-            createUser("Nguyễn Văn Staff", "staff1@evbs.com", "0902000001", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
+            createUser("Nguyễn Văn Staff", "vinhvip4508@gmail.com", "0902000001", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
             createUser("Trần Thị Staff", "staff2@evbs.com", "0902000002", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
             createUser("Lê Văn Staff", "staff3@evbs.com", "0902000003", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
             
             // Driver users
-            createUser("Nguyễn Văn An", "driver1@gmail.com", "0903000001", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+            createUser("Nguyễn Văn An", "team89a6@gmail.com", "0903000001", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
             createUser("Trần Thị Bình", "driver2@gmail.com", "0903000002", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
             createUser("Lê Văn Cường", "driver3@gmail.com", "0903000003", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
             createUser("Phạm Thị Dung", "driver4@gmail.com", "0903000004", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),

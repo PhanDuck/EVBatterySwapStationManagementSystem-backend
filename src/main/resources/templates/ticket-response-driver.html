@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Có phản hồi mới cho ticket của bạn</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .response-badge {
+            background-color: #fff;
+            color: #28a745;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .response-notification {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .notification-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .response-content {
+            background-color: #f8fff4;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #c3e6cb;
+        }
+
+        .staff-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .staff-avatar {
+            width: 40px;
+            height: 40px;
+            background-color: #28a745;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .staff-details h4 {
+            margin: 0;
+            color: #28a745;
+            font-size: 16px;
+        }
+
+        .staff-role {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .response-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .response-message {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+
+        .original-ticket {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #28a745;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 5px;
+        }
+
+        .ticket-summary {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+
+        .ticket-id {
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 8px;
+        }
+
+        .ticket-subject {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .ticket-description {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            flex: 0 0 40%;
+        }
+
+        .info-value {
+            color: #333;
+            flex: 1;
+            text-align: right;
+        }
+
+        .station-info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .next-actions {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .actions-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .actions-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0e68c;
+        }
+
+        .actions-list li:last-child {
+            border-bottom: none;
+        }
+
+        .action-icon {
+            display: inline-block;
+            width: 20px;
+            margin-right: 10px;
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 5px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .footer-links {
+            margin-top: 15px;
+        }
+
+        .footer-links a {
+            color: #28a745;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .satisfaction-survey {
+            background-color: #e8f5e8;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .btn {
+                display: block;
+                margin: 10px 0;
+            }
+
+            .response-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- Header -->
+    <div class="header">
+        <h1>💬 CÓ PHẢN HỒI MỚI</h1>
+        <div class="response-badge">TỪ NHÂN VIÊN HỖ TRỢ</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- Response Notification -->
+        <div class="response-notification">
+            <div class="notification-icon">🎉</div>
+            <h2>Ticket của bạn đã có phản hồi!</h2>
+            <p>Nhân viên hỗ trợ đã trả lời yêu cầu của bạn.</p>
+        </div>
+
+        <!-- Response Content -->
+        <div class="response-content">
+            <div class="response-header">
+                <div class="staff-info">
+                    <div class="staff-avatar" th:text="${staffName.substring(0,1).toUpperCase()}">N</div>
+                    <div class="staff-details">
+                        <h4 th:text="${staffName}">Nguyễn Văn B</h4>
+                        <div class="staff-role" th:text="${staffRole}">STAFF</div>
+                    </div>
+                </div>
+                <div class="response-time" th:text="${responseTime}">25/10/2024 16:45:30</div>
+            </div>
+
+            <div class="response-message" th:text="${responseMessage}">
+                Chào bạn! Chúng tôi đã kiểm tra tình trạng pin tại trạm. Hiện tại nhân viên kỹ thuật đang được cử đến để hỗ trợ bạn. Vui lòng chờ khoảng 15-20 phút nữa. Nếu có vấn đề gì khẩn cấp, hãy gọi hotline ngay.
+            </div>
+        </div>
+
+        <!-- Original Ticket Information -->
+        <div class="original-ticket">
+            <div class="section-title">📋 Thông tin ticket gốc</div>
+            <div class="ticket-summary">
+                <div class="ticket-id">Ticket #<span th:text="${ticketId}">12345</span></div>
+                <div class="ticket-subject" th:text="${ticketSubject}">Vấn đề với pin xe điện</div>
+                <div class="ticket-description" th:text="${ticketDescription}">Pin xe tôi bị hỏng và không thể sạc được. Tôi đang mắc kẹt tại trạm và cần hỗ trợ gấp.</div>
+
+                <div style="margin-top: 15px;">
+                    <div class="info-item">
+                        <span class="info-label">Thời gian tạo:</span>
+                        <span class="info-value" th:text="${ticketCreatedAt}">25/10/2024 14:30:25</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Station Information (if available) -->
+            <div class="station-info" th:if="${hasStation}">
+                <div style="font-weight: 600; margin-bottom: 10px; color: #007bff;">🏢 Trạm liên quan:</div>
+                <div class="info-item">
+                    <span class="info-label">Tên trạm:</span>
+                    <span class="info-value" th:text="${stationName}">Trạm Quận 1</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Địa chỉ:</span>
+                    <span class="info-value" th:text="${stationLocation}">123 Nguyễn Huệ, Quận 1, TP.HCM</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Next Actions -->
+        <div class="next-actions">
+            <div class="section-title" style="color: #856404; border-color: #856404;">⚡ Bước tiếp theo</div>
+            <ul class="actions-list">
+                <li>
+                    <span class="action-icon">📱</span>
+                    Mở ứng dụng để xem chi tiết phản hồi
+                </li>
+                <li>
+                    <span class="action-icon">💬</span>
+                    Phản hồi lại nếu cần thêm hỗ trợ
+                </li>
+                <li>
+                    <span class="action-icon">📞</span>
+                    Liên hệ hotline nếu cần hỗ trợ khẩn cấp
+                </li>
+                <li>
+                    <span class="action-icon">⭐</span>
+                    Đánh giá chất lượng dịch vụ sau khi hoàn thành
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div>
+            <strong th:text="${systemName}">EV Battery Swap Station</strong><br>
+            Hệ thống quản lý trạm đổi pin xe điện
+        </div>
+        <div class="footer-links">
+            <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}">sp.evswapstation@gmail.com</a>
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; color: #999;">
+            Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -9,7 +9,10 @@ import com.evbs.BackEndEvBs.model.request.SupportTicketRequest;
 import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import com.evbs.BackEndEvBs.repository.SupportTicketRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
+import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
+import com.evbs.BackEndEvBs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +22,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SupportTicketService {
 
     @Autowired
@@ -32,6 +36,15 @@ public class SupportTicketService {
 
     @Autowired
     private final AuthenticationService authenticationService;
+
+    @Autowired
+    private final UserRepository userRepository;
+
+    @Autowired
+    private final StaffStationAssignmentRepository assignmentRepository;
+
+    @Autowired
+    private final EmailService emailService;
 
     /**
      * CREATE - Tạo support ticket mới (Driver)

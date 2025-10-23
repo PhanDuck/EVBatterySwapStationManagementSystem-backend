@@ -10,6 +10,7 @@ import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import com.evbs.BackEndEvBs.repository.SupportTicketRepository;
 import com.evbs.BackEndEvBs.repository.TicketResponseRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TicketResponseService {
 
     @Autowired
@@ -33,6 +35,8 @@ public class TicketResponseService {
     @Autowired
     private final AuthenticationService authenticationService;
 
+    @Autowired
+    private final EmailService emailService;
     /**
      * CREATE - Tạo response cho ticket (Staff/Admin only)
      * 
@@ -68,7 +72,20 @@ public class TicketResponseService {
         supportTicketRepository.save(ticket);
 
         // Sau đó lưu response
-        return ticketResponseRepository.save(response);
+        TicketResponse savedResponse = ticketResponseRepository.save(response);
+
+        // ===== EMAIL INTEGRATION =====
+        try {
+            // Gửi email thông báo phản hồi đến Driver
+            emailService.sendTicketResponseToDriver(savedResponse);
+            log.info("Sent response notification email for ticket: {}", ticket.getId());
+        } catch (Exception e) {
+            log.error("Failed to send response notification email for ticket: {}",
+                    ticket.getId(), e);
+            // Không throw exception để không ảnh hưởng đến việc tạo response
+        }
+
+        return savedResponse;
     }
 
     /**

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đổi pin thành công - EV Battery Swap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background-color: #f8f9fa;
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .success-badge {
+            background-color: #ffffff;
+            color: #17a2b8;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .greeting {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .greeting strong {
+            color: #17a2b8;
+        }
+
+        .message-box {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .message-box h2 {
+            color: #0c5460;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        .message-box .icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .info-section {
+            margin: 25px 0;
+        }
+
+        .info-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #17a2b8;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .info-table tr {
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .info-table td {
+            padding: 12px 0;
+            vertical-align: top;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+
+        .info-value {
+            color: #333;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .highlight {
+            color: #17a2b8;
+            font-weight: bold;
+        }
+
+        .battery-info {
+            background-color: #e2f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 500px; /* Giới hạn chiều rộng cho cân đối */
+        }
+
+        .battery-info h3 {
+            color: #0056b3;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        /* Căn giữa 2 khối pin */
+        .battery-comparison {
+            display: flex;
+            justify-content: center;      /* Căn giữa theo chiều ngang */
+            align-items: stretch;
+            gap: 20px;
+            flex-wrap: wrap;              /* Đảm bảo responsive */
+        }
+
+        /* Hộp pin */
+        .battery-item {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .battery-old {
+            border-left: 4px solid #dc3545;
+        }
+
+        .battery-new {
+            border-left: 4px solid #28a745;
+        }
+
+        .battery-stats {
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .charge-level {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .charge-good {
+            color: #28a745;
+        }
+
+        .charge-medium {
+            color: #ffc107;
+        }
+
+        .charge-low {
+            color: #dc3545;
+        }
+
+        .station-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .station-info h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 25px 20px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .footer-brand {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .footer-tagline {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .footer-contact {
+            font-size: 12px;
+            color: #6c757d;
+            line-height: 1.4;
+        }
+
+        .footer-contact a {
+            color: #17a2b8;
+            text-decoration: none;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #e9ecef;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 4px;
+            }
+
+            .header {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 20px 15px;
+            }
+
+            .battery-comparison {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .info-table td {
+                padding: 8px 0;
+                font-size: 14px;
+            }
+
+            .info-label,
+            .info-value {
+                display: block;
+                width: 100%;
+                text-align: left;
+            }
+
+            .info-value {
+                margin-top: 4px;
+                margin-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- Header -->
+    <div class="header">
+        <h1>🔋 EV Battery Swap</h1>
+        <p>Hệ thống trạm đổi pin xe điện thông minh</p>
+        <div class="success-badge">
+            ✅ ĐỔI PIN THÀNH CÔNG
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- Greeting -->
+        <div class="greeting">
+            Chào <strong th:text="${driverName}">Khách hàng</strong>,
+        </div>
+
+        <!-- Success Message -->
+        <div class="message-box">
+            <div class="icon">🔋</div>
+            <h2>Đổi pin thành công!</h2>
+            <p>Pin của xe bạn đã được thay thế và sẵn sàng cho hành trình tiếp theo.</p>
+        </div>
+
+        <!-- Transaction Information -->
+        <div class="info-section">
+            <div class="info-title">📋 Thông tin giao dịch</div>
+            <table class="info-table">
+                <tr>
+                    <td class="info-label">Mã giao dịch:</td>
+                    <td class="info-value highlight" th:text="${swapId}">SW123456</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Thời gian đổi pin:</td>
+                    <td class="info-value" th:text="${swapTime}">22/10/2025 14:30</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Xe:</td>
+                    <td class="info-value" th:text="${vehicleInfo}">ABC-123 (VinFast VF8)</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Nhân viên thực hiện:</td>
+                    <td class="info-value" th:text="${staffName}">Nguyễn Văn A</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Station Information -->
+        <div class="station-info">
+            <h3>📍 Thông tin trạm đổi pin</h3>
+            <table class="info-table">
+                <tr>
+                    <td class="info-label">Tên trạm:</td>
+                    <td class="info-value" th:text="${stationName}">Trạm Quận 1</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Địa chỉ:</td>
+                    <td class="info-value" th:text="${stationLocation}">123 Đường ABC, Quận 1, TP.HCM</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Liên hệ:</td>
+                    <td class="info-value" th:text="${stationContact}">0912345678</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Battery Information -->
+        <div class="battery-info">
+            <h3>🔋 Thông tin pin đã thay</h3>
+            <div class="battery-comparison">
+                <!-- Old Battery -->
+                <div class="battery-item battery-old" th:if="${oldBatteryModel}">
+                    <h4>Pin cũ (đã lấy ra)</h4>
+                    <div class="battery-stats">
+                        <div>Model: <span th:text="${oldBatteryModel}">Không có</span></div>
+                        <div>Mức sạc: <span class="charge-level charge-low" th:text="${oldBatteryCharge} + '%'">Không có</span></div>
+                        <div>Tình trạng: <span th:text="${oldBatteryHealth} + '%'">Không có</span></div>
+                    </div>
+                </div>
+
+                <!-- New Battery -->
+                <div class="battery-item battery-new">
+                    <h4>Pin mới (đã lắp vào)</h4>
+                    <div class="battery-stats">
+                        <div>Model: <span th:text="${newBatteryModel}">LFP-100</span></div>
+                        <div>Mức sạc: <span class="charge-level charge-good" th:text="${newBatteryCharge} + '%'">95%</span></div>
+                        <div>Tình trạng: <span th:text="${newBatteryHealth} + '%'">98%</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription Information -->
+        <div class="info-section" th:if="${subscriptionInfo}">
+            <div class="info-title">📦 Thông tin gói đăng ký</div>
+            <table class="info-table">
+                <tr>
+                    <td class="info-label">Lượt đổi pin còn lại:</td>
+                    <td class="info-value highlight" th:text="${remainingSwaps} + ' lần'">9 lần</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Gói đăng ký:</td>
+                    <td class="info-value" th:text="${subscriptionInfo}">Gói Standard (30 ngày)</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="divider"></div>
+
+        <p style="text-align: center; color: #6c757d; font-style: italic;">
+            Cảm ơn bạn đã sử dụng dịch vụ EV Battery Swap!<br>
+            Chúc bạn có những chuyến đi an toàn và thân thiện với môi trường! 🌱
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-brand">EV Battery Swap Station</div>
+        <div class="footer-tagline">Giải pháp đổi pin xe điện thông minh và tiện lợi</div>
+
+        <div class="footer-contact">
+            <p>📧 Email: <a href="mailto:support@evbatteryswap.com" th:text="${supportEmail}">sp.evswapstation@gmail.com</a></p>
+            <p>📞 Hotline: 0774560933</p>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                <small>
+                    Email này được gửi tự động từ hệ thống. Vui lòng không trả lời email này.<br>
+                    © 2025 EV Battery Swap Station. All rights reserved.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

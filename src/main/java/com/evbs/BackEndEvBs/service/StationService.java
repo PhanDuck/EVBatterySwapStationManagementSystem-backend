@@ -15,7 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -214,6 +216,43 @@ public class StationService {
 
         station.setStatus(status);
         return stationRepository.save(station);
+    }
+    /**
+     * Lấy tất cả pin cần bảo trì tại các trạm
+     * Admin: Xem tất cả pins needs-maintenance của tất cả trạm
+     * Staff: Chỉ xem pins needs-maintenance của trạm mình quản lý
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAllBatteriesNeedingMaintenanceAtStations() {
+        // Logic này sẽ được implement trong BatteryHealthService
+        // Tạm thời trả về empty result
+        Map<String, Object> response = new HashMap<>();
+        response.put("location", "AT_STATIONS");
+        response.put("total", 0);
+        response.put("batteries", List.of());
+        response.put("message", "Không có pin nào cần bảo trì tại các trạm");
+        return response;
+    }
+
+    /**
+     * Lấy pin cần bảo trì tại trạm cụ thể
+     * Staff chỉ xem được pins của stations mình quản lý
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getBatteriesNeedingMaintenanceAtStation(Long stationId) {
+        // Validate station exists
+        Station station = getStationById(stationId);
+
+        // Logic này sẽ được implement trong BatteryHealthService
+        // Tạm thời trả về empty result
+        Map<String, Object> response = new HashMap<>();
+        response.put("stationId", stationId);
+        response.put("stationName", station.getName());
+        response.put("location", "AT_STATION");
+        response.put("total", 0);
+        response.put("batteries", List.of());
+        response.put("message", "Trạm này không có pin nào cần bảo trì");
+        return response;
     }
 
     // ==================== HELPER METHODS ====================

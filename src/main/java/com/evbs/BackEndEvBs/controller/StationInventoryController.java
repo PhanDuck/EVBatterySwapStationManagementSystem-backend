@@ -48,12 +48,12 @@ public class StationInventoryController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @SecurityRequirement(name = "api")
-    @Operation(summary = "Get all batteries in warehouse")
-    public ResponseEntity<List<StationInventory>> getAllBatteriesInWarehouse() {
-        List<StationInventory> batteries = stationInventoryService.getAllBatteriesInWarehouse();
-        return ResponseEntity.ok(batteries);
+    @Operation(summary = "Get all batteries in warehouse",
+            description = "Lấy tất cả pin đang ở trong kho (currentStation = null) và có record trong StationInventory")
+    public ResponseEntity<Map<String, Object>> getAllBatteriesInWarehouse() {
+        Map<String, Object> response = stationInventoryService.getAllBatteriesInWarehouseWithDetails();
+        return ResponseEntity.ok(response);
     }
-
     /**
      * POST /api/station-inventory/replace : Thay pin bảo trì từ kho
      * 

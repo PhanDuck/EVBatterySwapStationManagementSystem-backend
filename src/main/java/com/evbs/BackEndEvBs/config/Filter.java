@@ -53,7 +53,9 @@ public class Filter extends OncePerRequestFilter {
             "GET:/api/station-inventory/station/*/capacity",
             //  PAYMENT CALLBACKS - Không cần token vì user bị redirect từ payment gateway
             "GET:/api/payment/momo-return",
-            "POST:/api/payment/momo-ipn"
+            "POST:/api/payment/momo-ipn",
+
+            "GET:/api/booking/lookup"
     );
 
     public boolean isPublicAPI(String uri, String method) {

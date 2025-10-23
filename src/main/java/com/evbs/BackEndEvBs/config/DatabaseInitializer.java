@@ -172,7 +172,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             createUser("Phạm Thị Dung", "driver4@gmail.com", "0903000004", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
             createUser("Hoàng Văn Em", "driver5@gmail.com", "0903000005", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
             createUser("Vũ Thị Phượng", "driver6@gmail.com", "0903000006", encodedPassword, User.Role.DRIVER, User.Status.INACTIVE),
-            createUser("Đào Văn Giang", "driver7@gmail.com", "0903000007", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE)
+            createUser("Lê Phước Trí", "lptri22051@gmail.com", "0774560933", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE)
         );
     }
 
@@ -711,11 +711,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         LocalDateTime now = LocalDateTime.now();
         
         return List.of(
-            // CONFIRMED bookings - Driver đã đặt và staff đã confirm
-            createBooking(drivers.get(0), vehicles.get(0), stations.get(0), now.plusHours(2), Booking.Status.CONFIRMED, staff.get(0)),    
-            createBooking(drivers.get(2), vehicles.get(2), stations.get(2), now.plusHours(6), Booking.Status.CONFIRMED, staff.get(1)),   
-            createBooking(drivers.get(3), vehicles.get(3), stations.get(3), now.plusHours(20), Booking.Status.CONFIRMED, staff.get(1)),  
-            
+
             // PENDING bookings - Driver đã đặt, hệ thống đã reserve pin, chờ driver đến
             createBooking(drivers.get(1), vehicles.get(1), stations.get(1), now.plusHours(4), Booking.Status.PENDING, null),           
             createBooking(drivers.get(4), vehicles.get(4), stations.get(4), now.plusHours(8), Booking.Status.PENDING, null),

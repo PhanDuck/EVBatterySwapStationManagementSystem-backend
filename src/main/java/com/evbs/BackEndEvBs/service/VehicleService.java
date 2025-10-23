@@ -57,7 +57,15 @@ public class VehicleService {
         vehicle.setVin(vehicleRequest.getVin());
         vehicle.setPlateNumber(vehicleRequest.getPlateNumber());
         vehicle.setModel(vehicleRequest.getModel());
-        vehicle.setDriver(authenticationService.getCurrentUser());
+        User currentUser = authenticationService.getCurrentUser();
+
+        // Enforce max 2 vehicles per user
+        long myVehicles = vehicleRepository.findByDriver(currentUser).size();
+        if (myVehicles >= 2) {
+            throw new AuthenticationException("You can only register up to 2 vehicles.");
+        }
+
+        vehicle.setDriver(currentUser);
         vehicle.setBatteryType(batteryType);
 
         return vehicleRepository.save(vehicle);

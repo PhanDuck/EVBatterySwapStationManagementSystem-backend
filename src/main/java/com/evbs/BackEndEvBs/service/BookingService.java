@@ -17,6 +17,7 @@ import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
+import com.evbs.BackEndEvBs.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,9 @@ public class BookingService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private final UserRepository userRepository;
 
     /**
      * CREATE - Tao booking moi (Driver)
@@ -103,6 +107,16 @@ public class BookingService {
             throw new AuthenticationException("You already have an active booking. Please Complete or Cancel it before creating a new one.");
         }
 
+        // VALIDATION: Max 10 bookings per user per day
+        LocalDate today = LocalDate.now();
+        long bookingsToday = bookingRepository.findByDriver(currentUser)
+                .stream()
+                .filter(b -> b.getBookingTime() != null && b.getBookingTime().toLocalDate().isEqual(today))
+                .count();
+        if (bookingsToday >= 10) {
+            throw new AuthenticationException("You have reached the maximum of 10 bookings for today.");
+        }
+
         // Validate vehicle thuộc về driver
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new NotFoundException("Vehicle not found"));
@@ -148,6 +162,7 @@ public class BookingService {
         booking.setVehicle(vehicle);
         booking.setStation(station);
         booking.setBookingTime(request.getBookingTime());
+        booking.setCreatedAt(LocalDateTime.now());
         
         // No confirmation code when creating booking
         // Code will be generated when Staff/Admin confirms booking
@@ -161,6 +176,106 @@ public class BookingService {
 
         return savedBooking;
     }
+
+    /**
+     * Auto-confirm a single booking: reserve battery, generate code and mark CONFIRMED.
+     * This method is safe to be called by scheduled jobs. It tries to find an ADMIN user
+     * to set as confirmer; if none exists, confirmedBy will be left null but still set.
+     */
+    @Transactional
+    public Booking autoConfirmBooking(Booking booking) {
+        if (booking == null) return null;
+        if (booking.getStatus() != Booking.Status.PENDING) return booking;
+
+        // Check battery availability similar to manual confirm
+        BatteryType requiredBatteryType = booking.getVehicle().getBatteryType();
+
+        List<Battery> availableBatteries = batteryRepository.findAll()
+                .stream()
+                .filter(b -> b.getCurrentStation() != null
+                        && b.getCurrentStation().getId().equals(booking.getStation().getId())
+                        && b.getBatteryType().getId().equals(requiredBatteryType.getId())
+                        && b.getStatus() == Battery.Status.AVAILABLE
+                        && b.getChargeLevel().compareTo(BigDecimal.valueOf(95)) >= 0
+                        && b.getStateOfHealth() != null
+                        && b.getStateOfHealth().compareTo(BigDecimal.valueOf(70)) >= 0)
+                .sorted((b1, b2) -> {
+                    int healthCompare = b2.getStateOfHealth().compareTo(b1.getStateOfHealth());
+                    if (healthCompare != 0) return healthCompare;
+                    return b2.getChargeLevel().compareTo(b1.getChargeLevel());
+                })
+                .toList();
+
+        if (availableBatteries.isEmpty()) {
+            // Send email to driver informing station out of suitable batteries using existing booking template
+            try {
+                EmailDetail detail = new EmailDetail();
+                detail.setRecipient(booking.getDriver().getEmail());
+                detail.setSubject("Thông báo: Trạm không còn pin phù hợp cho booking");
+                detail.setFullName(booking.getDriver().getFullName());
+                detail.setBookingId(booking.getId());
+                detail.setStationName(booking.getStation().getName());
+                detail.setStationLocation(booking.getStation().getLocation() != null ? booking.getStation().getLocation() : (booking.getStation().getDistrict() + ", " + booking.getStation().getCity()));
+                detail.setStationContact(booking.getStation().getContactInfo() != null ? booking.getStation().getContactInfo() : "Chưa cập nhật");
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
+                detail.setBookingTime(booking.getBookingTime() != null ? booking.getBookingTime().format(formatter) : "N/A");
+                detail.setVehicleModel(booking.getVehicle() != null ? (booking.getVehicle().getModel() != null ? booking.getVehicle().getModel() : booking.getVehicle().getPlateNumber()) : "N/A");
+                detail.setBatteryType(booking.getStation().getBatteryType().getName());
+                detail.setStatus("OUT_OF_STOCK");
+                emailService.sendBookingConfirmationEmail(detail);
+            } catch (Exception ignore) {}
+            return booking;
+        }
+
+        Battery reservedBattery = availableBatteries.get(0);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiryTime = now.plusHours(3);
+
+        reservedBattery.setStatus(Battery.Status.PENDING);
+        reservedBattery.setReservedForBooking(booking);
+        reservedBattery.setReservationExpiry(expiryTime);
+        batteryRepository.save(reservedBattery);
+
+        booking.setReservedBattery(reservedBattery);
+        booking.setReservationExpiry(expiryTime);
+
+        String confirmationCode = com.evbs.BackEndEvBs.util.ConfirmationCodeGenerator.generateUnique(
+                10, code -> bookingRepository.findByConfirmationCode(code).isPresent()
+        );
+        booking.setConfirmationCode(confirmationCode);
+        booking.setStatus(Booking.Status.CONFIRMED);
+
+        // Try to set a confirmer (ADMIN) if exists
+        try {
+            // find first admin user
+            userRepository.findAll()
+                    .stream()
+                    .filter(u -> u.getRole() == User.Role.ADMIN)
+                    .findFirst()
+                    .ifPresent(booking::setConfirmedBy);
+        } catch (Exception ignore) {}
+
+        Booking saved = bookingRepository.save(booking);
+
+        // Send confirmed email
+        sendBookingConfirmedEmail(saved, saved.getConfirmedBy() != null ? saved.getConfirmedBy() : null);
+
+        return saved;
+    }
+
+    /**
+     * Find bookings belonging to a phone number (public lookup)
+     */
+    @Transactional(readOnly = true)
+    public List<Booking> findBookingsByPhone(String phoneNumber) {
+        return userRepository.findAll()
+                .stream()
+                .filter(u -> phoneNumber != null && phoneNumber.equals(u.getPhoneNumber()))
+                .findFirst()
+                .map(bookingRepository::findByDriver)
+                .orElse(List.of());
+    }
+
 
     /**
      * Gửi email xác nhận đặt lịch

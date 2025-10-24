@@ -49,6 +49,9 @@ public class Booking {
     @Column(name = "BookingTime", nullable = false)
     private LocalDateTime bookingTime;
 
+    @Column(name = "CreatedAt")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
     @Column(name = "ConfirmationCode", unique = true, length = 20, nullable = true)
     private String confirmationCode;  // Mã xác nhận (null khi PENDING, có giá trị khi CONFIRMED)
 

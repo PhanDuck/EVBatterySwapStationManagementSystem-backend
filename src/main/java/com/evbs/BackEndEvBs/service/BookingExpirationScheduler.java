@@ -34,6 +34,7 @@ public class BookingExpirationScheduler {
     private final BatteryRepository batteryRepository;
     private final BookingRepository bookingRepository;
     private final DriverSubscriptionRepository driverSubscriptionRepository;
+    private final BookingService bookingService;
 
     /**
      * CHAY MOI 5 PHUT (300,000 milliseconds)
@@ -100,7 +101,51 @@ public class BookingExpirationScheduler {
 
         logger.info("Hoan thanh xu ly booking het han. So luong huy: {}/{}", cancelledCount, expiredBatteries.size());
     }
+    /**
+     * AUTO-CONFIRM PENDING BOOKINGS AFTER GRACE PERIOD (1 minute)
+     *
+     * Runs every 1 minute and finds bookings with status=PENDING where bookingTime is older
+     * than 1 minute and tries to auto-confirm (reserve battery + generate code) if station
+     * still has suitable batteries. If no suitable battery, an informational email is sent.
+     */
+    @Scheduled(fixedDelay = 60000)
+    @Transactional
+    public void autoConfirmPendingBookings() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime threshold = now.minusMinutes(5);
 
+        logger.debug("Starting auto-confirm check at {}, threshold: {}", now, threshold);
+
+        // Find bookings that are still PENDING and created more than 1 minute ago
+        List<Booking> pendingOldBookings = bookingRepository.findAll()
+                .stream()
+                .filter(b -> b.getStatus() == Booking.Status.PENDING
+                        && b.getCreatedAt() != null
+                        && b.getCreatedAt().isBefore(threshold))
+                .toList();
+
+        if (pendingOldBookings.isEmpty()) {
+            logger.debug("No pending bookings to auto-confirm at {}", now);
+            return;
+        }
+
+        logger.info("Found {} pending bookings older than 1 minute, attempting auto-confirm...", pendingOldBookings.size());
+
+        int confirmed = 0;
+        for (Booking booking : pendingOldBookings) {
+            try {
+                Booking saved = bookingService.autoConfirmBooking(booking);
+                if (saved != null && saved.getStatus() == Booking.Status.CONFIRMED) {
+                    confirmed++;
+                    logger.info("Auto-confirmed booking id: {}", booking.getId());
+                }
+            } catch (Exception e) {
+                logger.error("Error auto-confirming booking id {}", booking.getId(), e);
+            }
+        }
+
+        logger.info("Auto-confirm job completed. Confirmed {}/{} bookings.", confirmed, pendingOldBookings.size());
+    }
     /**
      * GIAI PHONG PIN (PENDING → AVAILABLE)
      */

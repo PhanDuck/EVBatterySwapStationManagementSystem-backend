@@ -116,7 +116,7 @@ public class BookingController {
     public ResponseEntity<List<Booking>> getBookingsByStation(@PathVariable Long stationId) {
         // Validate station access for staff
         staffStationAssignmentService.validateStationAccess(stationId);
-        
+
         List<Booking> bookings = bookingService.getBookingsByStation(stationId);
         return ResponseEntity.ok(bookings);
     }
@@ -135,10 +135,10 @@ public class BookingController {
 
     /**
      * GET /api/booking/my-stations : Get bookings cua cac tram Staff quan ly (Staff only)
-     * 
+     *
      * Staff chi xem duoc bookings cua cac tram minh duoc assign
      * Admin xem duoc tat ca bookings
-     * 
+     *
      * Dung de hien thi danh sach booking can confirm
      */
     @GetMapping("/my-stations")
@@ -154,7 +154,7 @@ public class BookingController {
 
     /**
      * PATCH /api/booking/{id}/confirm : Confirm booking by ID (Staff/Admin only)
-     * 
+     *
      * Staff/Admin confirm booking → Generate mã xác nhận → Trả cho driver
      * PENDING → CONFIRMED (với confirmationCode mới)
      */
@@ -169,10 +169,10 @@ public class BookingController {
 
     /**
      * DELETE /api/booking/staff/{id}/cancel : Cancel booking by Staff/Admin (Special cases)
-     * 
+     *
      * Staff/Admin co the huy bat ky booking nao (PENDING hoac CONFIRMED)
      * Truong hop dac biet: Tram bao tri, pin hong, khan cap, etc.
-     * 
+     *
      * Neu huy CONFIRMED booking:
      * - Giai phong pin ve AVAILABLE
      * - KHONG TRU luot swap cua driver (loi tu phia tram)
@@ -182,7 +182,7 @@ public class BookingController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Cancel booking by Staff/Admin (Special cases)",
             description = "Staff/Admin huy booking trong truong hop dac biet (tram bao tri, pin hong, khan cap). " +
-                         "Neu huy CONFIRMED booking se giai phong pin va KHONG tru luot swap cua driver.")
+                    "Neu huy CONFIRMED booking se giai phong pin va KHONG tru luot swap cua driver.")
     public ResponseEntity<?> cancelBookingByStaff(
             @PathVariable Long id,
             @RequestParam(required = false) String reason) {

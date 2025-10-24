@@ -4,9 +4,7 @@ import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
-import com.evbs.BackEndEvBs.service.BatteryHealthService;
 import com.evbs.BackEndEvBs.service.BatteryService;
-import com.evbs.BackEndEvBs.service.StaffStationAssignmentService;
 import com.evbs.BackEndEvBs.service.StationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,13 +29,7 @@ public class StationController {
     private StationService stationService;
 
     @Autowired
-    private StaffStationAssignmentService staffStationAssignmentService;
-
-    @Autowired
     private BatteryService batteryService;
-
-    @Autowired
-    private BatteryHealthService batteryHealthService;
 
     // ==================== PUBLIC ENDPOINTS ====================
 
@@ -128,6 +120,22 @@ public class StationController {
     // ==================== BATTERY MAINTENANCE AT STATION ====================
 
     /**
+     * GET /api/station/batteries/needs-maintenance : Lấy TẤT CẢ pin cần bảo trì ở các trạm
+     * 
+     * Admin: Xem tất cả pins needs-maintenance của tất cả trạm
+     * Staff: Chỉ xem pins needs-maintenance của trạm mình quản lý
+     */
+    @GetMapping("/batteries/needs-maintenance")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
+    @Operation(summary = "Get all batteries needing maintenance at stations",
+               description = "Admin xem tất cả, Staff chỉ xem trạm mình quản lý. Pin có SOH < 70%")
+    public ResponseEntity<Map<String, Object>> getAllBatteriesNeedingMaintenanceAtStations() {
+        Map<String, Object> response = stationService.getAllBatteriesNeedingMaintenanceAtStations();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * GET /api/station/{id}/batteries/needs-maintenance : Lấy pin cần bảo trì TẠI TRẠM CỤ THỂ
      * 
      * Pin ở trạm: currentStation = stationId, SOH < 70%
@@ -139,30 +147,7 @@ public class StationController {
     @Operation(summary = "Get batteries needing maintenance AT THIS STATION (SOH < 70%)",
                description = "Lấy danh sách pin cần bảo trì đang nằm tại trạm này. Staff chỉ xem được pins của stations mình quản lý.")
     public ResponseEntity<Map<String, Object>> getBatteriesNeedingMaintenanceAtStation(@PathVariable Long id) {
-        // Validate station access for staff
-        staffStationAssignmentService.validateStationAccess(id);
-        
-        // Verify station exists
-        Station station = stationService.getStationById(id);
-        
-        // Lấy tất cả pin có SOH < 70%
-        List<Battery> allBatteriesNeedMaintenance = batteryHealthService.getBatteriesNeedingMaintenance();
-        
-        // Filter chỉ lấy pin Ở TRẠM NÀY (currentStation = id)
-        List<Battery> batteriesAtStation = allBatteriesNeedMaintenance.stream()
-                .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(id))
-                .collect(java.util.stream.Collectors.toList());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("stationId", id);
-        response.put("stationName", station.getName());
-        response.put("location", "AT_STATION");
-        response.put("total", batteriesAtStation.size());
-        response.put("batteries", batteriesAtStation);
-        response.put("message", batteriesAtStation.isEmpty() 
-            ? "Trạm này không có pin nào cần bảo trì" 
-            : "Trạm này có " + batteriesAtStation.size() + " pin cần bảo trì");
-        
+        Map<String, Object> response = stationService.getBatteriesNeedingMaintenanceAtStation(id);
         return ResponseEntity.ok(response);
     }
     /**

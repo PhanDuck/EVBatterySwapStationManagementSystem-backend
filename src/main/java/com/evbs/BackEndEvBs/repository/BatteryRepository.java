@@ -31,6 +31,7 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
     
     // Find reserved (PENDING) battery for a specific booking
     Optional<Battery> findByStatusAndReservedForBooking(Battery.Status status, Booking booking);
+
     
     // Find AVAILABLE batteries at station with chargeLevel >= minCharge (for swap)
     // ORDER BY chargeLevel DESC to get fullest battery first

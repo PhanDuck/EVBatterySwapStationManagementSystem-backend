@@ -8,6 +8,7 @@ import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.StationInventoryRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,178 +18,36 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class StationInventoryService {
 
-    private final StationInventoryRepository stationInventoryRepository;
-    private final BatteryRepository batteryRepository;
-    private final StationRepository stationRepository;
+    @Autowired
+    private StationInventoryRepository stationInventoryRepository;
 
-    public StationInventoryService(StationInventoryRepository stationInventoryRepository,
-                                  BatteryRepository batteryRepository,
-                                  StationRepository stationRepository) {
-        this.stationInventoryRepository = stationInventoryRepository;
-        this.batteryRepository = batteryRepository;
-        this.stationRepository = stationRepository;
-    }
+    @Autowired
+    private BatteryRepository batteryRepository;
 
-    @Transactional(readOnly = true)
-    public List<StationInventory> getAllBatteriesInWarehouse() {
-        return stationInventoryRepository.findAll();
-    }
+    @Autowired
+    private StationRepository stationRepository;
 
-    /**
-     * Thay pin bảo trì ở trạm bằng pin từ kho tổng
-     * 
-     * Điều kiện:
-     * - Pin cũ: Ở trạm, status = MAINTENANCE
-     * - Pin mới: Trong kho (currentStation = NULL), CÙNG BatteryType, health >= 90%
-     * 
-     * Kết quả:
-     * - Pin mới → Vào trạm (currentStation = stationId)
-     * - Pin cũ → Về kho (currentStation = NULL, thêm vào StationInventory)
-     */
-    @Transactional
-    public Map<String, Object> replaceBatteryForMaintenance(
-            Long maintenanceBatteryId, 
-            Long availableBatteryId, 
-            Long stationId) {
-        
-        // 1. Kiểm tra trạm
-        Station station = stationRepository.findById(stationId)
-                .orElseThrow(() -> new NotFoundException("Khong tim thay tram voi ID: " + stationId));
-        
-        // 2. Kiểm tra pin cũ (MAINTENANCE ở trạm)
-        Battery maintenanceBattery = batteryRepository.findById(maintenanceBatteryId)
-                .orElseThrow(() -> new NotFoundException("Khong tim thay pin voi ID: " + maintenanceBatteryId));
-        
-        // 3. Kiểm tra pin mới (AVAILABLE trong kho)
-        Battery availableBattery = batteryRepository.findById(availableBatteryId)
-                .orElseThrow(() -> new NotFoundException("Khong tim thay pin voi ID: " + availableBatteryId));
-        
-        // 4. Validate pin cũ: Phải ở TRẠM này
-        if (maintenanceBattery.getCurrentStation() == null || 
-            !maintenanceBattery.getCurrentStation().getId().equals(stationId)) {
-            throw new RuntimeException("Pin cu khong o tram nay");
-        }
-        
-        // 5. Validate pin cũ: Phải MAINTENANCE
-        if (maintenanceBattery.getStatus() != Battery.Status.MAINTENANCE) {
-            throw new RuntimeException("Pin cu khong o trang thai MAINTENANCE");
-        }
-        
-        // 6. Validate pin mới: Phải TRONG KHO (currentStation = NULL)
-        if (availableBattery.getCurrentStation() != null) {
-            throw new RuntimeException("Pin moi da o tram " + availableBattery.getCurrentStation().getName());
-        }
-        
-        // 7. Validate pin mới: Sức khỏe >= 90%
-        if (availableBattery.getStateOfHealth() == null || 
-            availableBattery.getStateOfHealth().compareTo(new BigDecimal("90.00")) < 0) {
-            throw new RuntimeException("Pin moi suc khoe khong du (can >= 90%)");
-        }
-        
-        // 8. Validate: CÙNG LOẠI PIN (BatteryType phải giống nhau)
-        if (!maintenanceBattery.getBatteryType().getId().equals(availableBattery.getBatteryType().getId())) {
-            throw new RuntimeException(
-                String.format("Khong duoc thay pin khac loai! Pin cu: %s, Pin moi: %s", 
-                    maintenanceBattery.getBatteryType().getName(),
-                    availableBattery.getBatteryType().getName())
-            );
-        }
-        
-        // 9. Đưa pin mới VÀO TRẠM
-        availableBattery.setCurrentStation(station);
-        availableBattery.setStatus(Battery.Status.AVAILABLE);
-        
-        // 10. Đưa pin cũ VỀ KHO
-        maintenanceBattery.setCurrentStation(null);
-        maintenanceBattery.setStatus(Battery.Status.MAINTENANCE);
-        maintenanceBattery.setLastMaintenanceDate(LocalDate.now());
-        
-        // 11. Lưu cả hai pin
-        batteryRepository.save(maintenanceBattery);
-        batteryRepository.save(availableBattery);
-        
-        // 12. Tạo StationInventory cho pin cũ về kho
-        StationInventory inventory = new StationInventory();
-        inventory.setBattery(maintenanceBattery);
-        inventory.setStatus(StationInventory.Status.MAINTENANCE);
-        inventory.setLastUpdate(LocalDateTime.now());
-        stationInventoryRepository.save(inventory);
-        
-        // 13. Xóa pin mới khỏi StationInventory (nếu có)
-        stationInventoryRepository.findAll().stream()
-                .filter(inv -> inv.getBattery().getId().equals(availableBatteryId))
-                .findFirst()
-                .ifPresent(stationInventoryRepository::delete);
-        
-        log.info(" Da thay pin tai tram {}. Pin cu {} VE KHO, Pin moi {} VAO TRAM",
-                station.getName(), maintenanceBattery.getId(), availableBattery.getId());
-        
-        // 14. Trả về kết quả
-        Map<String, Object> result = new HashMap<>();
-        result.put("stationId", station.getId());
-        result.put("stationName", station.getName());
-        result.put("oldBattery", Map.of(
-            "batteryId", maintenanceBattery.getId(),
-            "model", maintenanceBattery.getModel(),
-            "batteryType", maintenanceBattery.getBatteryType().getName(),
-            "oldLocation", "TRAM " + station.getName(),
-            "newLocation", "KHO TONG",
-            "status", "MAINTENANCE",
-            "stateOfHealth", maintenanceBattery.getStateOfHealth()
-        ));
-        result.put("newBattery", Map.of(
-            "batteryId", availableBattery.getId(),
-            "model", availableBattery.getModel(),
-            "batteryType", availableBattery.getBatteryType().getName(),
-            "oldLocation", "KHO TONG",
-            "newLocation", "TRAM " + station.getName(),
-            "status", "AVAILABLE",
-            "stateOfHealth", availableBattery.getStateOfHealth()
-        ));
-        result.put("replacedAt", LocalDateTime.now());
-        
-        return result;
-    }
+    @Autowired
+    private BatteryHealthService batteryHealthService;
+
+    @Autowired
+    private StaffStationAssignmentService staffStationAssignmentService;
+
+    // ==================== WAREHOUSE QUERIES ====================
+
     @Transactional(readOnly = true)
     public Map<String, Object> getAllBatteriesInWarehouseWithDetails() {
         List<StationInventory> inventories = stationInventoryRepository.findAll();
 
-        // Map sang response với đầy đủ thông tin battery
         List<Map<String, Object>> batteryDetails = inventories.stream()
-                .map(inv -> {
-                    Map<String, Object> detail = new HashMap<>();
-                    Battery battery = inv.getBattery();
-
-                    // Thông tin từ StationInventory
-                    detail.put("inventoryId", inv.getId());
-                    detail.put("inventoryStatus", inv.getStatus());
-                    detail.put("lastUpdate", inv.getLastUpdate());
-
-                    // Thông tin đầy đủ từ Battery
-                    detail.put("id", battery.getId());
-                    detail.put("model", battery.getModel());
-                    detail.put("capacity", battery.getCapacity());
-                    detail.put("stateOfHealth", battery.getStateOfHealth());
-                    detail.put("chargeLevel", battery.getChargeLevel());
-                    detail.put("lastChargedTime", battery.getLastChargedTime());
-                    detail.put("status", battery.getStatus());
-                    detail.put("manufactureDate", battery.getManufactureDate());
-                    detail.put("usageCount", battery.getUsageCount());
-                    detail.put("lastMaintenanceDate", battery.getLastMaintenanceDate());
-                    detail.put("createdAt", battery.getCreatedAt());
-                    detail.put("reservationExpiry", battery.getReservationExpiry());
-                    detail.put("batteryTypeId", battery.getBatteryType() != null ? battery.getBatteryType().getId() : null);
-                    detail.put("batteryTypeName", battery.getBatteryType() != null ? battery.getBatteryType().getName() : null);
-                    detail.put("currentStation", battery.getCurrentStation()); // Sẽ là null vì ở trong kho
-
-                    return detail;
-                })
-                .toList();
+                .map(this::mapToBatteryDetail)
+                .collect(Collectors.toList());
 
         Map<String, Object> response = new HashMap<>();
         response.put("location", "WAREHOUSE");
@@ -198,6 +57,275 @@ public class StationInventoryService {
                 ? "Kho không có pin nào"
                 : "Có " + batteryDetails.size() + " pin trong kho");
 
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getBatteriesNeedingMaintenanceInWarehouse() {
+        List<Battery> batteriesInWarehouse = batteryHealthService.getBatteriesNeedingMaintenance().stream()
+                .filter(b -> b.getCurrentStation() == null)
+                .collect(Collectors.toList());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("location", "WAREHOUSE");
+        response.put("total", batteriesInWarehouse.size());
+        response.put("batteries", batteriesInWarehouse);
+        response.put("message", batteriesInWarehouse.isEmpty()
+                ? "Kho không có pin nào cần bảo trì"
+                : "Kho có " + batteriesInWarehouse.size() + " pin cần bảo trì");
+
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAvailableBatteriesByType(Long batteryTypeId) {
+        List<Battery> availableBatteries = batteryRepository.findByBatteryType_IdAndStatusAndCurrentStationIsNull(
+                batteryTypeId, Battery.Status.AVAILABLE);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("batteryTypeId", batteryTypeId);
+        response.put("location", "WAREHOUSE");
+        response.put("total", availableBatteries.size());
+        response.put("batteries", availableBatteries);
+        response.put("message", availableBatteries.isEmpty()
+                ? "Không có pin nào đang AVAILABLE trong kho với loại này"
+                : "Tìm thấy " + availableBatteries.size() + " pin AVAILABLE trong kho cùng loại");
+
+        return response;
+    }
+
+    // ==================== BATTERY TRANSFER OPERATIONS ====================
+
+    @Transactional
+    public Map<String, Object> moveBatteryToStation(Long batteryId, Long stationId, Long batteryTypeId) {
+        // Validate staff access
+        staffStationAssignmentService.validateStationAccess(stationId);
+
+        Battery battery = getBatteryById(batteryId);
+        Station station = getStationById(stationId);
+
+        // Validate battery type matches station
+        validateBatteryTypeMatchesStation(battery, station);
+
+        // Validate other conditions
+        validateBatteryForStationTransfer(battery, stationId, batteryTypeId);
+
+        // Move battery to station
+        battery.setCurrentStation(station);
+        batteryRepository.save(battery);
+
+        // Remove from inventory
+        removeBatteryFromInventory(batteryId);
+
+        log.info("Đã chuyển pin {} đến trạm {}. Loại pin: {}",
+                battery.getId(), station.getName(), battery.getBatteryType().getName());
+
+        return createTransferResponse(battery, "KHO TỔNG", station.getName(), "Đã chuyển pin đến trạm thành công");
+    }
+
+    @Transactional
+    public Map<String, Object> moveBatteryToWarehouse(Long batteryId, Long stationId) {
+        // Validate staff access
+        staffStationAssignmentService.validateStationAccess(stationId);
+
+        Battery battery = getBatteryById(batteryId);
+        Station station = getStationById(stationId);
+
+        // Validate conditions
+        validateBatteryForWarehouseTransfer(battery, stationId);
+
+        String oldStationName = battery.getCurrentStation().getName();
+
+        // Move battery to warehouse
+        battery.setCurrentStation(null);
+        batteryRepository.save(battery);
+
+        // Add to inventory
+        addBatteryToInventory(battery);
+
+        log.info("Đã chuyển pin {} từ trạm {} về kho tổng", battery.getId(), oldStationName);
+
+        return createTransferResponse(battery, oldStationName, "KHO TỔNG", "Đã chuyển pin về kho thành công");
+    }
+
+    // ==================== MAINTENANCE OPERATIONS ====================
+
+    @Transactional
+    public Map<String, Object> completeMaintenance(Long batteryId, Double newSOH) {
+        if (newSOH == null || newSOH < 0 || newSOH > 100) {
+            throw new IllegalArgumentException("SOH phải từ 0-100%");
+        }
+
+        Battery battery = getBatteryById(batteryId);
+
+        // Call battery health service to complete maintenance
+        Map<String, Object> result = batteryHealthService.completeMaintenance(battery, BigDecimal.valueOf(newSOH));
+        return result;
+    }
+
+    // ==================== PRIVATE HELPER METHODS ====================
+
+    /**
+     * VALIDATION: Kiểm tra pin phải cùng loại với trạm
+     */
+    private void validateBatteryTypeMatchesStation(Battery battery, Station station) {
+        if (battery.getBatteryType() == null) {
+            throw new RuntimeException("Pin không có loại pin được xác định");
+        }
+
+        if (station.getBatteryType() == null) {
+            throw new RuntimeException("Trạm không có loại pin được xác định");
+        }
+
+        if (!battery.getBatteryType().getId().equals(station.getBatteryType().getId())) {
+            throw new RuntimeException(
+                    String.format("Pin không tương thích với trạm. " +
+                                    "Loại pin: %s, Loại trạm hỗ trợ: %s",
+                            battery.getBatteryType().getName(),
+                            station.getBatteryType().getName()
+                    )
+            );
+        }
+
+        log.debug("Validation passed: Battery type {} matches station type {}",
+                battery.getBatteryType().getName(), station.getBatteryType().getName());
+    }
+
+    /**
+     * Map StationInventory to detailed battery information
+     */
+    private Map<String, Object> mapToBatteryDetail(StationInventory inv) {
+        Map<String, Object> detail = new HashMap<>();
+        Battery battery = inv.getBattery();
+
+        // Inventory information
+        detail.put("inventoryId", inv.getId());
+        detail.put("inventoryStatus", inv.getStatus());
+        detail.put("lastUpdate", inv.getLastUpdate());
+
+        // Battery basic information
+        detail.put("id", battery.getId());
+        detail.put("model", battery.getModel());
+        detail.put("capacity", battery.getCapacity());
+
+        // Battery health information
+        detail.put("stateOfHealth", battery.getStateOfHealth());
+        detail.put("chargeLevel", battery.getChargeLevel());
+        detail.put("lastChargedTime", battery.getLastChargedTime());
+
+        // Battery status information
+        detail.put("status", battery.getStatus());
+        detail.put("manufactureDate", battery.getManufactureDate());
+        detail.put("usageCount", battery.getUsageCount());
+        detail.put("lastMaintenanceDate", battery.getLastMaintenanceDate());
+        detail.put("createdAt", battery.getCreatedAt());
+        detail.put("reservationExpiry", battery.getReservationExpiry());
+
+        // Battery type information
+        detail.put("batteryTypeId", battery.getBatteryType() != null ? battery.getBatteryType().getId() : null);
+        detail.put("batteryTypeName", battery.getBatteryType() != null ? battery.getBatteryType().getName() : null);
+
+        // Location information
+        detail.put("currentStation", battery.getCurrentStation());
+
+        return detail;
+    }
+
+    /**
+     * Get battery by ID with exception handling
+     */
+    private Battery getBatteryById(Long batteryId) {
+        return batteryRepository.findById(batteryId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin với ID: " + batteryId));
+    }
+
+    /**
+     * Get station by ID with exception handling
+     */
+    private Station getStationById(Long stationId) {
+        return stationRepository.findById(stationId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm với ID: " + stationId));
+    }
+
+    /**
+     * Validate battery for station transfer
+     */
+    private void validateBatteryForStationTransfer(Battery battery, Long stationId, Long batteryTypeId) {
+        // Check if battery is already at a station
+        if (battery.getCurrentStation() != null) {
+            throw new RuntimeException("Pin đã ở trạm: " + battery.getCurrentStation().getName());
+        }
+
+        // Check battery status
+        if (battery.getStatus() != Battery.Status.AVAILABLE) {
+            throw new RuntimeException("Pin phải ở trạng thái AVAILABLE. Hiện tại: " + battery.getStatus());
+        }
+
+        // Check battery type
+        if (!battery.getBatteryType().getId().equals(batteryTypeId)) {
+            throw new RuntimeException("Pin không đúng loại. Yêu cầu: BatteryType ID " + batteryTypeId);
+        }
+
+        // Check battery health
+        if (battery.getStateOfHealth() == null || battery.getStateOfHealth().compareTo(new BigDecimal("90.00")) < 0) {
+            throw new RuntimeException("Pin phải có SOH >= 90% để gửi đến trạm");
+        }
+    }
+
+    /**
+     * Validate battery for warehouse transfer
+     */
+    private void validateBatteryForWarehouseTransfer(Battery battery, Long stationId) {
+        // Check if battery is at the specified station
+        if (battery.getCurrentStation() == null || !battery.getCurrentStation().getId().equals(stationId)) {
+            throw new RuntimeException("Pin không ở trạm này");
+        }
+
+        // Check battery status
+        if (battery.getStatus() != Battery.Status.MAINTENANCE) {
+            throw new RuntimeException("Pin phải ở trạng thái MAINTENANCE mới được chuyển về kho");
+        }
+    }
+
+    /**
+     * Add battery to inventory
+     */
+    private void addBatteryToInventory(Battery battery) {
+        StationInventory inventory = new StationInventory();
+        inventory.setBattery(battery);
+        inventory.setStatus(StationInventory.Status.MAINTENANCE);
+        inventory.setLastUpdate(LocalDateTime.now());
+        stationInventoryRepository.save(inventory);
+
+        log.debug("Đã thêm pin {} vào inventory", battery.getId());
+    }
+
+    /**
+     * Remove battery from inventory
+     */
+    private void removeBatteryFromInventory(Long batteryId) {
+        stationInventoryRepository.findAll().stream()
+                .filter(inv -> inv.getBattery().getId().equals(batteryId))
+                .findFirst()
+                .ifPresent(stationInventoryRepository::delete);
+
+        log.debug("Đã xóa pin {} khỏi inventory", batteryId);
+    }
+
+    /**
+     * Create transfer response
+     */
+    private Map<String, Object> createTransferResponse(Battery battery, String fromLocation, String toLocation, String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", message);
+        response.put("batteryId", battery.getId());
+        response.put("batteryModel", battery.getModel());
+        response.put("batteryType", battery.getBatteryType().getName());
+        response.put("fromLocation", fromLocation);
+        response.put("toLocation", toLocation);
+        response.put("status", battery.getStatus());
+        response.put("stateOfHealth", battery.getStateOfHealth());
+        response.put("movedAt", LocalDateTime.now());
         return response;
     }
 }

@@ -46,6 +46,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("driver") User driver,
             @Param("station") Station station
     );
+
     
     // Helper method to get first confirmed booking
     default Optional<Booking> findLatestConfirmedBooking(User driver, Station station) {

@@ -76,7 +76,46 @@ public class SupportTicketService {
 
         ticket.setCreatedAt(LocalDateTime.now());
 
-        return supportTicketRepository.save(ticket);
+        // Lưu ticket trước
+        SupportTicket savedTicket = supportTicketRepository.save(ticket);
+
+        // ===== EMAIL INTEGRATION =====
+        try {
+            //Gửi email thông báo đến Staff hoặc Admin dựa trên stationID
+            if (request.getStationId() != null) {
+                // Có stationID -> Gửi đến Staff của trạm đó
+                Station station = stationRepository.findById(request.getStationId()).orElse(null);
+                if (station != null) {
+                    List<User> stationStaff = assignmentRepository.findStaffByStation(station);
+
+                    if (!stationStaff.isEmpty()) {
+                        emailService.sendTicketCreatedToStaff(stationStaff, savedTicket);
+                        log.info("Sent ticket notification to {} staff members for station: {}",
+                                stationStaff.size(), request.getStationId());
+                    } else {
+                        // Không có staff nào -> Gửi đến Admin
+                        List<User> adminList = userRepository.findAll().stream()
+                                .filter(user -> user.getRole() == User.Role.ADMIN)
+                                .toList();
+                        emailService.sendTicketCreatedToAdmin(adminList, savedTicket);
+                        log.info("No staff found for station, sent to {} admins instead", adminList.size());
+                    }
+                }
+            } else {
+                // Không có stationID -> Gửi đến Admin
+                List<User> adminList = userRepository.findAll().stream()
+                        .filter(user -> user.getRole() == User.Role.ADMIN)
+                        .toList();
+                emailService.sendTicketCreatedToAdmin(adminList, savedTicket);
+                log.info("Sent general support ticket to {} admins", adminList.size());
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to send email notifications for ticket: {}", savedTicket.getId(), e);
+            // Không throw exception để không ảnh hưởng đến việc tạo ticket
+        }
+
+        return savedTicket;
     }
 
     /**
@@ -164,18 +203,18 @@ public class SupportTicketService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
         }
-        
+
         // Admin có thể xem tất cả tickets
         if (currentUser.getRole() == User.Role.ADMIN) {
             return supportTicketRepository.findAll();
         }
-        
+
         // Staff chỉ xem tickets của các station họ quản lý
         List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
         if (myStations.isEmpty()) {
             throw new AuthenticationException("Staff not assigned to any station");
         }
-        
+
         return supportTicketRepository.findByStationIn(myStations);
     }
 
@@ -187,7 +226,7 @@ public class SupportTicketService {
     @Transactional
     public SupportTicket updateTicketStatus(Long id, SupportTicket.Status status) {
         User currentUser = authenticationService.getCurrentUser();
-        
+
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied");
         }
@@ -200,19 +239,19 @@ public class SupportTicketService {
             // Nếu ticket không có station, staff không thể cập nhật
             if (ticket.getStation() == null) {
                 throw new AuthenticationException(
-                    "Cannot update ticket without station assignment. " +
-                    "Please contact admin."
+                        "Cannot update ticket without station assignment. " +
+                                "Please contact admin."
                 );
             }
 
             // Kiểm tra staff có được assign cho station của ticket không
             boolean hasAccess = staffStationAssignmentRepository
-                .existsByStaffAndStation(currentUser, ticket.getStation());
+                    .existsByStaffAndStation(currentUser, ticket.getStation());
 
             if (!hasAccess) {
                 throw new AuthenticationException(
-                    "Access denied. You can only update tickets from stations you manage. " +
-                    "This ticket belongs to station: " + ticket.getStation().getName()
+                        "Access denied. You can only update tickets from stations you manage. " +
+                                "This ticket belongs to station: " + ticket.getStation().getName()
                 );
             }
         }

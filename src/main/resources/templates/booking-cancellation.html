@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông báo hủy booking</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .booking-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            min-width: 120px;
+        }
+        .info-value {
+            color: #6c757d;
+            text-align: right;
+            flex: 1;
+        }
+
+        /* Các loại thông báo hủy khác nhau */
+        .auto-cancellation {
+            background: #ffeaa7;
+            border: 2px solid #fdcb6e;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .staff-cancellation {
+            background: #fab1a0;
+            border: 2px solid #e17055;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .driver-cancellation {
+            background: #a29bfe;
+            border: 2px solid #6c5ce7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .penalty-notice {
+            background: #ff7675;
+            color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .footer {
+            background: #343a40;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #ff6b6b;
+            color: white;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📅 THÔNG BÁO HỦY BOOKING</h1>
+        <p>EV Battery Swap Station</p>
+    </div>
+
+    <div class="content">
+        <p>Xin chào <strong th:text="${customerName}">[Tên khách hàng]</strong>,</p>
+
+        <!-- Thông báo cho hủy tự động (hết hạn) -->
+        <div th:if="${cancellationType == 'AUTO'}">
+            <div class="auto-cancellation">
+                <h3>⏰ HỦY TỰ ĐỘNG DO HẾT THỜI GIAN GIỮ CHỖ</h3>
+                <p>Booking của bạn đã bị hủy tự động do hết thời gian giữ chỗ (3 giờ).</p>
+            </div>
+
+            <div class="penalty-notice">
+                <h4>⚠️ THÔNG BÁO QUAN TRỌNG</h4>
+                <p><strong>Một lượt swap đã bị trừ khỏi gói dịch vụ của bạn</strong> vì không đến thực hiện swap theo đúng lịch hẹn.</p>
+            </div>
+        </div>
+
+        <!-- Thông báo cho hủy bởi staff -->
+        <div th:if="${cancellationType == 'STAFF'}">
+            <div class="staff-cancellation">
+                <h3>👨‍💼 HỦY BỞI NHÂN VIÊN</h3>
+                <p>Booking của bạn đã bị hủy bởi nhân viên trạm.</p>
+                <p th:if="${cancellationReason != null}"><strong>Lý do:</strong> <span th:text="${cancellationReason}"></span></p>
+            </div>
+        </div>
+
+        <!-- Thông báo cho hủy bởi driver -->
+        <div th:if="${cancellationType == 'DRIVER'}">
+            <div class="driver-cancellation">
+                <h3>✅ HỦY BỞI NGƯỜI DÙNG</h3>
+                <p>Bạn đã hủy booking thành công.</p>
+                <p><strong>Pin đã được giải phóng và không bị trừ lượt swap.</strong></p>
+            </div>
+        </div>
+
+        <!-- Thông tin booking chi tiết -->
+        <div class="booking-info">
+            <h3>📋 THÔNG TIN BOOKING</h3>
+            <div class="info-row">
+                <span class="info-label">Mã booking:</span>
+                <span class="info-value" th:text="${bookingId}">[Booking ID]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Mã xác nhận:</span>
+                <span class="info-value" th:text="${confirmationCode}">[Mã xác nhận]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Trạm:</span>
+                <span class="info-value" th:text="${stationName}">[Tên trạm]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Địa chỉ:</span>
+                <span class="info-value" th:text="${stationLocation}">[Địa chỉ trạm]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Liên hệ trạm:</span>
+                <span class="info-value" th:text="${stationContact}">[Liên hệ]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Thời gian đặt:</span>
+                <span class="info-value" th:text="${bookingTime}">[Thời gian]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Xe:</span>
+                <span class="info-value" th:text="${vehicleModel}">[Model xe]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Loại pin:</span>
+                <span class="info-value" th:text="${batteryType}">[Loại pin]</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Trạng thái:</span>
+                <span class="info-value">
+                    <span class="status-badge">ĐÃ HỦY</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Thông tin chung -->
+        <div style="background: #dfe6e9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <h4>💡 Lưu ý quan trọng:</h4>
+            <p>• Pin đã được giải phóng và có thể được đặt bởi người dùng khác</p>
+            <p>• Để đặt lịch mới, vui lòng truy cập ứng dụng EV Battery Swap</p>
+            <p>• Kiểm tra số lượt swap còn lại trong gói dịch vụ của bạn</p>
+        </div>
+
+        <p>Nếu bạn có bất kỳ câu hỏi nào hoặc cần hỗ trợ thêm, vui lòng liên hệ với chúng tôi.</p>
+
+        <p>Trân trọng,<br>
+            <strong>Đội ngũ EV Battery Swap Station</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>© 2024 EV Battery Swap Station. All rights reserved.</p>
+        <p>Email: sp.evswapstation@gmail.com | Hotline: 1900 1234</p>
+        <p>Đây là email tự động, vui lòng không trả lời.</p>
+    </div>
+</div>
+</body>
+</html>

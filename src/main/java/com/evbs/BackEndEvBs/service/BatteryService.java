@@ -13,9 +13,12 @@ import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationInventoryRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -52,6 +55,12 @@ public class BatteryService {
             throw new AuthenticationException("Access denied");
         }
 
+        // VALIDATION: Không cho phép tạo pin với trạng thái IN_USE hoặc PENDING
+        // Trong method
+        if (request.getStatus() == Battery.Status.IN_USE || request.getStatus() == Battery.Status.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New battery cannot be created with IN_USE or PENDING status");
+        }
+
         // Validate battery type
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Battery type not found"));
@@ -64,33 +73,40 @@ public class BatteryService {
         battery.setManufactureDate(request.getManufactureDate());
         battery.setLastMaintenanceDate(request.getLastMaintenanceDate());
         battery.setBatteryType(batteryType);
-        battery.setStatus(request.getStatus() != null ? request.getStatus() : Battery.Status.AVAILABLE);
+
+        // Set status với validation mặc định
+        Battery.Status status = request.getStatus() != null ? request.getStatus() : Battery.Status.AVAILABLE;
+
+        // Double check validation
+        if (status == Battery.Status.IN_USE || status == Battery.Status.PENDING) {
+            status = Battery.Status.AVAILABLE; // Force to AVAILABLE if invalid
+        }
+
+        battery.setStatus(status);
         battery.setChargeLevel(BigDecimal.valueOf(100.0)); // Default: new battery = 100% charge
 
-        // Set current station if provided
-        if (request.getCurrentStationId() != null) {
-            battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
-                    .orElseThrow(() -> new NotFoundException("Station not found")));
-        }
+        // XÓA SET TRẠM - không set station nữa
+        // if (request.getCurrentStationId() != null) {
+        //     battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
+        //             .orElseThrow(() -> new NotFoundException("Station not found")));
+        // }
 
         // Save battery first
         Battery savedBattery = batteryRepository.save(battery);
 
-        // Auto-add to StationInventory if battery NOT at station and NOT IN_USE
-        if (savedBattery.getCurrentStation() == null && savedBattery.getStatus() != Battery.Status.IN_USE) {
-            StationInventory inventory = new StationInventory();
-            inventory.setBattery(savedBattery);
-            
-            // Map Battery.Status -> StationInventory.Status
-            if (savedBattery.getStatus() == Battery.Status.MAINTENANCE) {
-                inventory.setStatus(StationInventory.Status.MAINTENANCE);
-            } else {
-                inventory.setStatus(StationInventory.Status.AVAILABLE);
-            }
-            
-            inventory.setLastUpdate(LocalDateTime.now());
-            stationInventoryRepository.save(inventory);
+        // LUÔN LUÔN THÊM VÀO STATION INVENTORY - không có điều kiện
+        StationInventory inventory = new StationInventory();
+        inventory.setBattery(savedBattery);
+
+        // Map Battery.Status -> StationInventory.Status
+        if (savedBattery.getStatus() == Battery.Status.MAINTENANCE) {
+            inventory.setStatus(StationInventory.Status.MAINTENANCE);
+        } else {
+            inventory.setStatus(StationInventory.Status.AVAILABLE);
         }
+
+        inventory.setLastUpdate(LocalDateTime.now());
+        stationInventoryRepository.save(inventory);
 
         return savedBattery;
     }

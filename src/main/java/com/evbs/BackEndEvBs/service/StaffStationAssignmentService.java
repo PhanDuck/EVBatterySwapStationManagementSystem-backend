@@ -229,4 +229,33 @@ public class StaffStationAssignmentService {
         
         throw new AuthenticationException("Access denied");
     }
+
+    /**
+     * FILTER - Lọc batteries theo stations mà staff được phép quản lý
+     * Admin: xem tất cả
+     * Staff: chỉ xem batteries của stations mình được assign
+     */
+    public List<com.evbs.BackEndEvBs.entity.Battery> filterBatteriesByStaffStations(List<com.evbs.BackEndEvBs.entity.Battery> batteries) {
+        User currentUser = authenticationService.getCurrentUser();
+        
+        // Admin xem tất cả
+        if (currentUser.getRole() == User.Role.ADMIN) {
+            return batteries;
+        }
+        
+        // Staff chỉ xem batteries của stations mình quản lý
+        if (currentUser.getRole() == User.Role.STAFF) {
+            List<Station> myStations = assignmentRepository.findStationsByStaff(currentUser);
+            List<Long> myStationIds = myStations.stream()
+                    .map(Station::getId)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            return batteries.stream()
+                    .filter(b -> b.getCurrentStation() != null && myStationIds.contains(b.getCurrentStation().getId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        
+        // Các role khác không có quyền
+        return List.of();
+    }
 }

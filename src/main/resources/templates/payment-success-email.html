@@ -374,10 +374,6 @@
                     <td class="info-value" th:text="${validDays} + ' ngày'">30 ngày</td>
                 </tr>
                 <tr>
-                    <td class="info-label">Ngày hết hạn:</td>
-                    <td class="info-value highlight" th:text="${expiryDate}">22/11/2025 14:30</td>
-                </tr>
-                <tr>
                     <td class="info-label">Giới hạn đổi pin:</td>
                     <td class="info-value" th:text="${swapLimit} + ' lần'">10 lần</td>
                 </tr>
@@ -388,13 +384,6 @@
         <div class="activation-notice">
             <h3>🚀 Gói dịch vụ đã được kích hoạt!</h3>
             <p>Bạn có thể bắt đầu sử dụng dịch vụ đổi pin tại các trạm ngay bây giờ.</p>
-        </div>
-
-        <!-- Expiry Warning -->
-        <div class="expiry-warning">
-            <h3>⏰ Lưu ý thời gian hết hạn</h3>
-            <div class="expiry-date" th:text="${expiryDate}">22/11/2025 14:30</div>
-            <p>Vui lòng sử dụng dịch vụ trước ngày hết hạn để tránh mất quyền lợi</p>
         </div>
 
         <div class="divider"></div>

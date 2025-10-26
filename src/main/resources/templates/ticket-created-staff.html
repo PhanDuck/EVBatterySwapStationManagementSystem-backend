@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket hỗ trợ mới từ khách hàng</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .alert-badge {
+            background-color: #fff;
+            color: #dc3545;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .ticket-info {
+            background-color: #fff5f5;
+            border-left: 5px solid #dc3545;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .ticket-id {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+            margin-bottom: 10px;
+        }
+
+        .ticket-subject {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .ticket-description {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .info-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #dc3545;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #dc3545;
+            padding-bottom: 5px;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            flex: 0 0 40%;
+        }
+
+        .info-value {
+            color: #333;
+            flex: 1;
+            text-align: right;
+        }
+
+        .customer-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .station-info {
+            background-color: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .priority-high {
+            background-color: #fff5f5;
+            border: 2px solid #dc3545;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .priority-text {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 5px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .footer-links {
+            margin-top: 15px;
+        }
+
+        .footer-links a {
+            color: #dc3545;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .timestamp {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #856404;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .btn {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- Header -->
+    <div class="header">
+        <h1>🚨 TICKET HỖ TRỢ MỚI</h1>
+        <div class="alert-badge">CẦN XỬ LÝ NGAY</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- Timestamp -->
+        <div class="timestamp">
+            📅 Thời gian tạo: <span th:text="${createdAt}">25/10/2024 14:30:25</span>
+        </div>
+
+        <!-- Priority Alert -->
+        <div class="priority-high">
+            <div class="priority-text">⚠️ YÊU CẦU HỖ TRỢ KHẨN CẤP</div>
+        </div>
+
+        <!-- Ticket Information -->
+        <div class="ticket-info">
+            <div class="ticket-id">Ticket #<span th:text="${ticketId}">12345</span></div>
+            <div class="ticket-subject" th:text="${subject}">Vấn đề với pin xe điện</div>
+
+            <div class="ticket-description">
+                <strong>Mô tả chi tiết:</strong><br>
+                <span th:text="${description}">Pin xe tôi bị hỏng và không thể sạc được. Tôi đang mắc kẹt tại trạm và cần hỗ trợ gấp.</span>
+            </div>
+
+            <div class="info-item">
+                <span class="info-label">Trạng thái:</span>
+                <span class="info-value" style="color: #dc3545; font-weight: bold;" th:text="${status}">OPEN</span>
+            </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div class="info-section">
+            <div class="section-title">👤 Thông tin khách hàng</div>
+            <div class="customer-info">
+                <div class="info-item">
+                    <span class="info-label">Họ tên:</span>
+                    <span class="info-value" th:text="${driverName}">Nguyễn Văn A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value" th:text="${driverEmail}">nguyenvana@email.com</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Số điện thoại:</span>
+                    <span class="info-value" th:text="${driverPhone}">0123456789</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Station Information (if available) -->
+        <div class="info-section" th:if="${hasStation}">
+            <div class="section-title">🏢 Thông tin trạm liên quan</div>
+            <div class="station-info">
+                <div class="info-item">
+                    <span class="info-label">Tên trạm:</span>
+                    <span class="info-value" th:text="${stationName}">Trạm Quận 1</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Địa chỉ:</span>
+                    <span class="info-value" th:text="${stationLocation}">123 Nguyễn Huệ, Quận 1, TP.HCM</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Liên hệ:</span>
+                    <span class="info-value" th:text="${stationContact}">028.1234.5678</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- General Support Notice (if no station) -->
+        <div class="info-section" th:unless="${hasStation}">
+            <div class="section-title">📋 Loại hỗ trợ</div>
+            <div class="customer-info">
+                <div class="info-item">
+                    <span class="info-label">Phân loại:</span>
+                    <span class="info-value" style="color: #dc3545; font-weight: bold;">HỖ TRỢ TỔNG QUÁT</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Ghi chú:</span>
+                    <span class="info-value">Ticket này không liên quan đến trạm cụ thể</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div>
+            <strong th:text="${systemName}">EV Battery Swap Station</strong><br>
+            Hệ thống quản lý trạm đổi pin xe điện
+        </div>
+        <div class="footer-links">
+            <a th:href="'mailto:' + ${supportEmail}" th:text="${supportEmail}">sp.evswapstation@gmail.com</a>
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; color: #999;">
+            Email này được gửi tự động từ hệ thống. Vui lòng không trả lời trực tiếp email này.
+        </div>
+    </div>
+</div>
+</body>
+</html>

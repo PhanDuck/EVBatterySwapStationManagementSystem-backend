@@ -23,8 +23,8 @@ public class Battery {
         PENDING,      // Pin đang được giữ cho booking (reserved)
         IN_USE,       // Pin đang được sử dụng bởi tài xế
         CHARGING,     // Pin đang sạc
-        MAINTENANCE,  // Pin đang bảo trì
-        DAMAGED       // Pin hỏng
+        MAINTENANCE
+        // Pin hỏng
     }
 
     @Id

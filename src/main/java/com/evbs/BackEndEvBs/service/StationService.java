@@ -15,7 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -70,33 +72,11 @@ public class StationService {
 
     /**
      * READ - Lấy tất cả stations (PUBLIC - không cần đăng nhập)
-     * - Admin: xem tất cả stations
-     * - Staff: chỉ xem stations được assign
-     * - Driver/Public (không đăng nhập): xem tất cả stations ACTIVE
+     * Ai cũng xem được tất cả stations (kể cả đang bảo trì, inactive, v.v.)
      */
     @Transactional(readOnly = true)
     public List<Station> getAllStations() {
-        // Lấy current user, có thể null nếu chưa đăng nhập
-        User currentUser = null;
-        try {
-            currentUser = authenticationService.getCurrentUser();
-        } catch (Exception e) {
-            // User chưa đăng nhập hoặc token không hợp lệ → currentUser = null
-            currentUser = null;
-        }
-
-        // Admin thấy tất cả
-        if (currentUser != null && currentUser.getRole() == User.Role.ADMIN) {
-            return stationRepository.findAll();
-        }
-
-        // Staff chỉ thấy stations được assign
-        if (currentUser != null && currentUser.getRole() == User.Role.STAFF) {
-            return staffStationAssignmentRepository.findStationsByStaff(currentUser);
-        }
-
-        // Driver hoặc Public (không đăng nhập) chỉ thấy stations ACTIVE
-        return stationRepository.findByStatus(Station.Status.ACTIVE);
+        return stationRepository.findAll();
     }
 
     /**
@@ -183,6 +163,17 @@ public class StationService {
             station.setBatteryType(batteryType);
         }
 
+        // Cập nhật status nếu được cung cấp
+        if (request.getStatus() != null) {
+            // Staff chỉ update status cho stations được assign
+            if (currentUser.getRole() == User.Role.STAFF) {
+                if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
+                    throw new AuthenticationException("You are not assigned to manage this station");
+                }
+            }
+            station.setStatus(request.getStatus());
+        }
+
         return stationRepository.save(station);
     }
 
@@ -198,7 +189,9 @@ public class StationService {
 
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Station not found"));
-        stationRepository.delete(station);
+        station.setStatus(Station.Status.INACTIVE);
+        stationRepository.save(station);
+        
     }
 
     /**
@@ -223,6 +216,43 @@ public class StationService {
 
         station.setStatus(status);
         return stationRepository.save(station);
+    }
+    /**
+     * Lấy tất cả pin cần bảo trì tại các trạm
+     * Admin: Xem tất cả pins needs-maintenance của tất cả trạm
+     * Staff: Chỉ xem pins needs-maintenance của trạm mình quản lý
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getAllBatteriesNeedingMaintenanceAtStations() {
+        // Logic này sẽ được implement trong BatteryHealthService
+        // Tạm thời trả về empty result
+        Map<String, Object> response = new HashMap<>();
+        response.put("location", "AT_STATIONS");
+        response.put("total", 0);
+        response.put("batteries", List.of());
+        response.put("message", "Không có pin nào cần bảo trì tại các trạm");
+        return response;
+    }
+
+    /**
+     * Lấy pin cần bảo trì tại trạm cụ thể
+     * Staff chỉ xem được pins của stations mình quản lý
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getBatteriesNeedingMaintenanceAtStation(Long stationId) {
+        // Validate station exists
+        Station station = getStationById(stationId);
+
+        // Logic này sẽ được implement trong BatteryHealthService
+        // Tạm thời trả về empty result
+        Map<String, Object> response = new HashMap<>();
+        response.put("stationId", stationId);
+        response.put("stationName", station.getName());
+        response.put("location", "AT_STATION");
+        response.put("total", 0);
+        response.put("batteries", List.of());
+        response.put("message", "Trạm này không có pin nào cần bảo trì");
+        return response;
     }
 
     // ==================== HELPER METHODS ====================

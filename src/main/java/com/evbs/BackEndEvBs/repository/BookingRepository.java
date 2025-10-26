@@ -30,14 +30,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm booking của driver cụ thể
     Optional<Booking> findByIdAndDriver(Long id, User driver);
 
-    // ✅ Tìm booking bằng confirmationCode (cho staff xác nhận)
+    //  Tìm booking bằng confirmationCode (cho staff xác nhận)
     Optional<Booking> findByConfirmationCode(String confirmationCode);
 
     //dòng này để kiểm tra các booking "chưa kết thúc" của driver
     @Query("SELECT b FROM Booking b WHERE b.driver = :driver AND b.status NOT IN :statuses")
     List<Booking> findByDriverAndStatusNotIn(User driver, List<Booking.Status> statuses);
     
-    // ✅ Tìm booking CONFIRMED gần nhất của driver tại station (cho swap transaction)
+    //  Tìm booking CONFIRMED gần nhất của driver tại station (cho swap transaction)
     @Query("SELECT b FROM Booking b WHERE b.driver = :driver " +
            "AND b.station = :station " +
            "AND b.status = 'CONFIRMED' " +
@@ -46,6 +46,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("driver") User driver,
             @Param("station") Station station
     );
+
     
     // Helper method to get first confirmed booking
     default Optional<Booking> findLatestConfirmedBooking(User driver, Station station) {

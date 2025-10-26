@@ -14,17 +14,24 @@ import java.util.Optional;
 @Repository
 public interface BatteryRepository extends JpaRepository<Battery, Long> {
 
+    // Tìm batteries theo model
+    List<Battery> findByModelContainingIgnoreCase(String model);
+
     // Tìm batteries theo status
     List<Battery> findByStatus(Battery.Status status);
 
     // Tìm batteries theo station
     List<Battery> findByCurrentStation_Id(Long stationId);
+
+    // Tìm batteries theo battery type
+    List<Battery> findByBatteryType_Id(Long batteryTypeId);
     
     // Find AVAILABLE batteries in warehouse by type (currentStation = NULL)
     List<Battery> findByBatteryType_IdAndStatusAndCurrentStationIsNull(Long batteryTypeId, Battery.Status status);
     
     // Find reserved (PENDING) battery for a specific booking
     Optional<Battery> findByStatusAndReservedForBooking(Battery.Status status, Booking booking);
+
     
     // Find AVAILABLE batteries at station with chargeLevel >= minCharge (for swap)
     // ORDER BY chargeLevel DESC to get fullest battery first

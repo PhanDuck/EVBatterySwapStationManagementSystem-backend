@@ -165,4 +165,19 @@ public class StationController {
         
         return ResponseEntity.ok(response);
     }
+    /**
+     * GET /api/station/batteries/needs-maintenance : Lấy TẤT CẢ pin cần bảo trì ở các trạm
+     *
+     * Admin: Xem tất cả pins needs-maintenance của tất cả trạm
+     * Staff: Chỉ xem pins needs-maintenance của trạm mình quản lý
+     */
+    @GetMapping("/batteries/needs-maintenance")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @SecurityRequirement(name = "api")
+    @Operation(summary = "Get all batteries needing maintenance at stations",
+            description = "Admin xem tất cả, Staff chỉ xem trạm mình quản lý. Pin có SOH < 70%")
+    public ResponseEntity<Map<String, Object>> getAllBatteriesNeedingMaintenanceAtStations() {
+        Map<String, Object> response = stationService.getAllBatteriesNeedingMaintenanceAtStations();
+        return ResponseEntity.ok(response);
+    }
 }

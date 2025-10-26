@@ -1,7 +1,14 @@
 package com.evbs.BackEndEvBs.service;
 
-import com.evbs.BackEndEvBs.entity.*;
 import com.evbs.BackEndEvBs.model.EmailDetail;
+import com.evbs.BackEndEvBs.entity.Payment;
+import com.evbs.BackEndEvBs.entity.ServicePackage;
+import com.evbs.BackEndEvBs.entity.User;
+import com.evbs.BackEndEvBs.entity.SwapTransaction;
+import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.DriverSubscription;
+import com.evbs.BackEndEvBs.entity.SupportTicket;
+import com.evbs.BackEndEvBs.entity.TicketResponse;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,24 +59,20 @@ public class EmailService {
 
             String text = templateEngine.process("booking-confirmation", context);
 
-            // creating a simple mail message
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
 
-            // setting up necessary details
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(emailDetail.getRecipient());
-            mimeMessageHelper.setText(text , true);
+            mimeMessageHelper.setText(text, true);
             mimeMessageHelper.setSubject(emailDetail.getSubject());
             mailSender.send(mimeMessage);
 
         } catch (MessagingException e) {
-            // Log error nhưng không throw exception để không ảnh hưởng đến luồng booking
             System.err.println("Failed to send booking confirmation email: " + e.getMessage());
             e.printStackTrace();
         }
     }
-
 
     /**
      * Gửi email thông báo booking đã được confirm với confirmation code
@@ -91,30 +94,61 @@ public class EmailService {
 
             String text = templateEngine.process("booking-confirmed", context);
 
-            // creating a simple mail message
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
 
-            // setting up necessary details
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(emailDetail.getRecipient());
-            mimeMessageHelper.setText(text , true);
+            mimeMessageHelper.setText(text, true);
             mimeMessageHelper.setSubject(emailDetail.getSubject());
             mailSender.send(mimeMessage);
 
         } catch (MessagingException e) {
-            // Log error nhưng không throw exception để không ảnh hưởng đến luồng booking
             System.err.println("Failed to send booking confirmed email: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
+     * Gửi email thông báo hủy booking
+     */
+    public void sendBookingCancellationEmail(EmailDetail emailDetail) {
+        try {
+            Context context = new Context();
+            context.setVariable("customerName", emailDetail.getFullName());
+            context.setVariable("bookingId", emailDetail.getBookingId());
+            context.setVariable("stationName", emailDetail.getStationName());
+            context.setVariable("stationLocation", emailDetail.getStationLocation());
+            context.setVariable("stationContact", emailDetail.getStationContact());
+            context.setVariable("bookingTime", emailDetail.getBookingTime());
+            context.setVariable("vehicleModel", emailDetail.getVehicleModel());
+            context.setVariable("batteryType", emailDetail.getBatteryType());
+            context.setVariable("status", emailDetail.getStatus());
+            context.setVariable("cancellationPolicy", emailDetail.getCancellationPolicy());
+            context.setVariable("confirmationCode", emailDetail.getConfirmationCode());
+
+            String text = templateEngine.process("booking-cancellation", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(emailDetail.getRecipient());
+            mimeMessageHelper.setText(text, true);
+            mimeMessageHelper.setSubject(emailDetail.getSubject());
+            mailSender.send(mimeMessage);
+
+            log.info("Email hủy booking đã được gửi thành công cho: {}", emailDetail.getRecipient());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email hủy booking cho {}: {}", emailDetail.getRecipient(), e.getMessage());
+            System.err.println("Failed to send booking cancellation email: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * Gửi email thông báo thanh toán thành công
-     *
-     * @param driver Thông tin driver nhận email
-     * @param payment Thông tin thanh toán
-     * @param servicePackage Thông tin gói dịch vụ đã mua
      */
     public void sendPaymentSuccessEmail(User driver, Payment payment, ServicePackage servicePackage) {
         try {
@@ -122,14 +156,11 @@ public class EmailService {
 
             Context context = createPaymentEmailContext(driver, payment, servicePackage);
 
-            // Render template
             String htmlContent = templateEngine.process("payment-success-email", context);
 
-            // Tạo email message
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
 
-            // Thiết lập thông tin email
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(driver.getEmail());
             mimeMessageHelper.setText(htmlContent, true);
@@ -141,67 +172,25 @@ public class EmailService {
 
         } catch (MessagingException e) {
             log.error("Lỗi khi gửi email thanh toán thành công cho {}: {}", driver.getEmail(), e.getMessage());
-            // Không throw exception để không ảnh hưởng đến luồng thanh toán
             System.err.println("Failed to send payment success email: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
-     * Tạo context chứa dữ liệu cho email template thanh toán
-     */
-    private Context createPaymentEmailContext(User driver, Payment payment, ServicePackage servicePackage) {
-        Context context = new Context();
-
-        // Thông tin driver
-        context.setVariable("driverName", driver.getFullName());
-        context.setVariable("driverEmail", driver.getEmail());
-
-        // Thông tin gói dịch vụ
-        context.setVariable("packageName", servicePackage.getName());
-        context.setVariable("validDays", servicePackage.getDuration());
-        context.setVariable("swapLimit", servicePackage.getMaxSwaps());
-        context.setVariable("packageDescription", servicePackage.getDescription());
-
-        // Thông tin thanh toán
-        context.setVariable("paymentId", payment.getId());
-        context.setVariable("transactionId", payment.getTransaction() != null ? payment.getTransaction().getId() : "N/A");
-        context.setVariable("amount", formatCurrency(payment.getAmount()));
-        context.setVariable("paymentMethod", payment.getPaymentMethod());
-        context.setVariable("paymentStatus", payment.getStatus());
-
-        // Format ngày giờ
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        context.setVariable("paymentDate", payment.getPaymentDate().format(formatter));
-
-        // Thông tin hệ thống
-        context.setVariable("systemName", "EV Battery Swap Station");
-        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
-
-        return context;
-    }
-
-
-    /**
      * Gửi email thông báo đổi pin thành công
-     *
-     * @param driver Thông tin driver nhận email
-     * @param swapTransaction Thông tin giao dịch đổi pin
      */
-    public void sendSwapSuccessEmail(User driver, SwapTransaction swapTransaction) {
+    public void sendSwapSuccessEmail(User driver, SwapTransaction swapTransaction, DriverSubscription subscription) {
         try {
             log.info("Đang gửi email đổi pin thành công cho driver: {}", driver.getEmail());
 
-            Context context = createSwapEmailContext(driver, swapTransaction);
+            Context context = createSwapEmailContext(driver, swapTransaction, subscription);
 
-            // Render template - sử dụng template có sẵn
-            String htmlContent = templateEngine.process("payment-success-email", context);
+            String htmlContent = templateEngine.process("swap-success-email", context);
 
-            // Tạo email message
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
 
-            // Thiết lập thông tin email
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(driver.getEmail());
             mimeMessageHelper.setText(htmlContent, true);
@@ -213,76 +202,267 @@ public class EmailService {
 
         } catch (MessagingException e) {
             log.error("Lỗi khi gửi email đổi pin thành công cho {}: {}", driver.getEmail(), e.getMessage());
-            // Không throw exception để không ảnh hưởng đến luồng đổi pin
             System.err.println("Failed to send swap success email: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
-     * Tạo context chứa dữ liệu cho email template đổi pin
+     * Gửi email thông báo ticket mới đến Staff
      */
-    private Context createSwapEmailContext(User driver, SwapTransaction swapTransaction) {
+    public void sendTicketCreatedToStaff(java.util.List<User> staffList, SupportTicket ticket) {
+        if (staffList == null || staffList.isEmpty()) {
+            log.warn("Không có staff nào để gửi email cho ticket: {}", ticket.getId());
+            return;
+        }
+
+        try {
+            log.info("Đang gửi email thông báo ticket mới đến {} staff cho ticket: {}",
+                    staffList.size(), ticket.getId());
+
+            Context context = createTicketEmailContext(ticket);
+
+            String htmlContent = templateEngine.process("ticket-created-staff", context);
+
+            for (User staff : staffList) {
+                try {
+                    MimeMessage mimeMessage = mailSender.createMimeMessage();
+                    MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+                    mimeMessageHelper.setFrom(fromEmail);
+                    mimeMessageHelper.setTo(staff.getEmail());
+                    mimeMessageHelper.setText(htmlContent, true);
+                    mimeMessageHelper.setSubject("🚨 [URGENT] Ticket hỗ trợ mới từ khách hàng - #" + ticket.getId());
+
+                    mailSender.send(mimeMessage);
+                    log.info("Email đã được gửi đến staff: {}", staff.getEmail());
+
+                } catch (MessagingException e) {
+                    log.error("Lỗi khi gửi email đến staff {}: {}", staff.getEmail(), e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo email template cho ticket {}: {}", ticket.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo ticket mới đến Admin
+     */
+    public void sendTicketCreatedToAdmin(java.util.List<User> adminList, SupportTicket ticket) {
+        if (adminList == null || adminList.isEmpty()) {
+            log.warn("Không có admin nào để gửi email cho ticket: {}", ticket.getId());
+            return;
+        }
+
+        try {
+            log.info("Đang gửi email thông báo ticket mới đến {} admin cho ticket: {}",
+                    adminList.size(), ticket.getId());
+
+            Context context = createTicketEmailContext(ticket);
+
+            String htmlContent = templateEngine.process("ticket-created-staff", context);
+
+            for (User admin : adminList) {
+                try {
+                    MimeMessage mimeMessage = mailSender.createMimeMessage();
+                    MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+                    mimeMessageHelper.setFrom(fromEmail);
+                    mimeMessageHelper.setTo(admin.getEmail());
+                    mimeMessageHelper.setText(htmlContent, true);
+                    mimeMessageHelper.setSubject("🚨 [ADMIN] Ticket hỗ trợ tổng quát mới - #" + ticket.getId());
+
+                    mailSender.send(mimeMessage);
+                    log.info("Email đã được gửi đến admin: {}", admin.getEmail());
+
+                } catch (MessagingException e) {
+                    log.error("Lỗi khi gửi email đến admin {}: {}", admin.getEmail(), e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo email template cho ticket {}: {}", ticket.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo có phản hồi mới đến Driver
+     */
+    public void sendTicketResponseToDriver(TicketResponse response) {
+        try {
+            log.info("Đang gửi email phản hồi ticket đến driver: {} cho ticket: {}",
+                    response.getTicket().getDriver().getEmail(), response.getTicket().getId());
+
+            Context context = createResponseEmailContext(response);
+
+            String htmlContent = templateEngine.process("ticket-response-driver", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(response.getTicket().getDriver().getEmail());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject("💬 Có phản hồi mới cho ticket #" + response.getTicket().getId());
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email phản hồi ticket đã được gửi thành công cho driver: {}",
+                    response.getTicket().getDriver().getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email phản hồi ticket cho driver {}: {}",
+                    response.getTicket().getDriver().getEmail(), e.getMessage());
+        }
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    private Context createPaymentEmailContext(User driver, Payment payment, ServicePackage servicePackage) {
         Context context = new Context();
 
-        // Thông tin driver
         context.setVariable("driverName", driver.getFullName());
         context.setVariable("driverEmail", driver.getEmail());
+        context.setVariable("packageName", servicePackage.getName());
+        context.setVariable("validDays", servicePackage.getDuration());
+        context.setVariable("swapLimit", servicePackage.getMaxSwaps());
+        context.setVariable("packageDescription", servicePackage.getDescription());
+        context.setVariable("paymentId", payment.getId());
+        context.setVariable("transactionId", payment.getTransaction() != null ? payment.getTransaction().getId() : "N/A");
+        context.setVariable("amount", formatCurrency(payment.getAmount()));
+        context.setVariable("paymentMethod", payment.getPaymentMethod());
+        context.setVariable("paymentStatus", payment.getStatus());
 
-        // Thông tin giao dịch đổi pin
-        context.setVariable("packageName", "Dịch vụ đổi pin"); // Tên dịch vụ
-        context.setVariable("validDays", "Theo gói đăng ký"); // Thời hạn
-        context.setVariable("swapLimit", "Theo gói đăng ký"); // Giới hạn lượt đổi
-        context.setVariable("packageDescription", "Thay thế pin cũ bằng pin mới được sạc đầy");
-
-        // Thông tin giao dịch
-        context.setVariable("paymentId", swapTransaction.getId());
-        context.setVariable("transactionId", swapTransaction.getId());
-        context.setVariable("amount", swapTransaction.getCost() != null ? formatCurrency(swapTransaction.getCost()) : "0 VNĐ");
-        context.setVariable("paymentMethod", "Gói đăng ký");
-        context.setVariable("paymentStatus", "Hoàn thành");
-
-        // Thông tin chi tiết đổi pin
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        context.setVariable("paymentDate", swapTransaction.getEndTime() != null ?
-                swapTransaction.getEndTime().format(formatter) :
-                LocalDateTime.now().format(formatter));
+        context.setVariable("paymentDate", payment.getPaymentDate().format(formatter));
 
-        // Thông tin trạm và pin
-        if (swapTransaction.getStation() != null) {
-            context.setVariable("stationName", swapTransaction.getStation().getName());
-            context.setVariable("stationLocation", swapTransaction.getStation().getLocation());
-        }
-
-        // Thông tin pin
-        String batteryInfo = "";
-        if (swapTransaction.getSwapOutBattery() != null) {
-            Battery newBattery = swapTransaction.getSwapOutBattery();
-            batteryInfo = String.format("Pin mới: %s (Mức sạc: %.1f%%, Tình trạng: %.1f%%)",
-                    newBattery.getModel() != null ? newBattery.getModel() : "N/A",
-                    newBattery.getChargeLevel() != null ? newBattery.getChargeLevel().doubleValue() : 0.0,
-                    newBattery.getStateOfHealth() != null ? newBattery.getStateOfHealth().doubleValue() : 0.0);
-        }
-        context.setVariable("batteryInfo", batteryInfo);
-
-        // Thông tin xe
-        if (swapTransaction.getVehicle() != null) {
-            context.setVariable("vehicleInfo",
-                    String.format("Xe: %s (%s)",
-                            swapTransaction.getVehicle().getPlateNumber(),
-                            swapTransaction.getVehicle().getModel() != null ? swapTransaction.getVehicle().getModel() : "N/A"));
-        }
-
-        // Thông tin hệ thống
         context.setVariable("systemName", "EV Battery Swap Station");
         context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
 
         return context;
     }
 
-    /**
-     * Format số tiền theo định dạng Việt Nam
-     */
+    private Context createSwapEmailContext(User driver, SwapTransaction swapTransaction, DriverSubscription subscription) {
+        Context context = new Context();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        context.setVariable("driverName", driver.getFullName());
+        context.setVariable("swapId", swapTransaction.getId().toString());
+        context.setVariable("swapTime", swapTransaction.getEndTime() != null ?
+                swapTransaction.getEndTime().format(formatter) :
+                LocalDateTime.now().format(formatter));
+
+        if (swapTransaction.getVehicle() != null) {
+            String vehicleInfo = swapTransaction.getVehicle().getPlateNumber();
+            if (swapTransaction.getVehicle().getModel() != null) {
+                vehicleInfo += " (" + swapTransaction.getVehicle().getModel() + ")";
+            }
+            context.setVariable("vehicleInfo", vehicleInfo);
+        }
+
+        if (swapTransaction.getStaff() != null) {
+            context.setVariable("staffName", swapTransaction.getStaff().getFullName());
+        }
+
+        if (swapTransaction.getStation() != null) {
+            context.setVariable("stationName", swapTransaction.getStation().getName());
+            context.setVariable("stationLocation", swapTransaction.getStation().getLocation());
+            context.setVariable("stationContact", swapTransaction.getStation().getContactInfo() != null ?
+                    swapTransaction.getStation().getContactInfo() : "Chưa cập nhật");
+        }
+
+        if (swapTransaction.getSwapInBattery() != null) {
+            Battery oldBattery = swapTransaction.getSwapInBattery();
+            context.setVariable("oldBatteryModel", oldBattery.getModel() != null ? oldBattery.getModel() : "N/A");
+            context.setVariable("oldBatteryCharge", oldBattery.getChargeLevel() != null ?
+                    oldBattery.getChargeLevel().intValue() : 0);
+            context.setVariable("oldBatteryHealth", oldBattery.getStateOfHealth() != null ?
+                    oldBattery.getStateOfHealth().intValue() : 0);
+        }
+
+        if (swapTransaction.getSwapOutBattery() != null) {
+            Battery newBattery = swapTransaction.getSwapOutBattery();
+            context.setVariable("newBatteryModel", newBattery.getModel() != null ? newBattery.getModel() : "N/A");
+            context.setVariable("newBatteryCharge", newBattery.getChargeLevel() != null ?
+                    newBattery.getChargeLevel().intValue() : 0);
+            context.setVariable("newBatteryHealth", newBattery.getStateOfHealth() != null ?
+                    newBattery.getStateOfHealth().intValue() : 0);
+        }
+
+        if (subscription != null) {
+            context.setVariable("remainingSwaps", subscription.getRemainingSwaps());
+            context.setVariable("subscriptionInfo", "Gói dịch vụ đang hoạt động");
+        }
+
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+
+        return context;
+    }
+
+    private Context createTicketEmailContext(SupportTicket ticket) {
+        Context context = new Context();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        context.setVariable("ticketId", ticket.getId().toString());
+        context.setVariable("subject", ticket.getSubject());
+        context.setVariable("description", ticket.getDescription());
+        context.setVariable("status", ticket.getStatus().toString());
+        context.setVariable("createdAt", ticket.getCreatedAt().format(formatter));
+        context.setVariable("driverName", ticket.getDriver().getFullName());
+        context.setVariable("driverEmail", ticket.getDriver().getEmail());
+        context.setVariable("driverPhone", ticket.getDriver().getPhoneNumber() != null ?
+                ticket.getDriver().getPhoneNumber() : "Chưa cập nhật");
+
+        if (ticket.getStation() != null) {
+            context.setVariable("hasStation", true);
+            context.setVariable("stationName", ticket.getStation().getName());
+            context.setVariable("stationLocation", ticket.getStation().getLocation());
+            context.setVariable("stationContact", ticket.getStation().getContactInfo() != null ?
+                    ticket.getStation().getContactInfo() : "Chưa cập nhật");
+        } else {
+            context.setVariable("hasStation", false);
+            context.setVariable("ticketType", "Hỗ trợ tổng quát");
+        }
+
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+        context.setVariable("systemName", "EV Battery Swap Station");
+
+        return context;
+    }
+
+    private Context createResponseEmailContext(TicketResponse response) {
+        Context context = new Context();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        context.setVariable("responseId", response.getId().toString());
+        context.setVariable("responseMessage", response.getMessage());
+        context.setVariable("responseTime", response.getResponseTime().format(formatter));
+        context.setVariable("staffName", response.getStaff().getFullName());
+        context.setVariable("staffRole", response.getStaff().getRole().toString());
+
+        SupportTicket ticket = response.getTicket();
+        context.setVariable("ticketId", ticket.getId().toString());
+        context.setVariable("ticketSubject", ticket.getSubject());
+        context.setVariable("ticketDescription", ticket.getDescription());
+        context.setVariable("ticketCreatedAt", ticket.getCreatedAt().format(formatter));
+        context.setVariable("driverName", ticket.getDriver().getFullName());
+
+        if (ticket.getStation() != null) {
+            context.setVariable("hasStation", true);
+            context.setVariable("stationName", ticket.getStation().getName());
+            context.setVariable("stationLocation", ticket.getStation().getLocation());
+        } else {
+            context.setVariable("hasStation", false);
+        }
+
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+        context.setVariable("systemName", "EV Battery Swap Station");
+
+        return context;
+    }
+
     private String formatCurrency(BigDecimal amount) {
         if (amount == null) {
             return "0 VNĐ";

@@ -7,7 +7,7 @@ public class EmailDetail {
     String subject;
     String fullName;
 
-    // Booking details (optional - for booking confirmation emails)
+    // Booking details
     Long bookingId;
     String stationName;
     String stationLocation;
@@ -18,4 +18,9 @@ public class EmailDetail {
     String status;
     String confirmationCode;
     String confirmedBy;
+
+    // Cancellation details
+    String cancellationPolicy;
+    String cancellationType; // "AUTO", "DRIVER", "STAFF"
+    String cancellationReason; // <- THÊM TRƯỜNG NÀY (cho staff)
 }

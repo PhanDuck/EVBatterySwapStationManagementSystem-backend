@@ -1,6 +1,5 @@
 package com.evbs.BackEndEvBs.config;
 
-
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.service.TokenService;
@@ -34,32 +33,45 @@ public class Filter extends OncePerRequestFilter {
     TokenService tokenService;
 
     private final List<String> PUBLIC_API = List.of(
+            // AUTH & REGISTRATION
             "POST:/api/register",
             "POST:/api/login",
+
+            // SWAGGER & API DOCS
             "GET:/swagger-ui/**",
             "GET:/v3/api-docs/**",
             "GET:/swagger-resources/**",
-            // Station PUBLIC endpoints (chỉ list, detail và batteries list - không bao gồm needs-maintenance)
+
+            // STATION PUBLIC endpoints
             "GET:/api/station",
             "GET:/api/station/*",
             "GET:/api/station/*/batteries",
             "GET:/api/stations/active",
             "GET:/api/stations/available",
             "GET:/api/stations/search",
+
+            // SERVICE PACKAGE PUBLIC
             "GET:/api/service-package",
             "GET:/api/service-package/**",
+
+            // STATION INVENTORY PUBLIC
             "GET:/api/station-inventory/station/**",
             "GET:/api/station-inventory/station/*/available",
             "GET:/api/station-inventory/station/*/capacity",
-            //  PAYMENT CALLBACKS - Không cần token vì user bị redirect từ payment gateway
+
+            // PAYMENT CALLBACKS - Không cần token
             "GET:/api/payment/momo-return",
-            "POST:/api/payment/momo-ipn"
+            "POST:/api/payment/momo-ipn",
+
+            // BOOKING PUBLIC
+            "GET:/api/booking/lookup",
+
+            // 🆕 SWAP TRANSACTION PUBLIC - THÊM DÒNG NÀY
+            "POST:/api/swap-transaction/swap-by-code"
     );
 
     public boolean isPublicAPI(String uri, String method) {
         AntPathMatcher matcher = new AntPathMatcher();
-
-
 
         return PUBLIC_API.stream().anyMatch(pattern -> {
             String[] parts = pattern.split(":", 2);
@@ -68,12 +80,9 @@ public class Filter extends OncePerRequestFilter {
             String allowedMethod = parts[0];
             String allowedUri = parts[1];
 
-            //return matcher.match(allowedUri, uri);
             return allowedMethod.equals(method) && matcher.match(allowedUri, uri);
         });
     }
-
-
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -81,14 +90,11 @@ public class Filter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String method = request.getMethod();
 
-
         if(isPublicAPI(uri, method)){
-            //api phulic
-            //=>access
+            // API public - cho phép truy cập không cần token
             filterChain.doFilter(request, response);
-        }else {
-            //api theo role
-            //check xem co quyeen truy cap khoong
+        } else {
+            // API theo role - cần kiểm tra token
             String token = getToken(request);
 
             if (token == null){
@@ -108,15 +114,12 @@ public class Filter extends OncePerRequestFilter {
                 return;
             }
 
-            UsernamePasswordAuthenticationToken
-                    authenToken =
+            UsernamePasswordAuthenticationToken authenToken =
                     new UsernamePasswordAuthenticationToken(user, token, user.getAuthorities());
             authenToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authenToken);
             filterChain.doFilter(request, response);
-
         }
-
     }
 
     public String getToken(HttpServletRequest request) {
@@ -124,5 +127,4 @@ public class Filter extends OncePerRequestFilter {
         if (authHeader == null) return null;
         return authHeader.substring(7);
     }
-
 }

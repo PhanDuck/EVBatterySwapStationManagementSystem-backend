@@ -116,7 +116,7 @@ public class BookingController {
     public ResponseEntity<List<Booking>> getBookingsByStation(@PathVariable Long stationId) {
         // Validate station access for staff
         staffStationAssignmentService.validateStationAccess(stationId);
-        
+
         List<Booking> bookings = bookingService.getBookingsByStation(stationId);
         return ResponseEntity.ok(bookings);
     }
@@ -135,10 +135,10 @@ public class BookingController {
 
     /**
      * GET /api/booking/my-stations : Get bookings cua cac tram Staff quan ly (Staff only)
-     * 
+     *
      * Staff chi xem duoc bookings cua cac tram minh duoc assign
      * Admin xem duoc tat ca bookings
-     * 
+     *
      * Dung de hien thi danh sach booking can confirm
      */
     @GetMapping("/my-stations")
@@ -153,38 +153,21 @@ public class BookingController {
     // ==================== STAFF CONFIRMATION CODE ENDPOINTS ====================
 
     /**
-     * PATCH /api/booking/{id}/confirm : Confirm booking by ID (Staff/Admin only)
-     * 
-     * Staff/Admin confirm booking → Generate mã xác nhận → Trả cho driver
-     * PENDING → CONFIRMED (với confirmationCode mới)
-     */
-    @PatchMapping("/{id}/confirm")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Confirm booking and generate confirmation code",
-            description = "Staff/Admin xác nhận booking, hệ thống tự động tạo mã 6 ký tự (ABC123) cho driver")
-    public ResponseEntity<Booking> confirmBooking(@PathVariable Long id) {
-        Booking booking = bookingService.confirmBookingById(id);
-        return ResponseEntity.ok(booking);
-    }
-
-    /**
      * DELETE /api/booking/staff/{id}/cancel : Cancel booking by Staff/Admin (Special cases)
-     * 
+     *
      * Staff/Admin co the huy bat ky booking nao (PENDING hoac CONFIRMED)
      * Truong hop dac biet: Tram bao tri, pin hong, khan cap, etc.
-     * 
+     *
      * Neu huy CONFIRMED booking:
      * - Giai phong pin ve AVAILABLE
      * - KHONG TRU luot swap cua driver (loi tu phia tram)
-     * 
-     * @param id Booking ID can huy
-     * @param reason (Optional) Ly do huy - truyen qua request param
+
      */
     @DeleteMapping("/staff/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Cancel booking by Staff/Admin (Special cases)",
             description = "Staff/Admin huy booking trong truong hop dac biet (tram bao tri, pin hong, khan cap). " +
-                         "Neu huy CONFIRMED booking se giai phong pin va KHONG tru luot swap cua driver.")
+                    "Neu huy CONFIRMED booking se giai phong pin va KHONG tru luot swap cua driver.")
     public ResponseEntity<?> cancelBookingByStaff(
             @PathVariable Long id,
             @RequestParam(required = false) String reason) {

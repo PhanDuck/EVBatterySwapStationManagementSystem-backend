@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.SwapTransaction;
+import com.evbs.BackEndEvBs.model.response.BatteryInfoResponse;
 import com.evbs.BackEndEvBs.service.SwapTransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -16,7 +17,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/swap-transaction")
 @Tag(name = "Swap Transaction Management")
-// 🚨 QUAN TRỌNG: KHÔNG có @SecurityRequirement ở class level
 public class SwapTransactionController {
 
     @Autowired
@@ -25,14 +25,35 @@ public class SwapTransactionController {
     // ==================== PUBLIC ENDPOINTS ====================
 
     /**
-     * POST /api/swap-transaction/swap-by-code : Driver tự swap bằng confirmation code (PUBLIC)
+     * GET /api/swap-transaction/old-battery : Xem thông tin pin CŨ (PUBLIC)
+     */
+    @GetMapping("/old-battery")
+    @Operation(summary = "Get old battery information (Public)",
+            description = "Xem thông tin pin CŨ đang lắp trên xe bằng confirmation code. Không cần đăng nhập.")
+    public ResponseEntity<BatteryInfoResponse> getOldBatteryInfo(@RequestParam String code) {
+        BatteryInfoResponse batteryInfo = swapTransactionService.getOldBatteryInfoByCode(code);
+        return ResponseEntity.ok(batteryInfo);
+    }
+
+    /**
+     * GET /api/swap-transaction/new-battery : Xem thông tin pin MỚI (PUBLIC)
+     */
+    @GetMapping("/new-battery")
+    @Operation(summary = "Get new battery information (Public)",
+            description = "Xem thông tin pin MỚI chuẩn bị lắp vào xe bằng confirmation code. Không cần đăng nhập.")
+    public ResponseEntity<BatteryInfoResponse> getNewBatteryInfo(@RequestParam String code) {
+        BatteryInfoResponse batteryInfo = swapTransactionService.getNewBatteryInfoByCode(code);
+        return ResponseEntity.ok(batteryInfo);
+    }
+
+    /**
+     * POST /api/swap-transaction/swap-by-code : Thực hiện đổi pin (PUBLIC)
      */
     @PostMapping("/swap-by-code")
-    @Operation(summary = "Self-service swap by confirmation code (Public)",
-            description = "Driver nhập mã xác nhận 6 ký tự tại trạm để tự động swap pin. Không cần đăng nhập.")
-    // 🎯 PUBLIC: Không có SecurityRequirement và PreAuthorize
-    public ResponseEntity<SwapTransaction> swapByConfirmationCode(@RequestParam String confirmationCode) {
-        SwapTransaction transaction = swapTransactionService.createSwapByConfirmationCode(confirmationCode);
+    @Operation(summary = "Execute swap by confirmation code (Public)",
+            description = "Thực hiện đổi pin bằng confirmation code. Không cần đăng nhập.")
+    public ResponseEntity<SwapTransaction> swapByConfirmationCode(@RequestParam String code) {
+        SwapTransaction transaction = swapTransactionService.createSwapByConfirmationCode(code);
         return new ResponseEntity<>(transaction, HttpStatus.CREATED);
     }
 
@@ -40,7 +61,7 @@ public class SwapTransactionController {
 
     @GetMapping("/my-transactions")
     @PreAuthorize("hasRole('DRIVER')")
-    @SecurityRequirement(name = "api") //  THÊM security cho từng method
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Get my transactions")
     public ResponseEntity<List<SwapTransaction>> getMyTransactions() {
         List<SwapTransaction> transactions = swapTransactionService.getMyTransactions();
@@ -49,7 +70,7 @@ public class SwapTransactionController {
 
     @GetMapping("/my-transactions/{id}")
     @PreAuthorize("hasRole('DRIVER')")
-    @SecurityRequirement(name = "api") //  THÊM security cho từng method
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Get my transaction by ID")
     public ResponseEntity<SwapTransaction> getMyTransaction(@PathVariable Long id) {
         SwapTransaction transaction = swapTransactionService.getMyTransaction(id);
@@ -60,7 +81,7 @@ public class SwapTransactionController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @SecurityRequirement(name = "api") //  THÊM security cho từng method
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Get all transactions")
     public ResponseEntity<List<SwapTransaction>> getAllTransactions() {
         List<SwapTransaction> transactions = swapTransactionService.getAllTransactions();
@@ -68,7 +89,7 @@ public class SwapTransactionController {
     }
 
     @GetMapping("/vehicle/{vehicleId}/history")
-    @SecurityRequirement(name = "api") //  THÊM security cho từng method
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Get vehicle swap history")
     public ResponseEntity<List<SwapTransaction>> getVehicleSwapHistory(@PathVariable Long vehicleId) {
         List<SwapTransaction> history = swapTransactionService.getVehicleSwapHistory(vehicleId);
@@ -77,7 +98,7 @@ public class SwapTransactionController {
 
     @GetMapping("/battery/{batteryId}/history")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @SecurityRequirement(name = "api") //  THÊM security cho từng method
+    @SecurityRequirement(name = "api")
     @Operation(summary = "Get battery usage history")
     public ResponseEntity<List<SwapTransaction>> getBatteryUsageHistory(@PathVariable Long batteryId) {
         List<SwapTransaction> history = swapTransactionService.getBatteryUsageHistory(batteryId);

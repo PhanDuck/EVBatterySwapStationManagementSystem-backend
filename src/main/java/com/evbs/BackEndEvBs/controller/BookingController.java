@@ -47,10 +47,11 @@ public class BookingController {
 
     /**
      * POST /api/booking : Create new booking (Driver)
+     * System automatically sets booking time to 3 hours from now
      */
     @PostMapping
     @Operation(summary = "Create new booking",
-            description = "Create a new booking. System automatically validates battery type compatibility between vehicle and station.")
+            description = "Create a new booking. System automatically sets booking time to 3 hours from now and validates battery type compatibility.")
     public ResponseEntity<Booking> createBooking(@Valid @RequestBody BookingRequest request) {
         Booking booking = bookingService.createBooking(request);
         return new ResponseEntity<>(booking, HttpStatus.CREATED);
@@ -80,10 +81,11 @@ public class BookingController {
 
     /**
      * PATCH /api/booking/my-bookings/{id}/cancel : Cancel my booking (Driver)
+     * Only allowed to cancel before 1 hour of booking time
      */
     @PatchMapping("/my-bookings/{id}/cancel")
     @Operation(summary = "Cancel my booking",
-            description = "Cancel a booking. Only PENDING bookings can be cancelled by driver.")
+            description = "Cancel a booking. Only allowed to cancel before 1 hour of booking time.")
     public ResponseEntity<Booking> cancelMyBooking(@PathVariable Long id) {
         Booking booking = bookingService.cancelMyBooking(id);
         return ResponseEntity.ok(booking);
@@ -102,8 +104,6 @@ public class BookingController {
         List<Booking> bookings = bookingService.getAllBookings();
         return ResponseEntity.ok(bookings);
     }
-
-    // ==================== UTILITY ENDPOINTS ====================
 
     /**
      * GET /api/booking/station/{stationId} : Get bookings by station (Admin/Staff only)
@@ -161,7 +161,6 @@ public class BookingController {
      * Neu huy CONFIRMED booking:
      * - Giai phong pin ve AVAILABLE
      * - KHONG TRU luot swap cua driver (loi tu phia tram)
-
      */
     @DeleteMapping("/staff/{id}/cancel")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")

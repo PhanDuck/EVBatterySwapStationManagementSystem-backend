@@ -67,7 +67,9 @@ public class Filter extends OncePerRequestFilter {
             "GET:/api/booking/lookup",
 
             // 🆕 SWAP TRANSACTION PUBLIC - THÊM DÒNG NÀY
-            "POST:/api/swap-transaction/swap-by-code"
+            "POST:/api/swap-transaction/swap-by-code",
+            "GET:/api/swap-transaction/new-battery",
+            "GET:/api/swap-transaction/old-battery"
     );
 
     public boolean isPublicAPI(String uri, String method) {

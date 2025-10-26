@@ -3,7 +3,7 @@ package com.evbs.BackEndEvBs.service;
 import com.evbs.BackEndEvBs.entity.*;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
-import com.evbs.BackEndEvBs.model.request.SwapTransactionRequest;
+import com.evbs.BackEndEvBs.model.response.BatteryInfoResponse;
 import com.evbs.BackEndEvBs.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,18 +57,57 @@ public class SwapTransactionService {
     // ==================== PUBLIC METHODS ====================
 
     /**
+     * Lấy thông tin pin CŨ (đang trên xe)
+     */
+    @Transactional(readOnly = true)
+    public BatteryInfoResponse getOldBatteryInfoByCode(String confirmationCode) {
+        log.info("Get OLD battery info - Code: {}", confirmationCode);
+
+        // Validate booking
+        Booking booking = validateBookingForPreview(confirmationCode);
+
+        Vehicle vehicle = booking.getVehicle();
+        Battery oldBattery = vehicle.getCurrentBattery();
+
+        BatteryInfoResponse response = createBaseBatteryInfoResponse(booking, "OLD");
+
+        if (oldBattery != null) {
+            mapBatteryToResponse(oldBattery, response);
+            response.setMessage("Thông tin pin CŨ đang lắp trên xe");
+        } else {
+            response.setMessage("Xe chưa có pin. Đây là lần swap đầu tiên.");
+        }
+
+        return response;
+    }
+
+    /**
+     * Lấy thông tin pin MỚI (chuẩn bị lắp)
+     */
+    @Transactional(readOnly = true)
+    public BatteryInfoResponse getNewBatteryInfoByCode(String confirmationCode) {
+        log.info("Get NEW battery info - Code: {}", confirmationCode);
+
+        // Validate booking
+        Booking booking = validateBookingForPreview(confirmationCode);
+
+        // Lấy pin đã reserve cho booking này (pin mới)
+        Battery newBattery = batteryRepository.findByStatusAndReservedForBooking(
+                Battery.Status.PENDING,
+                booking
+        ).orElseThrow(() -> new AuthenticationException(
+                "Không tìm thấy pin đã đặt trước cho booking này. Vui lòng liên hệ staff."
+        ));
+
+        BatteryInfoResponse response = createBaseBatteryInfoResponse(booking, "NEW");
+        mapBatteryToResponse(newBattery, response);
+        response.setMessage("Thông tin pin MỚI chuẩn bị lắp vào xe");
+
+        return response;
+    }
+
+    /**
      * CREATE SWAP BY CONFIRMATION CODE - Driver tự swap tại trạm (PUBLIC)
-     *
-     * Driver nhập confirmationCode vào máy tại trạm
-     * → Hệ thống tự động:
-     *   1. Tìm booking bằng confirmationCode
-     *   2. Lấy driver từ booking (không cần authentication)
-     *   3. Verify booking CONFIRMED
-     *   4. Lấy thông tin vehicle, station từ booking
-     *   5. Chọn pin tốt nhất
-     *   6. Thực hiện swap
-     *   7. Trừ remainingSwaps
-     *   8. Complete booking
      */
     @Transactional
     public SwapTransaction createSwapByConfirmationCode(String confirmationCode) {
@@ -305,6 +344,74 @@ public class SwapTransactionService {
     }
 
     // ==================== HELPER METHODS ====================
+
+    /**
+     * Validate booking cho preview
+     */
+    private Booking validateBookingForPreview(String confirmationCode) {
+        Booking booking = bookingRepository.findByConfirmationCode(confirmationCode)
+                .orElseThrow(() -> new NotFoundException(
+                        "Không tìm thấy booking với mã: " + confirmationCode
+                ));
+
+        // Validate booking status
+        if (booking.getStatus() == Booking.Status.COMPLETED) {
+            throw new AuthenticationException("Mã xác nhận đã được sử dụng. Booking này đã hoàn thành.");
+        }
+
+        if (booking.getStatus() == Booking.Status.CANCELLED) {
+            throw new AuthenticationException("Mã xác nhận không còn hiệu lực. Booking đã bị hủy.");
+        }
+
+        if (booking.getStatus() != Booking.Status.CONFIRMED) {
+            throw new AuthenticationException(
+                    "Mã xác nhận chưa được kích hoạt. Trạng thái hiện tại: " + booking.getStatus()
+            );
+        }
+
+        // Kiểm tra nếu đã có swap transaction
+        SwapTransaction existingTransaction = swapTransactionRepository.findByBooking(booking)
+                .orElse(null);
+        if (existingTransaction != null) {
+            throw new AuthenticationException("Mã xác nhận đã được sử dụng. Không thể xem thông tin.");
+        }
+
+        return booking;
+    }
+
+    /**
+     * Tạo base response
+     */
+    private BatteryInfoResponse createBaseBatteryInfoResponse(Booking booking, String batteryRole) {
+        User driver = booking.getDriver();
+        Vehicle vehicle = booking.getVehicle();
+        Station station = booking.getStation();
+
+        BatteryInfoResponse response = new BatteryInfoResponse();
+        response.setConfirmationCode(booking.getConfirmationCode());
+        response.setDriverName(driver.getFullName());
+        response.setVehiclePlate(vehicle.getPlateNumber());
+        response.setStationName(station.getName());
+        response.setBatteryRole(batteryRole);
+
+        return response;
+    }
+
+    /**
+     * Map battery information to response
+     */
+    private void mapBatteryToResponse(Battery battery, BatteryInfoResponse response) {
+        response.setBatteryId(battery.getId());
+        response.setModel(battery.getModel());
+        response.setChargeLevel(battery.getChargeLevel());
+        response.setStateOfHealth(battery.getStateOfHealth());
+        response.setStatus(battery.getStatus().toString());
+        response.setUsageCount(battery.getUsageCount());
+
+        if (battery.getBatteryType() != null) {
+            response.setBatteryType(battery.getBatteryType().getName());
+        }
+    }
 
     /**
      * Xử lý logic hoàn chỉnh khi swap transaction COMPLETED

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -83,7 +84,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         batteryTypeRepository.saveAll(batteryTypes);
         log.info("Created {} battery types", batteryTypes.size());
 
-        // 3. Tạo Stations (cần BatteryTypes)
+        // 3. Tạo Stations (cần BatteryTypes) - 10 TRẠM
         List<Station> stations = createStations(batteryTypes);
         stationRepository.saveAll(stations);
         log.info("Created {} stations", stations.size());
@@ -93,43 +94,44 @@ public class DatabaseInitializer implements CommandLineRunner {
         servicePackageRepository.saveAll(packages);
         log.info("Created {} service packages", packages.size());
 
-        // 5. Tạo Batteries (cần BatteryTypes)
+        // 5. Tạo Batteries (cần BatteryTypes và Stations)
         List<Battery> batteries = createBatteries(stations, batteryTypes);
         batteryRepository.saveAll(batteries);
         log.info("Created {} batteries", batteries.size());
 
-        // 6. Tạo Vehicles (cần batteries để lấy batteryType)
+        // 6. Tạo Vehicles (cần drivers và batteries) - ĐẢM BẢO CURRENT BATTERY ĐƯỢC GẮN
         List<Vehicle> vehicles = createVehicles(users, batteries);
         vehicleRepository.saveAll(vehicles);
-        log.info("Created {} vehicles", vehicles.size());
+
+        // UPDATE LẠI BATTERY STATUS SAU KHI GẮN VÀO XE
+        updateBatteriesAfterVehicleAssignment(vehicles);
+        log.info("Created {} vehicles with current batteries", vehicles.size());
 
         // 7. Tạo Driver Subscriptions
         List<DriverSubscription> subscriptions = createDriverSubscriptions(users, packages);
         driverSubscriptionRepository.saveAll(subscriptions);
         log.info("Created {} subscriptions", subscriptions.size());
 
-        // 8. Tạo Staff Station Assignments (Staff được assign vào stations)
+        // 8. Tạo Staff Station Assignments
         List<StaffStationAssignment> assignments = createStaffStationAssignments(users, stations);
         staffStationAssignmentRepository.saveAll(assignments);
         log.info("Created {} staff station assignments", assignments.size());
 
-        // 9. Tạo Station Inventory
-        List<StationInventory> inventory = createStationInventory(stations, batteries);
+        // 9. Tạo Station Inventory (chỉ pin trong kho)
+        List<StationInventory> inventory = createStationInventory(batteries);
         stationInventoryRepository.saveAll(inventory);
         log.info("Created {} station inventory records", inventory.size());
 
-        // 10. Tạo Bookings (CHỈ tạo booking đã hoàn thành)
-        List<Booking> bookings = createBookings(users, vehicles, stations, batteries);
-        bookingRepository.saveAll(bookings);
-        log.info("Created {} completed bookings", bookings.size());
+        // 10. KHÔNG tạo Bookings (đã xóa theo yêu cầu)
+        log.info("Skipped booking creation as requested");
 
-        // 11. Tạo Swap Transactions
+        // 11. Tạo Swap Transactions (lịch sử)
         List<SwapTransaction> transactions = createSwapTransactions(users, vehicles, stations, batteries);
         swapTransactionRepository.saveAll(transactions);
         log.info("Created {} swap transactions", transactions.size());
 
         // 12. Tạo Payments
-        List<Payment> payments = createPayments(transactions, subscriptions);
+        List<Payment> payments = createPayments(subscriptions);
         paymentRepository.saveAll(payments);
         log.info("Created {} payments", payments.size());
 
@@ -145,7 +147,6 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     private List<User> createUsers() {
-        // Sử dụng password encoder thực tế để encode "password123"
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         String encodedPassword = passwordEncoder.encode("password123");
 
@@ -158,15 +159,19 @@ public class DatabaseInitializer implements CommandLineRunner {
                 createUser("Nguyễn Văn Staff", "vinhvip4508@gmail.com", "0902000001", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
                 createUser("Trần Thị Staff", "staff2@evbs.com", "0902000002", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
                 createUser("Lê Văn Staff", "staff3@evbs.com", "0902000003", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
+                createUser("Phạm Văn Staff", "staff4@evbs.com", "0902000004", encodedPassword, User.Role.STAFF, User.Status.ACTIVE),
 
-                // Driver users
-                createUser("Nguyễn Văn An", "team89a6@gmail.com", "0903000001", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+                // Driver users - TẠO 10 DRIVER
+                createUser("Nguyễn Văn An", "driver1@gmail.com", "0903000001", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
                 createUser("Trần Thị Bình", "driver2@gmail.com", "0903000002", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
                 createUser("Lê Văn Cường", "driver3@gmail.com", "0903000003", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
                 createUser("Phạm Thị Dung", "driver4@gmail.com", "0903000004", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
                 createUser("Hoàng Văn Em", "driver5@gmail.com", "0903000005", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
-                createUser("Vũ Thị Phượng", "driver6@gmail.com", "0903000006", encodedPassword, User.Role.DRIVER, User.Status.INACTIVE),
-                createUser("Lê Phước Trí", "lptri22051@gmail.com", "0774560933", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE)
+                createUser("Vũ Thị Phượng", "driver6@gmail.com", "0903000006", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+                createUser("Lê Phước Trí", "driver7@gmail.com", "0903000007", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+                createUser("Nguyễn Thị Hương", "driver8@gmail.com", "0903000008", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+                createUser("Trần Văn Hùng", "driver9@gmail.com", "0903000009", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE),
+                createUser("Phạm Văn Đức", "driver10@gmail.com", "0903000010", encodedPassword, User.Role.DRIVER, User.Status.ACTIVE)
         );
     }
 
@@ -210,7 +215,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     private List<Station> createStations(List<BatteryType> batteryTypes) {
-        // CHI TAO TRAM O TP.HCM
+        // TẠO 10 TRẠM Ở TP.HCM
         return List.of(
                 createStation("Trạm Đổi Pin Quận 1", "123 Đường Nguyễn Huệ, Quận 1, TP.HCM", "TP.HCM", "Quận 1", 20, "0901234567", 10.7769, 106.7009, Station.Status.ACTIVE, batteryTypes.get(0)),
                 createStation("Trạm Đổi Pin Quận 3", "456 Đường Lê Văn Sỹ, Quận 3, TP.HCM", "TP.HCM", "Quận 3", 20, "0902345678", 10.7867, 106.6837, Station.Status.ACTIVE, batteryTypes.get(1)),
@@ -219,7 +224,9 @@ public class DatabaseInitializer implements CommandLineRunner {
                 createStation("Trạm Đổi Pin Thủ Đức", "202 Đường Võ Văn Ngân, TP Thủ Đức, TP.HCM", "TP.HCM", "TP Thủ Đức", 20, "0905678901", 10.8494, 106.7719, Station.Status.ACTIVE, batteryTypes.get(1)),
                 createStation("Trạm Đổi Pin Gò Vấp", "45 Đường Quang Trung, Gò Vấp, TP.HCM", "TP.HCM", "Gò Vấp", 20, "0906789012", 10.8376, 106.6731, Station.Status.ACTIVE, batteryTypes.get(2)),
                 createStation("Trạm Đổi Pin Tân Bình", "88 Đường Cộng Hòa, Tân Bình, TP.HCM", "TP.HCM", "Tân Bình", 20, "0907890123", 10.7992, 106.6530, Station.Status.ACTIVE, batteryTypes.get(0)),
-                createStation("Trạm Đổi Pin Phú Nhuận", "156 Đường Phan Đăng Lưu, Phú Nhuận, TP.HCM", "TP.HCM", "Phú Nhuận", 20, "0908901234", 10.7980, 106.6831, Station.Status.ACTIVE, batteryTypes.get(1))
+                createStation("Trạm Đổi Pin Phú Nhuận", "156 Đường Phan Đăng Lưu, Phú Nhuận, TP.HCM", "TP.HCM", "Phú Nhuận", 20, "0908901234", 10.7980, 106.6831, Station.Status.ACTIVE, batteryTypes.get(1)),
+                createStation("Trạm Đổi Pin Quận 10", "222 Đường 3/2, Quận 10, TP.HCM", "TP.HCM", "Quận 10", 20, "0909012345", 10.7679, 106.6663, Station.Status.ACTIVE, batteryTypes.get(2)),
+                createStation("Trạm Đổi Pin Quận 5", "333 Đường Nguyễn Trãi, Quận 5, TP.HCM", "TP.HCM", "Quận 5", 20, "0910123456", 10.7540, 106.6674, Station.Status.ACTIVE, batteryTypes.get(0))
         );
     }
 
@@ -258,261 +265,85 @@ public class DatabaseInitializer implements CommandLineRunner {
     }
 
     private List<Battery> createBatteries(List<Station> stations, List<BatteryType> batteryTypes) {
-        List<Battery> batteries = new java.util.ArrayList<>();
-
-        // Dùng BatteryTypes đã được save vào DB
-        BatteryType type48V = batteryTypes.get(0);  // 48V-20Ah
-        BatteryType type60V = batteryTypes.get(1);  // 60V-30Ah
-        BatteryType type72V = batteryTypes.get(2);  // 72V-40Ah
-
-        // ==================================================
-        // PIN O TRAM (currentStation != null)
-        // ==================================================
-
-        // Trạm 1 (Quận 1) - 48V - 14 pin (còn 6 chỗ trống để nhận pin)
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status;
-            BigDecimal health;
-            BigDecimal chargeLevel;
-
-            // Pin 0-1: MAINTENANCE (health < 70%)
-            if (i < 2) {
-                status = Battery.Status.MAINTENANCE;
-                health = new BigDecimal(55 + (Math.random() * 15)); // 55-70%
-                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50)); // 30-80%
-            }
-            // Pin 2-10: AVAILABLE (health >= 85%)
-            else if (i < 11) {
-                status = Battery.Status.AVAILABLE;
-                health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
-                chargeLevel = BigDecimal.valueOf(100.0);
-            }
-            // Pin 11-13: CHARGING (health >= 85%)
-            else {
-                status = Battery.Status.CHARGING;
-                health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
-                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70)); // 20-90%
-            }
-
-            batteries.add(createBatteryAtStation("VinFast 48V-20Ah", new BigDecimal("1.44"), health, chargeLevel, status, stations.get(0), type48V));
-        }
-
-        // Trạm 2 (Quận 3) - 60V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status;
-            BigDecimal health;
-            BigDecimal chargeLevel;
-
-            if (i < 1) {
-                status = Battery.Status.MAINTENANCE;
-                health = new BigDecimal(55 + (Math.random() * 15)); // 55-70%
-                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
-            } else if (i < 11) {
-                status = Battery.Status.AVAILABLE;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(100.0);
-            } else {
-                status = Battery.Status.CHARGING;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
-            }
-
-            batteries.add(createBatteryAtStation("Yadea 60V-30Ah", new BigDecimal("1.92"), health, chargeLevel, status, stations.get(1), type60V));
-        }
-
-        // Trạm 3 (Quận 7) - 72V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status;
-            BigDecimal health;
-            BigDecimal chargeLevel;
-
-            if (i < 3) {
-                status = Battery.Status.MAINTENANCE;
-                health = new BigDecimal(55 + (Math.random() * 15)); // 55-70%
-                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
-            } else if (i < 10) {
-                status = Battery.Status.AVAILABLE;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(100.0);
-            } else {
-                status = Battery.Status.CHARGING;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
-            }
-
-            batteries.add(createBatteryAtStation("Pega 72V-40Ah", new BigDecimal("2.02"), health, chargeLevel, status, stations.get(2), type72V));
-        }
-
-        // Trạm 4 (Bình Thạnh) - 48V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status;
-            BigDecimal health;
-            BigDecimal chargeLevel;
-
-            if (i < 2) {
-                status = Battery.Status.MAINTENANCE;
-                health = new BigDecimal(55 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
-            } else if (i < 11) {
-                status = Battery.Status.AVAILABLE;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(100.0);
-            } else {
-                status = Battery.Status.CHARGING;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
-            }
-
-            batteries.add(createBatteryAtStation("Dibao 48V-20Ah", new BigDecimal("2.10"), health, chargeLevel, status, stations.get(3), type48V));
-        }
-
-        // Trạm 5 (Thủ Đức) - 60V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status = i < 11 ? Battery.Status.AVAILABLE : Battery.Status.CHARGING;
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // Trạm này không có pin bảo trì
-            BigDecimal chargeLevel = status == Battery.Status.AVAILABLE ?
-                    BigDecimal.valueOf(100.0) : BigDecimal.valueOf(20 + (Math.random() * 70));
-            batteries.add(createBatteryAtStation("VinFast 60V-30Ah", new BigDecimal("2.16"), health, chargeLevel, status, stations.get(4), type60V));
-        }
-
-        // Trạm 6 (Gò Vấp) - 72V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status;
-            BigDecimal health;
-            BigDecimal chargeLevel;
-
-            if (i < 1) {
-                status = Battery.Status.MAINTENANCE;
-                health = new BigDecimal(55 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
-            } else if (i < 10) {
-                status = Battery.Status.AVAILABLE;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(100.0);
-            } else {
-                status = Battery.Status.CHARGING;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
-            }
-
-            batteries.add(createBatteryAtStation("VinFast 72V-40Ah", new BigDecimal("1.68"), health, chargeLevel, status, stations.get(5), type72V));
-        }
-
-        // Trạm 7 (Tân Bình) - 48V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status = i < 10 ? Battery.Status.AVAILABLE : Battery.Status.CHARGING;
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // Trạm này không có pin bảo trì
-            BigDecimal chargeLevel = status == Battery.Status.AVAILABLE ?
-                    BigDecimal.valueOf(100.0) : BigDecimal.valueOf(20 + (Math.random() * 70));
-            batteries.add(createBatteryAtStation("Yadea 48V-20Ah", new BigDecimal("2.52"), health, chargeLevel, status, stations.get(6), type48V));
-        }
-
-        // Trạm 8 (Phú Nhuận) - 60V - 14 pin
-        for (int i = 0; i < 14; i++) {
-            Battery.Status status;
-            BigDecimal health;
-            BigDecimal chargeLevel;
-
-            if (i < 2) {
-                status = Battery.Status.MAINTENANCE;
-                health = new BigDecimal(55 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(30 + (Math.random() * 50));
-            } else if (i < 10) {
-                status = Battery.Status.AVAILABLE;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(100.0);
-            } else {
-                status = Battery.Status.CHARGING;
-                health = new BigDecimal(85 + (Math.random() * 15));
-                chargeLevel = BigDecimal.valueOf(20 + (Math.random() * 70));
-            }
-
-            batteries.add(createBatteryAtStation("Pega 60V-30Ah", new BigDecimal("1.80"), health, chargeLevel, status, stations.get(7), type60V));
-        }
-
-        // ==================================================
-        // PIN O KHO (currentStation = null)
-        // ==================================================
-
-        // 1. PIN BINH THUONG O KHO (status = AVAILABLE, health >= 90%)
-        // Đây là pin dự trữ tốt để thay thế pin bảo trì
+        List<Battery> batteries = new ArrayList<>();
         String[] brands = {"VinFast", "Yadea", "Pega", "Dibao"};
 
-        // 5 pin 48V-20Ah trong kho
-        for (int i = 0; i < 5; i++) {
-            String model = brands[i % brands.length] + " 48V-20Ah";
-            BigDecimal health = new BigDecimal(90 + (Math.random() * 10)); // 90-100%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("1.44"), health, Battery.Status.AVAILABLE, type48V));
-        }
+        // ==================================================
+        // 1. PIN Ở TRẠM (currentStation != null, status = AVAILABLE/CHARGING/MAINTENANCE)
+        // ==================================================
 
-        // 5 pin 60V-30Ah trong kho
-        for (int i = 0; i < 5; i++) {
-            String model = brands[i % brands.length] + " 60V-30Ah";
-            BigDecimal health = new BigDecimal(90 + (Math.random() * 10)); // 90-100%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("1.92"), health, Battery.Status.AVAILABLE, type60V));
-        }
+        // Mỗi trạm có 10 pin
+        for (int stationIndex = 0; stationIndex < stations.size(); stationIndex++) {
+            Station station = stations.get(stationIndex);
+            BatteryType batteryType = station.getBatteryType();
 
-        // 5 pin 72V-40Ah trong kho
-        for (int i = 0; i < 5; i++) {
-            String model = brands[i % brands.length] + " 72V-40Ah";
-            BigDecimal health = new BigDecimal(90 + (Math.random() * 10)); // 90-100%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("2.02"), health, Battery.Status.AVAILABLE, type72V));
-        }
+            for (int i = 0; i < 10; i++) {
+                Battery.Status status;
+                if (i < 2 && stationIndex % 3 == 0) {
+                    status = Battery.Status.MAINTENANCE; // Một số trạm có pin bảo trì
+                } else if (i < 8) {
+                    status = Battery.Status.AVAILABLE;
+                } else {
+                    status = Battery.Status.CHARGING;
+                }
 
-        // 2. PIN DANG BAO TRI O KHO (status = MAINTENANCE, health < 70%)
-        // Đây là pin đã bị thay ra từ trạm, đang chờ sửa chữa/bảo dưỡng
+                BigDecimal health = status == Battery.Status.MAINTENANCE ?
+                        new BigDecimal("" + (55 + (Math.random() * 15))) : // 55-70%
+                        new BigDecimal("" + (85 + (Math.random() * 15)));  // 85-100%
+                BigDecimal chargeLevel = status == Battery.Status.AVAILABLE ?
+                        new BigDecimal("100.0") : new BigDecimal("" + (20 + (Math.random() * 70)));
 
-        // 3 pin 48V đang bảo trì
-        for (int i = 0; i < 3; i++) {
-            String model = brands[i % brands.length] + " 48V-20Ah";
-            BigDecimal health = new BigDecimal(50 + (Math.random() * 20)); // 50-70%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("1.44"), health, Battery.Status.MAINTENANCE, type48V));
-        }
+                String model = brands[(stationIndex + i) % brands.length] + " " +
+                        batteryType.getVoltage().intValue() + "V-" + batteryType.getCapacity().intValue() + "Ah";
 
-        // 3 pin 60V đang bảo trì
-        for (int i = 0; i < 3; i++) {
-            String model = brands[i % brands.length] + " 60V-30Ah";
-            BigDecimal health = new BigDecimal(50 + (Math.random() * 20)); // 50-70%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("1.92"), health, Battery.Status.MAINTENANCE, type60V));
-        }
-
-        // 2 pin 72V đang bảo trì
-        for (int i = 0; i < 2; i++) {
-            String model = brands[i % brands.length] + " 72V-40Ah";
-            BigDecimal health = new BigDecimal(50 + (Math.random() * 20)); // 50-70%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("2.02"), health, Battery.Status.MAINTENANCE, type72V));
+                batteries.add(createBatteryAtStation(
+                        model, new BigDecimal(batteryType.getCapacity().toString()), health, chargeLevel, status,
+                        station, batteryType
+                ));
+            }
         }
 
         // ==================================================
-        // PIN DANG DUOC TAI XE MUON DI (currentStation = null, status = IN_USE)
+        // 2. PIN TRONG KHO (currentStation = null, status = AVAILABLE/MAINTENANCE)
         // ==================================================
-        // Pin đang ở ngoài, không thuộc trạm nào, không trong kho
 
-        // 3 pin 48V đang được dùng
-        for (int i = 0; i < 3; i++) {
-            String model = brands[i % brands.length] + " 48V-20Ah";
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("1.44"), health, Battery.Status.IN_USE, type48V));
+        // 30 pin trong kho (10 mỗi loại)
+        for (int i = 0; i < 30; i++) {
+            BatteryType batteryType = batteryTypes.get(i % 3);
+            Battery.Status status = i % 5 == 0 ? Battery.Status.MAINTENANCE : Battery.Status.AVAILABLE;
+            BigDecimal health = status == Battery.Status.MAINTENANCE ?
+                    new BigDecimal("" + (50 + (Math.random() * 20))) : // 50-70%
+                    new BigDecimal("" + (90 + (Math.random() * 10)));  // 90-100%
+
+            String model = brands[i % brands.length] + " " +
+                    batteryType.getVoltage().intValue() + "V-" + batteryType.getCapacity().intValue() + "Ah";
+
+            batteries.add(createUnassignedBattery(
+                    model, new BigDecimal(batteryType.getCapacity().toString()), health, status, batteryType
+            ));
         }
 
-        // 2 pin 60V đang được dùng
-        for (int i = 0; i < 2; i++) {
-            String model = brands[i % brands.length] + " 60V-30Ah";
-            BigDecimal health = new BigDecimal(85 + (Math.random() * 15)); // 85-100%
-            batteries.add(createUnassignedBattery(model, new BigDecimal("1.92"), health, Battery.Status.IN_USE, type60V));
+        // ==================================================
+        // 3. PIN ĐANG ĐƯỢC XE SỬ DỤNG (currentStation = null, status = IN_USE)
+        // ==================================================
+
+        // 10 pin IN_USE cho 10 xe
+        for (int i = 0; i < 10; i++) {
+            BatteryType batteryType = batteryTypes.get(i % 3);
+            BigDecimal health = new BigDecimal("" + (70 + (Math.random() * 25))); // 70-95%
+            BigDecimal chargeLevel = new BigDecimal("" + (20 + (Math.random() * 60))); // 20-80%
+
+            String model = brands[i % brands.length] + " " +
+                    batteryType.getVoltage().intValue() + "V-" + batteryType.getCapacity().intValue() + "Ah";
+
+            batteries.add(createUnassignedBattery(
+                    model, new BigDecimal(batteryType.getCapacity().toString()), health, Battery.Status.IN_USE, batteryType
+            ));
         }
 
         return batteries;
     }
 
-    // ============================================
-    // HELPER METHODS - TAO BATTERY
-    // ============================================
-
-    /**
-     * TAO PIN THUOC TRAM (currentStation != null)
-     * Pin này ở TRẠM, không ở kho, không ở vehicle
-     */
     private Battery createBatteryAtStation(String model, BigDecimal capacity, BigDecimal stateOfHealth,
                                            BigDecimal chargeLevel, Battery.Status status,
                                            Station station, BatteryType batteryType) {
@@ -522,50 +353,83 @@ public class DatabaseInitializer implements CommandLineRunner {
         battery.setStateOfHealth(stateOfHealth);
         battery.setChargeLevel(chargeLevel);
         battery.setStatus(status);
-        battery.setCurrentStation(station); // Pin at station
+        battery.setCurrentStation(station); // Pin ở trạm
         battery.setBatteryType(batteryType);
         battery.setManufactureDate(LocalDate.now().minusMonths((long) (Math.random() * 12)));
-        battery.setUsageCount((int) (Math.random() * 100));
+        battery.setUsageCount((int) (Math.random() * 50));
         return battery;
     }
 
-    /**
-     * Create battery in warehouse or borrowed by driver (currentStation = null)
-     * - If status = AVAILABLE/CHARGING/MAINTENANCE -> Battery in warehouse (will have StationInventory)
-     * - If status = IN_USE -> Battery borrowed by driver (on vehicle)
-     */
-    private Battery createUnassignedBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth, Battery.Status status, BatteryType batteryType) {
+    private Battery createUnassignedBattery(String model, BigDecimal capacity, BigDecimal stateOfHealth,
+                                            Battery.Status status, BatteryType batteryType) {
         Battery battery = new Battery();
         battery.setModel(model);
         battery.setCapacity(capacity);
         battery.setStateOfHealth(stateOfHealth);
-        battery.setChargeLevel(BigDecimal.valueOf(100.0));
+
+        // Charge level logic:
+        // - IN_USE: random 20-80% (đang được sử dụng)
+        // - AVAILABLE: 100% (trong kho, sẵn sàng sử dụng)
+        // - MAINTENANCE: random 30-80% (đang bảo trì)
+        if (status == Battery.Status.IN_USE) {
+            battery.setChargeLevel(new BigDecimal("" + (20 + (Math.random() * 60))));
+        } else if (status == Battery.Status.AVAILABLE) {
+            battery.setChargeLevel(new BigDecimal("100.0"));
+        } else {
+            battery.setChargeLevel(new BigDecimal("" + (30 + (Math.random() * 50))));
+        }
+
         battery.setStatus(status);
-        battery.setCurrentStation(null); // Not at any station (warehouse or borrowed)
+        battery.setCurrentStation(null); // Không ở trạm nào
         battery.setBatteryType(batteryType);
         battery.setManufactureDate(LocalDate.now().minusMonths((long) (Math.random() * 6)));
-        battery.setUsageCount(0);
+        battery.setUsageCount(status == Battery.Status.IN_USE ? (int) (Math.random() * 100) : 0);
         return battery;
     }
 
     private List<Vehicle> createVehicles(List<User> users, List<Battery> batteries) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
+        List<Vehicle> vehicles = new ArrayList<>();
 
-        // Lấy batteryType từ battery đã tạo
-        BatteryType type1 = batteries.get(0).getBatteryType();
-        BatteryType type2 = batteries.get(15).getBatteryType();
+        // Lấy các pin IN_USE từ batteries (10 pin cuối cùng)
+        List<Battery> inUseBatteries = batteries.stream()
+                .filter(b -> b.getStatus() == Battery.Status.IN_USE)
+                .toList();
 
-        // Lấy 5 pin cuối cùng (135-139) cho xe (sẽ trở thành IN_USE)
-        // Các pin này chưa được assign vào trạm nào (currentStation = null)
-        int baseIndex = batteries.size() - 5; // 140 - 5 = 135
+        // Tạo 10 xe với pin IN_USE
+        for (int i = 0; i < 10; i++) {
+            User driver = drivers.get(i);
+            Battery currentBattery = inUseBatteries.get(i);
+            BatteryType batteryType = currentBattery.getBatteryType();
 
-        return List.of(
-                createVehicle("VFMOTO2024001234", "59-A1 123.45", "VinFast Klara A2", drivers.get(0), type1, batteries.get(baseIndex)),
-                createVehicle("VFMOTO2024001235", "51-F1 456.78", "VinFast Impes", drivers.get(1), type2, batteries.get(baseIndex + 1)),
-                createVehicle("YADEA2024001236", "59-B2 789.01", "Yadea Xmen Neo", drivers.get(2), type1, batteries.get(baseIndex + 2)),
-                createVehicle("PEGA2024001237", "51-G1 234.56", "Pega NewTech", drivers.get(3), type2, batteries.get(baseIndex + 3)),
-                createVehicle("DIBAO2024001238", "59-C3 567.89", "Dibao Angelina", drivers.get(4), type1, batteries.get(baseIndex + 4))
-        );
+            Vehicle vehicle = createVehicle(
+                    "VFMOTO202400" + (1000 + i),
+                    "51-" + (char)('A' + (i / 10)) + (char)('A' + (i % 10)) + " " + (10000 + i),
+                    getVehicleModel(batteryType, i),
+                    driver,
+                    batteryType,
+                    currentBattery
+            );
+
+            vehicles.add(vehicle);
+        }
+
+        return vehicles;
+    }
+
+    private String getVehicleModel(BatteryType batteryType, int index) {
+        String[] models48V = {"VinFast Klara A1", "Yadea Xmen Neo", "Pega Angel", "Dibao M5"};
+        String[] models60V = {"VinFast Impes", "Yadea G5", "Pega NewTech", "Dibao X7"};
+        String[] models72V = {"VinFast Evo", "Yadea T5", "Pega Heavy", "Dibao Truck"};
+
+        double voltage = batteryType.getVoltage();
+        if (voltage == 48.0) {
+            return models48V[index % models48V.length];
+        } else if (voltage == 60.0) {
+            return models60V[index % models60V.length];
+        } else {
+            return models72V[index % models72V.length];
+        }
     }
 
     private Vehicle createVehicle(String vin, String plateNumber, String model, User driver, BatteryType batteryType, Battery currentBattery) {
@@ -575,27 +439,41 @@ public class DatabaseInitializer implements CommandLineRunner {
         vehicle.setModel(model);
         vehicle.setDriver(driver);
         vehicle.setBatteryType(batteryType);
-        vehicle.setCurrentBattery(currentBattery);
-
-        // Update battery status when mounted on vehicle
-        if (currentBattery != null) {
-            currentBattery.setStatus(Battery.Status.IN_USE);
-            currentBattery.setCurrentStation(null); // Battery on vehicle, not at any station
-            // IN_USE batteries are also not in StationInventory
-        }
+        vehicle.setCurrentBattery(currentBattery); // GẮN PIN VÀO XE
 
         return vehicle;
     }
 
+    // QUAN TRỌNG: Update battery status sau khi gắn vào xe
+    private void updateBatteriesAfterVehicleAssignment(List<Vehicle> vehicles) {
+        for (Vehicle vehicle : vehicles) {
+            if (vehicle.getCurrentBattery() != null) {
+                Battery battery = vehicle.getCurrentBattery();
+                battery.setStatus(Battery.Status.IN_USE);
+                battery.setCurrentStation(null); // Pin trên xe, không ở trạm
+                batteryRepository.save(battery);
+            }
+        }
+    }
+
     private List<DriverSubscription> createDriverSubscriptions(List<User> users, List<ServicePackage> packages) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
-        return List.of(
-                createDriverSubscription(drivers.get(0), packages.get(1), LocalDate.of(2025, 10, 1), LocalDate.of(2025, 10, 30), 25, DriverSubscription.Status.ACTIVE),
-                createDriverSubscription(drivers.get(1), packages.get(0), LocalDate.of(2025, 10, 5), LocalDate.of(2025, 11, 4), 12, DriverSubscription.Status.ACTIVE),
-                createDriverSubscription(drivers.get(2), packages.get(2), LocalDate.of(2025, 9, 1), LocalDate.of(2025, 9, 30), 0, DriverSubscription.Status.EXPIRED),
-                createDriverSubscription(drivers.get(3), packages.get(1), LocalDate.of(2025, 10, 10), LocalDate.of(2025, 11, 9), 28, DriverSubscription.Status.ACTIVE),
-                createDriverSubscription(drivers.get(4), packages.get(3), LocalDate.of(2025, 10, 1), LocalDate.of(2025, 10, 30), 195, DriverSubscription.Status.ACTIVE)
-        );
+        List<DriverSubscription> subscriptions = new ArrayList<>();
+
+        for (int i = 0; i < 10; i++) {
+            ServicePackage pkg = packages.get(i % packages.size());
+            int remainingSwaps = pkg.getMaxSwaps() - (int)(Math.random() * 5);
+            DriverSubscription.Status status = i == 2 ? DriverSubscription.Status.EXPIRED : DriverSubscription.Status.ACTIVE;
+
+            subscriptions.add(createDriverSubscription(
+                    drivers.get(i), pkg,
+                    LocalDate.now().minusDays(5 + i),
+                    LocalDate.now().plusDays(25 - i),
+                    remainingSwaps, status
+            ));
+        }
+
+        return subscriptions;
     }
 
     private DriverSubscription createDriverSubscription(User driver, ServicePackage pkg, LocalDate start, LocalDate end, int remainingSwaps, DriverSubscription.Status status) {
@@ -611,24 +489,24 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private List<StaffStationAssignment> createStaffStationAssignments(List<User> users, List<Station> stations) {
         List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
+        List<StaffStationAssignment> assignments = new ArrayList<>();
 
-        // Assign mỗi staff vào nhiều stations
-        return List.of(
-                // Staff 1 (index 0) - Phụ trách 3 trạm ở TP.HCM
-                createStaffStationAssignment(staff.get(0), stations.get(0), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Quận 1
-                createStaffStationAssignment(staff.get(0), stations.get(1), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Quận 3
-                createStaffStationAssignment(staff.get(0), stations.get(2), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Quận 7
+        // Mỗi staff phụ trách 2-3 trạm
+        assignments.add(createStaffStationAssignment(staff.get(0), stations.get(0), LocalDateTime.now().minusDays(30)));
+        assignments.add(createStaffStationAssignment(staff.get(0), stations.get(1), LocalDateTime.now().minusDays(30)));
+        assignments.add(createStaffStationAssignment(staff.get(0), stations.get(2), LocalDateTime.now().minusDays(30)));
 
-                // Staff 2 (index 1) - Phụ trách 3 trạm ở TP.HCM
-                createStaffStationAssignment(staff.get(1), stations.get(2), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Quận 7 (overlap với staff1)
-                createStaffStationAssignment(staff.get(1), stations.get(3), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Bình Thạnh
-                createStaffStationAssignment(staff.get(1), stations.get(4), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Thủ Đức
+        assignments.add(createStaffStationAssignment(staff.get(1), stations.get(3), LocalDateTime.now().minusDays(30)));
+        assignments.add(createStaffStationAssignment(staff.get(1), stations.get(4), LocalDateTime.now().minusDays(30)));
 
-                // Staff 3 (index 2) - Phụ trách 3 trạm còn lại ở TP.HCM
-                createStaffStationAssignment(staff.get(2), stations.get(5), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Gò Vấp
-                createStaffStationAssignment(staff.get(2), stations.get(6), LocalDateTime.of(2025, 10, 1, 8, 0)),  // Tân Bình
-                createStaffStationAssignment(staff.get(2), stations.get(7), LocalDateTime.of(2025, 10, 1, 8, 0))   // Phú Nhuận
-        );
+        assignments.add(createStaffStationAssignment(staff.get(2), stations.get(5), LocalDateTime.now().minusDays(30)));
+        assignments.add(createStaffStationAssignment(staff.get(2), stations.get(6), LocalDateTime.now().minusDays(30)));
+
+        assignments.add(createStaffStationAssignment(staff.get(3), stations.get(7), LocalDateTime.now().minusDays(30)));
+        assignments.add(createStaffStationAssignment(staff.get(3), stations.get(8), LocalDateTime.now().minusDays(30)));
+        assignments.add(createStaffStationAssignment(staff.get(3), stations.get(9), LocalDateTime.now().minusDays(30)));
+
+        return assignments;
     }
 
     private StaffStationAssignment createStaffStationAssignment(User staff, Station station, LocalDateTime assignedAt) {
@@ -639,49 +517,34 @@ public class DatabaseInitializer implements CommandLineRunner {
         return assignment;
     }
 
-    private List<StationInventory> createStationInventory(List<Station> stations, List<Battery> batteries) {
-        List<StationInventory> inventory = new java.util.ArrayList<>();
+    private List<StationInventory> createStationInventory(List<Battery> batteries) {
+        List<StationInventory> inventory = new ArrayList<>();
 
-        // IMPORTANT RULE: 1 BATTERY IN ONLY 1 LOCATION
-        // - Battery at STATION (currentStation != null) -> NOT in StationInventory
-        // - Battery on VEHICLE (status = IN_USE) -> NOT in StationInventory
-        // - Battery in WAREHOUSE (currentStation = null, status != IN_USE) -> IN StationInventory
-
-        // StationInventory = Central Warehouse
-        // Only create for batteries in warehouse (currentStation = NULL and status != IN_USE)
+        // CHỈ tạo inventory cho pin trong kho (currentStation = null, status != IN_USE)
         for (Battery battery : batteries) {
-            // Skip: Battery at station
+            // Bỏ qua pin ở trạm
             if (battery.getCurrentStation() != null) {
-                continue; // Battery at station -> not in warehouse
+                continue;
             }
 
-            // Skip: Battery on vehicle
+            // Bỏ qua pin đang được xe sử dụng
             if (battery.getStatus() == Battery.Status.IN_USE) {
-                continue; // Battery on vehicle -> not in warehouse
+                continue;
             }
 
-            // Only include: Batteries in warehouse (currentStation = null, status != IN_USE)
+            // Chỉ thêm pin trong kho (warehouse)
             StationInventory.Status status;
-
-            // Map Battery.Status -> StationInventory.Status
             switch (battery.getStatus()) {
                 case AVAILABLE:
                     status = StationInventory.Status.AVAILABLE;
                     break;
-                case CHARGING:
-                    status = StationInventory.Status.AVAILABLE; // Battery charging in warehouse
-                    break;
                 case MAINTENANCE:
                     status = StationInventory.Status.MAINTENANCE;
                     break;
-                case PENDING:
-                    // PENDING/DAMAGED batteries should not be in warehouse
-                    continue; // Skip
                 default:
-                    status = StationInventory.Status.AVAILABLE;
+                    continue; // Bỏ qua các status khác
             }
 
-            // Tạo inventory cho pin trong kho
             inventory.add(createStationInventory(battery, status));
         }
 
@@ -696,160 +559,79 @@ public class DatabaseInitializer implements CommandLineRunner {
         return inventory;
     }
 
-    private List<Booking> createBookings(List<User> users, List<Vehicle> vehicles, List<Station> stations, List<Battery> batteries) {
-        List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
-        List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
-
-        // Tạo booking 24/7 để thể hiện trạm hoạt động liên tục
-        LocalDateTime now = LocalDateTime.now();
-
-        // CHỈ tạo booking đã hoàn thành (COMPLETED)
-        return List.of(
-                // COMPLETED bookings - Đã hoàn thành swap
-                createBooking(drivers.get(0), vehicles.get(0), stations.get(0), now.minusHours(24), Booking.Status.COMPLETED, staff.get(0)),
-                createBooking(drivers.get(1), vehicles.get(1), stations.get(1), now.minusHours(48), Booking.Status.COMPLETED, staff.get(1)),
-                createBooking(drivers.get(2), vehicles.get(2), stations.get(2), now.minusHours(72), Booking.Status.COMPLETED, staff.get(0)),
-                createBooking(drivers.get(3), vehicles.get(3), stations.get(3), now.minusHours(12), Booking.Status.COMPLETED, staff.get(1)),
-                createBooking(drivers.get(4), vehicles.get(4), stations.get(4), now.minusHours(6), Booking.Status.COMPLETED, staff.get(0))
-        );
-    }
-
-    private Booking createBooking(User driver, Vehicle vehicle, Station station, LocalDateTime bookingTime, Booking.Status status, User confirmedBy) {
-        Booking booking = new Booking();
-        booking.setDriver(driver);
-        booking.setVehicle(vehicle);
-        booking.setStation(station);
-        booking.setBookingTime(bookingTime);
-
-        // Tạo confirmation code cho tất cả bookings
-        booking.setConfirmationCode(generateConfirmationCode());
-
-        booking.setStatus(status);
-        booking.setConfirmedBy(confirmedBy);  // Chỉ COMPLETED bookings mới có confirmedBy
-        return booking;
-    }
-
-    private String generateConfirmationCode() {
-        String letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-        String numbers = "0123456789";
-        StringBuilder code = new StringBuilder();
-
-        // 3 chữ cái
-        for (int i = 0; i < 3; i++) {
-            code.append(letters.charAt((int)(Math.random() * letters.length())));
-        }
-
-        // 3 số
-        for (int i = 0; i < 3; i++) {
-            code.append(numbers.charAt((int)(Math.random() * numbers.length())));
-        }
-
-        return code.toString();
-    }
-
     private List<SwapTransaction> createSwapTransactions(List<User> users, List<Vehicle> vehicles, List<Station> stations, List<Battery> batteries) {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
         List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
         LocalDateTime now = LocalDateTime.now();
 
+        // Lấy các pin AVAILABLE từ trạm để làm pin mới
+        List<Battery> availableBatteries = batteries.stream()
+                .filter(b -> b.getStatus() == Battery.Status.AVAILABLE && b.getCurrentStation() != null)
+                .toList();
+
         return List.of(
-                // COMPLETED - Successful swap (has subscription, FREE)
                 createSwapTransaction(drivers.get(0), vehicles.get(0), stations.get(0), staff.get(0),
-                        batteries.get(135), batteries.get(0), now.minusHours(24),
-                        now.minusHours(24).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
+                        availableBatteries.get(0), vehicles.get(0).getCurrentBattery(),
+                        now.minusHours(24), now.minusHours(24).plusMinutes(3),
+                        BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
 
                 createSwapTransaction(drivers.get(1), vehicles.get(1), stations.get(1), staff.get(1),
-                        batteries.get(136), batteries.get(14), now.minusHours(48),
-                        now.minusHours(48).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
-
-                // COMPLETED - First time swap (no old battery)
-                createSwapTransaction(drivers.get(2), vehicles.get(2), stations.get(2), staff.get(0),
-                        null, batteries.get(28), now.minusHours(72),
-                        now.minusHours(72).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
-
-                // COMPLETED - Multiple swaps in one day
-                createSwapTransaction(drivers.get(3), vehicles.get(3), stations.get(3), staff.get(1),
-                        batteries.get(137), batteries.get(42), now.minusHours(12),
-                        now.minusHours(12).plusMinutes(3), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
-
-                createSwapTransaction(drivers.get(3), vehicles.get(3), stations.get(5), staff.get(0),
-                        batteries.get(42), batteries.get(70), now.minusHours(6),
-                        now.minusHours(6).plusMinutes(2), BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
-
-                // IN_PROGRESS - Swap in progress
-                createSwapTransaction(drivers.get(4), vehicles.get(4), stations.get(4), staff.get(1),
-                        batteries.get(138), batteries.get(56), now.minusMinutes(5),
-                        null, BigDecimal.ZERO, SwapTransaction.Status.IN_PROGRESS)
+                        availableBatteries.get(1), vehicles.get(1).getCurrentBattery(),
+                        now.minusHours(48), now.minusHours(48).plusMinutes(2),
+                        BigDecimal.ZERO, SwapTransaction.Status.COMPLETED)
         );
     }
 
     private SwapTransaction createSwapTransaction(User driver, Vehicle vehicle, Station station, User staff,
-                                                  Battery swapOut, Battery swapIn, LocalDateTime start, LocalDateTime end,
+                                                  Battery newBattery, Battery oldBattery, LocalDateTime start, LocalDateTime end,
                                                   BigDecimal cost, SwapTransaction.Status status) {
         SwapTransaction transaction = new SwapTransaction();
         transaction.setDriver(driver);
         transaction.setVehicle(vehicle);
         transaction.setStation(station);
         transaction.setStaff(staff);
-        transaction.setSwapOutBattery(swapOut);
-        transaction.setSwapInBattery(swapIn);
+        transaction.setSwapOutBattery(newBattery);  // Pin mới từ trạm
+        transaction.setSwapInBattery(oldBattery);   // Pin cũ từ xe
         transaction.setStartTime(start);
         transaction.setEndTime(end);
         transaction.setCost(cost);
         transaction.setStatus(status);
 
-        // Save snapshot of battery info at swap time
-        if (swapOut != null) {
-            transaction.setSwapOutBatteryModel(swapOut.getModel());
-            transaction.setSwapOutBatteryChargeLevel(swapOut.getChargeLevel());
-            transaction.setSwapOutBatteryHealth(swapOut.getStateOfHealth());
+        // Save snapshot
+        if (newBattery != null) {
+            transaction.setSwapOutBatteryModel(newBattery.getModel());
+            transaction.setSwapOutBatteryChargeLevel(newBattery.getChargeLevel());
+            transaction.setSwapOutBatteryHealth(newBattery.getStateOfHealth());
         }
 
-        if (swapIn != null) {
-            transaction.setSwapInBatteryModel(swapIn.getModel());
-            transaction.setSwapInBatteryChargeLevel(swapIn.getChargeLevel());
-            transaction.setSwapInBatteryHealth(swapIn.getStateOfHealth());
-        }
-
-        // Update vehicle current battery after swap
-        // If status = COMPLETED, mount new battery (swapIn) to vehicle
-        // Logic: swapOut = old battery removed, swapIn = new battery mounted
-        if (status == SwapTransaction.Status.COMPLETED && swapIn != null) {
-            vehicle.setCurrentBattery(swapIn);  // Must be new battery (swapIn), not old battery (swapOut)
+        if (oldBattery != null) {
+            transaction.setSwapInBatteryModel(oldBattery.getModel());
+            transaction.setSwapInBatteryChargeLevel(oldBattery.getChargeLevel());
+            transaction.setSwapInBatteryHealth(oldBattery.getStateOfHealth());
         }
 
         return transaction;
     }
 
-    private List<Payment> createPayments(List<SwapTransaction> transactions, List<DriverSubscription> subscriptions) {
-        // Payment only for SUBSCRIPTION, no payment for swap transaction
-        return List.of(
-                // Payment cho subscription của driver1 (Gói Cơ Bản - 350k)
-                createPayment(null, subscriptions.get(0), new BigDecimal("350000.00"), "MOMO",
-                        LocalDateTime.of(2025, 10, 1, 9, 30), Payment.Status.COMPLETED),
+    private List<Payment> createPayments(List<DriverSubscription> subscriptions) {
+        List<Payment> payments = new ArrayList<>();
 
-                // Payment cho subscription của driver2 (Gói Sinh Viên - 200k)
-                createPayment(null, subscriptions.get(1), new BigDecimal("200000.00"), "MOMO",
-                        LocalDateTime.of(2025, 10, 5, 14, 15), Payment.Status.COMPLETED),
+        for (int i = 0; i < subscriptions.size(); i++) {
+            DriverSubscription subscription = subscriptions.get(i);
+            payments.add(createPayment(
+                    subscription,
+                    subscription.getServicePackage().getPrice(),
+                    "MOMO",
+                    LocalDateTime.now().minusDays(5 + i),
+                    Payment.Status.COMPLETED
+            ));
+        }
 
-                // Payment cho subscription EXPIRED của driver3 (Gói Tiêu Chuẩn - 600k) - đã thanh toán trước đó
-                createPayment(null, subscriptions.get(2), new BigDecimal("600000.00"), "MOMO",
-                        LocalDateTime.of(2025, 9, 1, 10, 0), Payment.Status.COMPLETED),
-
-                // Payment cho subscription của driver4 (Gói Cơ Bản - 350k)
-                createPayment(null, subscriptions.get(3), new BigDecimal("350000.00"), "MOMO",
-                        LocalDateTime.of(2025, 10, 10, 10, 0), Payment.Status.COMPLETED),
-
-                // Payment cho subscription của driver5 (Gói Cao Cấp - 900k)
-                createPayment(null, subscriptions.get(4), new BigDecimal("900000.00"), "MOMO",
-                        LocalDateTime.of(2025, 10, 1, 11, 45), Payment.Status.COMPLETED)
-        );
+        return payments;
     }
 
-    private Payment createPayment(SwapTransaction transaction, DriverSubscription subscription, BigDecimal amount,
-                                  String method, LocalDateTime date, Payment.Status status) {
+    private Payment createPayment(DriverSubscription subscription, BigDecimal amount, String method, LocalDateTime date, Payment.Status status) {
         Payment payment = new Payment();
-        payment.setTransaction(transaction);
         payment.setSubscription(subscription);
         payment.setAmount(amount);
         payment.setPaymentMethod(method);
@@ -862,9 +644,8 @@ public class DatabaseInitializer implements CommandLineRunner {
         List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
 
         return List.of(
-                createSupportTicket(drivers.get(0), stations.get(0), "Pin yếu sau đổi", "Pin tôi vừa đổi chỉ chạy được 40km thay vì 60km như bình thường", SupportTicket.Status.OPEN),
-                createSupportTicket(drivers.get(1), stations.get(1), "Trạm đổi pin bị kẹt", "Máy đổi pin tại trạm Quận 3 không nhả pin ra được", SupportTicket.Status.IN_PROGRESS),
-                createSupportTicket(drivers.get(2), null, "App không kết nối", "Ứng dụng báo lỗi kết nối khi tôi cố gắng đặt lịch đổi pin", SupportTicket.Status.RESOLVED)
+                createSupportTicket(drivers.get(0), stations.get(0), "Pin yếu sau đổi", "Pin tôi vừa đổi chỉ chạy được 40km", SupportTicket.Status.OPEN),
+                createSupportTicket(drivers.get(1), stations.get(1), "Trạm đổi pin bị kẹt", "Máy đổi pin tại trạm Quận 3 không nhả pin ra được", SupportTicket.Status.IN_PROGRESS)
         );
     }
 
@@ -883,8 +664,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
 
         return List.of(
-                createTicketResponse(tickets.get(1), staff.get(0), "Chúng tôi đã tiếp nhận yêu cầu và sẽ cử kỹ thuật viên đến kiểm tra trong vòng 2 giờ."),
-                createTicketResponse(tickets.get(2), staff.get(1), "Lỗi đã được khắc phục trong bản cập nhật mới. Vui lòng cập nhật ứng dụng.")
+                createTicketResponse(tickets.get(1), staff.get(0), "Chúng tôi đã tiếp nhận yêu cầu và sẽ cử kỹ thuật viên đến kiểm tra trong vòng 2 giờ.")
         );
     }
 

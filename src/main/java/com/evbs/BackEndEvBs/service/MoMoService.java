@@ -7,6 +7,7 @@ import com.evbs.BackEndEvBs.entity.ServicePackage;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
+import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.PaymentRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
@@ -89,15 +90,15 @@ public class MoMoService {
         String orderId = MoMoUtil.generateOrderId();
         String requestId = MoMoUtil.generateRequestId();
         long amount = servicePackage.getPrice().longValue();
-        
+
         // LƯU DRIVER ID vào extraData vì callback không có token!
         String extraData = "packageId=" + packageId + "&driverId=" + currentDriver.getId();
 
         // Xác định redirectUrl: Frontend gửi thì dùng, không thì dùng config fallback
-        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty()) 
-                ? customRedirectUrl 
+        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty())
+                ? customRedirectUrl
                 : moMoConfig.getRedirectUrl();
-        
+
         log.info("Using redirect URL: {}", finalRedirectUrl);
 
         // Parameters for signature (sorted by key)
@@ -226,7 +227,7 @@ public class MoMoService {
             Map<String, String> extraDataMap = parseExtraData(extraData);
             Long packageId = extractLong(extraDataMap, "packageId");
             Long driverId = extractLong(extraDataMap, "driverId");
-            
+
             if (packageId == null || driverId == null) {
                 throw new RuntimeException("Không thể lấy packageId hoặc driverId từ extraData: " + extraData);
             }
@@ -234,14 +235,27 @@ public class MoMoService {
             ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ ID: " + packageId));
 
+            // BUOC 3.5: Kiểm tra loại thanh toán (NEW PURCHASE hay UPGRADE)
+            String paymentType = extraDataMap.getOrDefault("type", "NEW");
+            boolean isUpgrade = "UPGRADE".equals(paymentType);
+
             // BUOC 4: Xử lý kết quả thanh toán
             if ("0".equals(resultCode)) {
                 // THANH TOÁN THÀNH CÔNG
-                log.info(" IPN - Thanh toán MoMo thành công: orderId={}, transId={}, driverId={}", 
-                         orderId, transId, driverId);
+                log.info(" IPN - Thanh toán MoMo thành công: orderId={}, transId={}, driverId={}, type={}",
+                        orderId, transId, driverId, paymentType);
 
-                // Tạo subscription tự động
-                DriverSubscription subscription = driverSubscriptionService.createSubscriptionAfterPayment(packageId, driverId);
+                DriverSubscription subscription;
+
+                if (isUpgrade) {
+                    // XỬ LÝ UPGRADE GÓI
+                    log.info("🔄 IPN - Processing UPGRADE payment...");
+                    subscription = driverSubscriptionService.upgradeSubscriptionAfterPayment(packageId, driverId);
+                } else {
+                    // XỬ LÝ MUA GÓI MỚI
+                    log.info("📦 IPN - Processing NEW PURCHASE payment...");
+                    subscription = driverSubscriptionService.createSubscriptionAfterPayment(packageId, driverId);
+                }
 
                 // Lưu Payment record
                 Payment payment = new Payment();
@@ -252,7 +266,7 @@ public class MoMoService {
                 payment.setStatus(Payment.Status.COMPLETED);
                 paymentRepository.save(payment);
 
-                log.info("IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
+                log.info("✅ IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
 
                 // Gửi email thông báo thanh toán thành công
                 try {
@@ -268,7 +282,10 @@ public class MoMoService {
                 }
 
                 result.put("success", true);
-                result.put("message", "Thanh toán thành công! Gói dịch vụ đã được kích hoạt.");
+                result.put("message", isUpgrade ?
+                        "Nâng cấp gói thành công! Gói mới đã được kích hoạt." :
+                        "Thanh toán thành công! Gói dịch vụ đã được kích hoạt.");
+                result.put("paymentType", paymentType);
                 result.put("subscriptionId", subscription.getId());
                 result.put("packageName", servicePackage.getName());
                 result.put("maxSwaps", servicePackage.getMaxSwaps());
@@ -300,14 +317,148 @@ public class MoMoService {
     // HELPER METHODS
 
     /**
+     * TẠO PAYMENT URL CHO NÂNG CẤP GÓI (UPGRADE)
+     *
+     * Tính toán theo công thức:
+     * - Giá trị hoàn lại = (Lượt chưa dùng) × (Giá/lượt gói cũ)
+     * - Phí nâng cấp = Giá gói cũ × 7%
+     * - Số tiền thanh toán = Giá gói mới + Phí nâng cấp - Giá trị hoàn lại
+     *
+     * @param newPackageId ID gói mới
+     * @param customRedirectUrl URL redirect sau khi thanh toán (optional)
+     * @return Map chứa paymentUrl, orderId, requestId
+     */
+    public Map<String, String> createUpgradePaymentUrl(Long newPackageId, String customRedirectUrl) {
+        User currentDriver = authenticationService.getCurrentUser();
+
+        // 1. Tính toán chi phí upgrade
+        UpgradeCalculationResponse calculation = driverSubscriptionService.calculateUpgradeCost(newPackageId);
+
+        if (!calculation.getCanUpgrade()) {
+            throw new IllegalStateException("Không thể nâng cấp gói: " + calculation.getMessage());
+        }
+
+        // 2. Lấy số tiền cần thanh toán từ calculation
+        long amount = calculation.getTotalPaymentRequired().longValue();
+
+        if (amount <= 0) {
+            throw new IllegalArgumentException(
+                    "Số tiền thanh toán không hợp lệ: " + amount + " VNĐ. " +
+                            "Vui lòng kiểm tra lại tính toán."
+            );
+        }
+
+        // 3. Chuẩn bị thông tin thanh toán MoMo
+        String orderId = MoMoUtil.generateOrderId();
+        String requestId = MoMoUtil.generateRequestId();
+
+        // LƯU THÔNG TIN UPGRADE vào extraData
+        // Format: packageId=<newPackageId>&driverId=<id>&type=UPGRADE
+        String extraData = String.format(
+                "packageId=%d&driverId=%d&type=UPGRADE",
+                newPackageId,
+                currentDriver.getId()
+        );
+
+        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty())
+                ? customRedirectUrl
+                : moMoConfig.getRedirectUrl();
+
+        log.info("🔄 UPGRADE - Creating MoMo payment URL: Driver={}, OldPackage={}, NewPackage={}, Amount={} VND",
+                currentDriver.getEmail(),
+                calculation.getCurrentPackageName(),
+                calculation.getNewPackageName(),
+                amount
+        );
+
+        // 4. Build signature parameters
+        Map<String, String> signatureParams = new LinkedHashMap<>();
+        signatureParams.put("accessKey", moMoConfig.getAccessKey());
+        signatureParams.put("amount", String.valueOf(amount));
+        signatureParams.put("extraData", extraData);
+        signatureParams.put("ipnUrl", moMoConfig.getIpnUrl());
+        signatureParams.put("orderId", orderId);
+        signatureParams.put("orderInfo", "Nang cap goi: " + calculation.getCurrentPackageName() +
+                " → " + calculation.getNewPackageName());
+        signatureParams.put("partnerCode", moMoConfig.getPartnerCode());
+        signatureParams.put("redirectUrl", finalRedirectUrl);
+        signatureParams.put("requestId", requestId);
+        signatureParams.put("requestType", moMoConfig.getRequestType());
+
+        String rawSignature = MoMoUtil.buildRawSignature(signatureParams);
+        String signature = MoMoUtil.hmacSHA256(rawSignature, moMoConfig.getSecretKey());
+
+        // 5. Build request body
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("partnerCode", moMoConfig.getPartnerCode());
+        requestBody.put("partnerName", "EVBattery Swap System - Upgrade");
+        requestBody.put("storeId", "EVBatteryStore");
+        requestBody.put("requestId", requestId);
+        requestBody.put("amount", amount);
+        requestBody.put("orderId", orderId);
+        requestBody.put("orderInfo", "Nang cap goi: " + calculation.getCurrentPackageName() +
+                " → " + calculation.getNewPackageName());
+        requestBody.put("redirectUrl", finalRedirectUrl);
+        requestBody.put("ipnUrl", moMoConfig.getIpnUrl());
+        requestBody.put("lang", "vi");
+        requestBody.put("extraData", extraData);
+        requestBody.put("requestType", moMoConfig.getRequestType());
+        requestBody.put("signature", signature);
+
+        // 6. Gọi MoMo API
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    moMoConfig.getEndpoint(),
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+
+            Map<String, Object> responseBody = response.getBody();
+
+            if (responseBody != null && responseBody.get("resultCode").equals(0)) {
+                String payUrl = (String) responseBody.get("payUrl");
+
+                log.info("✅ UPGRADE - MoMo payment URL created: OrderID={}, Amount={} VND",
+                        orderId, amount);
+
+                Map<String, String> result = new HashMap<>();
+                result.put("paymentUrl", payUrl);
+                result.put("orderId", orderId);
+                result.put("requestId", requestId);
+                result.put("amount", String.valueOf(amount));
+                result.put("upgradeType", "PACKAGE_UPGRADE");
+                result.put("oldPackage", calculation.getCurrentPackageName());
+                result.put("newPackage", calculation.getNewPackageName());
+                result.put("refundValue", calculation.getRefundValue().toString());
+                result.put("upgradeFee", calculation.getUpgradeFee().toString());
+                result.put("message", "Redirect user to this URL to complete upgrade payment");
+
+                return result;
+            } else {
+                throw new RuntimeException("MoMo API error: " + responseBody);
+            }
+
+        } catch (Exception e) {
+            log.error("❌ UPGRADE - Lỗi tạo MoMo payment: {}", e.getMessage());
+            throw new RuntimeException("Không thể tạo MoMo payment URL cho upgrade", e);
+        }
+    }
+
+    /**
      * PARSE EXTRADATA THÀNH MAP
-     * 
+     *
      * Chuyển string "packageId=1&driverId=13" thành Map:
      * {
      *   "packageId": "1",
      *   "driverId": "13"
      * }
-     * 
+     *
      * @param extraData String dạng "key1=value1&key2=value2"
      * @return Map<String, String>
      */
@@ -327,10 +478,10 @@ public class MoMoService {
 
     /**
      * LẤY GIÁ TRỊ LONG TỪ MAP
-     * 
+     *
      * Lấy value từ map và parse thành Long
      * Nếu không parse được thì return null
-     * 
+     *
      * @param map Map chứa data
      * @param key Key cần lấy
      * @return Long value hoặc null nếu không hợp lệ

@@ -15,4 +15,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle,Long> {
 
     // Tìm tất cả vehicles của một driver
     List<Vehicle> findByDriver(User driver);
+
+    // Tìm vehicles theo driver và status
+    List<Vehicle> findByDriverAndStatus(User driver, Vehicle.VehicleStatus status);
 }

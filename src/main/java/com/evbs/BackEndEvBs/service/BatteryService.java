@@ -214,7 +214,9 @@ public class BatteryService {
 
         Battery battery = batteryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Battery not found"));
-        batteryRepository.delete(battery);
+
+        battery.setStatus(Battery.Status.RETIRED);
+        batteryRepository.save(battery);
     }
 
     /**

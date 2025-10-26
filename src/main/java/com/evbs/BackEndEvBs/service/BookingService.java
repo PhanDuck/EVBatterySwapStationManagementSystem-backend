@@ -62,11 +62,11 @@ public class BookingService {
     @Autowired
     private final UserRepository userRepository;
 
-    // Cấu hình thời gian cho phép hủy booking (phút)
-    private static final int ALLOW_CANCEL_BEFORE_MINUTES = 30;
+    // Cấu hình thời gian cho phép hủy booking (phút) - TRƯỚC 1 TIẾNG
+    private static final int ALLOW_CANCEL_BEFORE_MINUTES = 60;
 
     /**
-     * CREATE - Tao booking moi (Driver) - TỰ ĐỘNG CONFIRM VÀ GỬI MÃ NGAY
+     * CREATE - Tao booking moi (Driver) - TỰ ĐỘNG SET THỜI GIAN 3 TIẾNG SAU
      */
     @Transactional
     public Booking createBooking(BookingRequest request) {
@@ -125,27 +125,9 @@ public class BookingService {
             throw new AuthenticationException("Station does not support the battery type of your vehicle");
         }
 
-        // VALIDATION: Chỉ cho phép đặt lịch trong vòng 3 tiếng tới
-        if (request.getBookingTime() == null) {
-            throw new AuthenticationException("Booking time is required");
-        }
-
+        // ========== TỰ ĐỘNG SET THỜI GIAN 3 TIẾNG SAU ==========
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime maxBookingTime = now.plusHours(3);
-
-        // Không được đặt lịch quá khứ
-        if (request.getBookingTime().isBefore(now)) {
-            throw new AuthenticationException("Không thể đặt lịch trong quá khứ");
-        }
-
-        // Chỉ được đặt trong vòng 3 tiếng tới
-        if (request.getBookingTime().isAfter(maxBookingTime)) {
-            throw new AuthenticationException(
-                    "Chỉ được đặt lịch trong vòng 3 tiếng tới. " +
-                            "Thời gian muộn nhất: " +
-                            maxBookingTime.format(DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy"))
-            );
-        }
+        LocalDateTime bookingTime = now.plusHours(3); // LUÔN ĐẶT 3 TIẾNG SAU
 
         // ========== TỰ ĐỘNG CONFIRM BOOKING VÀ RESERVE PIN ==========
 
@@ -179,7 +161,7 @@ public class BookingService {
         Battery reservedBattery = availableBatteries.get(0);
 
         // Reserve pin (status = PENDING, khóa trong 3 tiếng)
-        LocalDateTime expiryTime = now.plusHours(3);
+        LocalDateTime expiryTime = bookingTime; // HẾT HẠN ĐÚNG VÀO GIỜ BOOKING
 
         reservedBattery.setStatus(Battery.Status.PENDING);
         reservedBattery.setReservedForBooking(null);
@@ -197,7 +179,7 @@ public class BookingService {
         booking.setDriver(currentUser);
         booking.setVehicle(vehicle);
         booking.setStation(station);
-        booking.setBookingTime(request.getBookingTime());
+        booking.setBookingTime(bookingTime); // SET THỜI GIAN 3 TIẾNG SAU
         booking.setCreatedAt(now);
 
         // SET CONFIRMED NGAY LẬP TỨC
@@ -228,7 +210,7 @@ public class BookingService {
     }
 
     /**
-     * Hủy booking (Driver) - CHỈ CHO HỦY TRƯỚC 30 PHÚT
+     * Hủy booking (Driver) - CHỈ CHO HỦY TRƯỚC 1 TIẾNG SO VỚI GIỜ BOOKING
      */
     @Transactional
     public Booking cancelMyBooking(Long id) {
@@ -241,7 +223,7 @@ public class BookingService {
         // TÍNH THỜI GIAN CÒN LẠI ĐẾN GIỜ BOOKING
         long minutesUntilBooking = Duration.between(now, booking.getBookingTime()).toMinutes();
 
-        // QUAN TRỌNG: CHỈ CHO PHÉP HỦY KHI CÒN TRÊN 30 PHÚT
+        // QUAN TRỌNG: CHỈ CHO PHÉP HỦY KHI CÒN TRÊN 1 TIẾNG
         if (minutesUntilBooking <= ALLOW_CANCEL_BEFORE_MINUTES) {
             throw new AuthenticationException(
                     String.format(
@@ -404,7 +386,7 @@ public class BookingService {
 
             // Thêm thông tin về chính sách hủy booking
             emailDetail.setCancellationPolicy(
-                    String.format("Lưu ý: Bạn chỉ có thể hủy booking trước %d phút so với giờ đã đặt.", ALLOW_CANCEL_BEFORE_MINUTES)
+                    String.format("Lưu ý: Bạn chỉ có thể hủy booking trước %d phút so với giờ đã đặt. Sau đó vui lòng liên hệ staff để được hỗ trợ.", ALLOW_CANCEL_BEFORE_MINUTES)
             );
 
             emailService.sendBookingConfirmedEmail(emailDetail);
@@ -455,7 +437,7 @@ public class BookingService {
         }
     }
 
-    // ==================== CÁC METHOD KHÁC GIỮ NGUYÊN ====================
+    // ==================== CÁC METHOD KHÁC ====================
 
     @Transactional(readOnly = true)
     public List<Booking> getMyBookings() {
@@ -539,15 +521,6 @@ public class BookingService {
     }
 
 
-    @Transactional(readOnly = true)
-    public List<Booking> findBookingsByPhone(String phoneNumber) {
-        return userRepository.findAll()
-                .stream()
-                .filter(u -> phoneNumber != null && phoneNumber.equals(u.getPhoneNumber()))
-                .findFirst()
-                .map(bookingRepository::findByDriver)
-                .orElse(List.of());
-    }
 
     // ==================== HELPER METHODS ====================
 

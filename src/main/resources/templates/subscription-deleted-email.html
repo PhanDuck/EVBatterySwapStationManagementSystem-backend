@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông báo hủy gói dịch vụ - EV Battery Swap</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background-color: #f8f9fa;
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .warning-badge {
+            background-color: #ffffff;
+            color: #dc3545;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px 20px;
+        }
+
+        .greeting {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .greeting strong {
+            color: #dc3545;
+        }
+
+        .message-box {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .message-box h2 {
+            color: #721c24;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        .message-box .icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .message-box p {
+            color: #721c24;
+        }
+
+        .info-section {
+            margin: 25px 0;
+        }
+
+        .info-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #dc3545;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .info-table tr {
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .info-table td {
+            padding: 12px 0;
+            vertical-align: top;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            width: 40%;
+        }
+
+        .info-value {
+            color: #333;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        .highlight {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .reason-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .reason-box h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .reason-box p {
+            color: #856404;
+            margin: 0;
+            line-height: 1.8;
+        }
+
+        .next-steps {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .next-steps h3 {
+            color: #0c5460;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .next-steps ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .next-steps li {
+            padding: 8px 0;
+            border-bottom: 1px solid #bee5eb;
+            position: relative;
+            padding-left: 25px;
+            color: #0c5460;
+        }
+
+        .next-steps li:before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: #17a2b8;
+            font-weight: bold;
+        }
+
+        .next-steps li:last-child {
+            border-bottom: none;
+        }
+
+        .support-box {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .support-box h3 {
+            color: #155724;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .support-box p {
+            color: #155724;
+            margin: 5px 0;
+        }
+
+        .support-box a {
+            color: #28a745;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 25px 20px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .footer-brand {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .footer-tagline {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .footer-contact {
+            font-size: 12px;
+            color: #6c757d;
+            line-height: 1.4;
+        }
+
+        .footer-contact a {
+            color: #dc3545;
+            text-decoration: none;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #e9ecef;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 4px;
+            }
+
+            .header {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 20px 15px;
+            }
+
+            .info-table td {
+                padding: 8px 0;
+                font-size: 14px;
+            }
+
+            .info-label,
+            .info-value {
+                display: block;
+                width: 100%;
+                text-align: left;
+            }
+
+            .info-value {
+                margin-top: 4px;
+                margin-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- Header -->
+    <div class="header">
+        <h1>🔋 EV Battery Swap</h1>
+        <p>Hệ thống trạm đổi pin xe điện thông minh</p>
+        <div class="warning-badge">
+            ⚠️ THÔNG BÁO HỦY GÓI DỊCH VỤ
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- Greeting -->
+        <div class="greeting">
+            Kính gửi <strong th:text="${driverName}">Khách hàng</strong>,
+        </div>
+
+        <!-- Warning Message -->
+        <div class="message-box">
+            <div class="icon">🚨</div>
+            <h2>Gói dịch vụ của bạn đã bị hủy</h2>
+            <p>Chúng tôi xin thông báo rằng gói dịch vụ của bạn đã được quản trị viên hủy bỏ.</p>
+        </div>
+
+        <!-- Subscription Information -->
+        <div class="info-section">
+            <div class="info-title">📦 Thông tin gói dịch vụ đã bị hủy</div>
+            <table class="info-table">
+                <tr>
+                    <td class="info-label">Mã subscription:</td>
+                    <td class="info-value highlight" th:text="${subscriptionId}">SUB123456</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Tên gói:</td>
+                    <td class="info-value" th:text="${packageName}">Gói Standard</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Giá trị gói:</td>
+                    <td class="info-value" th:text="${packagePrice}">500,000 VNĐ</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Ngày bắt đầu:</td>
+                    <td class="info-value" th:text="${startDate}">01/01/2025</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Ngày hết hạn (dự kiến):</td>
+                    <td class="info-value" th:text="${endDate}">31/01/2025</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Số lượt đã sử dụng:</td>
+                    <td class="info-value" th:text="${usedSwaps} + ' lượt'">5 lượt</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Số lượt còn lại:</td>
+                    <td class="info-value highlight" th:text="${remainingSwaps} + ' lượt'">5 lượt</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Cancellation Details -->
+        <div class="info-section">
+            <div class="info-title">ℹ️ Chi tiết hủy bỏ</div>
+            <table class="info-table">
+                <tr>
+                    <td class="info-label">Thời gian hủy:</td>
+                    <td class="info-value" th:text="${cancellationTime}">27/10/2025 14:30</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Người thực hiện:</td>
+                    <td class="info-value" th:text="${cancelledBy}">Admin</td>
+                </tr>
+                <tr>
+                    <td class="info-label">Trạng thái:</td>
+                    <td class="info-value highlight">ĐÃ HỦY</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Reason Box -->
+        <div class="reason-box">
+            <h3>📝 Lý do hủy gói</h3>
+            <p th:text="${reason}">
+                Gói dịch vụ đã bị hủy bởi quản trị viên hệ thống.
+                Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với bộ phận hỗ trợ khách hàng.
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Next Steps -->
+        <div class="next-steps">
+            <h3>🔄 Các bước tiếp theo</h3>
+            <ul>
+                <li>Bạn sẽ không thể sử dụng dịch vụ đổi pin với gói đã bị hủy này</li>
+                <li>Nếu muốn tiếp tục sử dụng dịch vụ, vui lòng mua gói dịch vụ mới</li>
+                <li>Liên hệ với bộ phận chăm sóc khách hàng nếu bạn cho rằng đây là nhầm lẫn</li>
+                <li>Kiểm tra email và thông báo trong hệ thống để cập nhật thông tin mới nhất</li>
+            </ul>
+        </div>
+
+        <!-- Support Box -->
+        <div class="support-box">
+            <h3>💬 Cần hỗ trợ?</h3>
+            <p>Nếu bạn có bất kỳ thắc mắc hoặc cần giải đáp, vui lòng liên hệ:</p>
+            <p>📧 Email: <a href="mailto:support@evbatteryswap.com" th:text="${supportEmail}">sp.evswapstation@gmail.com</a></p>
+            <p>📞 Hotline: 0774560933</p>
+            <p style="margin-top: 10px; font-style: italic;">
+                Chúng tôi luôn sẵn sàng hỗ trợ bạn 24/7
+            </p>
+        </div>
+
+        <div class="divider"></div>
+
+        <p style="text-align: center; color: #6c757d; font-style: italic;">
+            Chúng tôi xin lỗi vì sự bất tiện này.<br>
+            Cảm ơn bạn đã tin tưởng và sử dụng dịch vụ EV Battery Swap! 🌱
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-brand">EV Battery Swap Station</div>
+        <div class="footer-tagline">Giải pháp đổi pin xe điện thông minh và tiện lợi</div>
+
+        <div class="footer-contact">
+            <p>📧 Email: <a href="mailto:support@evbatteryswap.com" th:text="${supportEmail}">sp.evswapstation@gmail.com</a></p>
+            <p>📞 Hotline: 0774560933</p>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                <small>
+                    Email này được gửi tự động từ hệ thống. Vui lòng không trả lời email này.<br>
+                    © 2025 EV Battery Swap Station. All rights reserved.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

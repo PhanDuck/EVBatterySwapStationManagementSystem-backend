@@ -5,7 +5,6 @@ import com.evbs.BackEndEvBs.entity.ServicePackage;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
-import com.evbs.BackEndEvBs.model.request.DriverSubscriptionRequest;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
 import com.evbs.BackEndEvBs.model.response.RenewalCalculationResponse;
 import com.evbs.BackEndEvBs.model.response.DowngradeCalculationResponse;
@@ -40,6 +39,9 @@ public class DriverSubscriptionService {
 
     @Autowired
     private final UserRepository userRepository;
+
+    @Autowired
+    private EmailService emailService;
 
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId, Long driverId) {
@@ -128,9 +130,36 @@ public class DriverSubscriptionService {
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
 
+        // Lưu thông tin trước khi xóa để gửi email
+        User driver = subscription.getDriver();
+        String adminName = currentUser.getFullName() != null ? currentUser.getFullName() : "Quản trị viên";
+
+        // Log thông tin
+        log.info("Admin {} is deleting subscription {} for driver {}",
+                currentUser.getEmail(),
+                subscription.getId(),
+                driver.getEmail());
+
         // Chuyển status thành CANCELLED
         subscription.setStatus(DriverSubscription.Status.CANCELLED);
         driverSubscriptionRepository.save(subscription);
+
+        // Gửi email thông báo cho driver
+        try {
+            String reason = String.format(
+                    "Gói dịch vụ '%s' của bạn đã bị hủy bởi quản trị viên hệ thống. " +
+                            "Nếu bạn cho rằng đây là một nhầm lẫn hoặc cần thêm thông tin, " +
+                            "vui lòng liên hệ với bộ phận hỗ trợ khách hàng của chúng tôi.",
+                    subscription.getServicePackage().getName()
+            );
+
+            emailService.sendSubscriptionDeletedEmail(driver, subscription, adminName, reason);
+            log.info("Subscription deletion email sent successfully to driver: {}", driver.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send subscription deletion email to driver {}: {}",
+                    driver.getEmail(), e.getMessage());
+            // Không throw exception để không ảnh hưởng đến quá trình xóa subscription
+        }
     }
 
     // ========================================
@@ -737,12 +766,27 @@ public class DriverSubscriptionService {
             throw new NotFoundException("Bạn chưa có gói dịch vụ nào. Vui lòng mua gói mới thay vì gia hạn.");
         }
 
-        // Lấy subscription gần nhất (ACTIVE hoặc mới EXPIRED)
-        DriverSubscription currentSub = allSubs.stream()
-                .filter(s -> s.getStatus() == DriverSubscription.Status.ACTIVE
-                        || s.getStatus() == DriverSubscription.Status.EXPIRED)
-                .max((s1, s2) -> s1.getEndDate().compareTo(s2.getEndDate()))
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy subscription để gia hạn"));
+        // Lấy subscription mới nhất dựa trên ID (gói được tạo sau cùng)
+        DriverSubscription latestSub = allSubs.stream()
+                .max((s1, s2) -> s1.getId().compareTo(s2.getId()))
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy subscription"));
+
+        // Kiểm tra gói mới nhất có bị CANCELLED không
+        if (latestSub.getStatus() == DriverSubscription.Status.CANCELLED) {
+            throw new IllegalArgumentException(
+                    "Gói gần nhất của bạn đã bị hủy. Vui lòng mua gói mới thay vì gia hạn."
+            );
+        }
+
+        // Chỉ chấp nhận renewal nếu gói mới nhất là ACTIVE hoặc EXPIRED
+        if (latestSub.getStatus() != DriverSubscription.Status.ACTIVE
+                && latestSub.getStatus() != DriverSubscription.Status.EXPIRED) {
+            throw new IllegalArgumentException(
+                    "Không thể gia hạn gói với trạng thái: " + latestSub.getStatus()
+            );
+        }
+
+        DriverSubscription currentSub = latestSub;
 
         ServicePackage currentPackage = currentSub.getServicePackage();
 

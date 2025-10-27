@@ -31,6 +31,11 @@ public class ServicePackageService {
             throw new AuthenticationException("Access denied. Admin role required.");
         }
 
+        long currentPackageCount = servicePackageRepository.count();
+        if (currentPackageCount >= 12) {
+            throw new IllegalArgumentException("Maximum limit of 12 service packages reached. Cannot create more.");
+        }
+
         if (servicePackageRepository.existsByName(request.getName())) {
             throw new IllegalArgumentException("Service package with name '" + request.getName() + "' already exists");
         }

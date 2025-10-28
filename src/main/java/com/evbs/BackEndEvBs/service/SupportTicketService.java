@@ -53,11 +53,11 @@ public class SupportTicketService {
     public SupportTicket createSupportTicket(SupportTicketRequest request) {
         User currentUser = authenticationService.getCurrentUser();
 
-        // Kiểm tra giới hạn 5 tickets OPEN cho driver
+        // Kiểm tra giới hạn 3 tickets OPEN cho driver
         if (currentUser.getRole() == User.Role.DRIVER) {
             long openTickets = supportTicketRepository.countByDriverAndStatus(currentUser, SupportTicket.Status.OPEN);
-            if (openTickets >= 5) {
-                throw new AuthenticationException("You have reached the maximum limit of 5 open support tickets");
+            if (openTickets >= 3) {
+                throw new AuthenticationException("You have reached the maximum limit of 3 open support tickets");
             }
         }
 

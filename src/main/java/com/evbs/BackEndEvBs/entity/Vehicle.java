@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,6 +54,25 @@ public class Vehicle {
     @JsonIgnore
     private List<SwapTransaction> swapTransactions = new ArrayList<>();
 
+    // Soft delete fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "Status", nullable = false, length = 20)
+    private VehicleStatus status = VehicleStatus.ACTIVE;
+
+    @Column(name = "DeletedAt")
+    private LocalDateTime deletedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "DeletedBy")
+    @JsonIgnore
+    private User deletedBy;
+
+    // Enum for vehicle status
+    public enum VehicleStatus {
+        ACTIVE,
+        INACTIVE
+    }
+
     // Transient fields để serialize IDs
     @Transient
     private Long driverId;
@@ -62,6 +82,9 @@ public class Vehicle {
 
     @Transient
     private Long currentBatteryId;
+
+    @Transient
+    private Long deletedById;
 
     // Getters để serialize IDs
     public Long getDriverId() {
@@ -74,5 +97,9 @@ public class Vehicle {
 
     public Long getCurrentBatteryId() {
         return this.currentBattery != null ? this.currentBattery.getId() : null;
+    }
+
+    public Long getDeletedById() {
+        return this.deletedBy != null ? this.deletedBy.getId() : null;
     }
 }

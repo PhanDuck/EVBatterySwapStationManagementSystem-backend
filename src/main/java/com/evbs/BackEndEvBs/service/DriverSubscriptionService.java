@@ -5,8 +5,8 @@ import com.evbs.BackEndEvBs.entity.ServicePackage;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
-import com.evbs.BackEndEvBs.model.request.DriverSubscriptionRequest;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
+import com.evbs.BackEndEvBs.model.response.RenewalCalculationResponse;
 import com.evbs.BackEndEvBs.model.response.DowngradeCalculationResponse;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
@@ -39,6 +39,9 @@ public class DriverSubscriptionService {
 
     @Autowired
     private final UserRepository userRepository;
+
+    @Autowired
+    private EmailService emailService;
 
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId, Long driverId) {
@@ -127,9 +130,36 @@ public class DriverSubscriptionService {
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
 
+        // Lưu thông tin trước khi xóa để gửi email
+        User driver = subscription.getDriver();
+        String adminName = currentUser.getFullName() != null ? currentUser.getFullName() : "Quản trị viên";
+
+        // Log thông tin
+        log.info("Admin {} is deleting subscription {} for driver {}",
+                currentUser.getEmail(),
+                subscription.getId(),
+                driver.getEmail());
+
         // Chuyển status thành CANCELLED
         subscription.setStatus(DriverSubscription.Status.CANCELLED);
         driverSubscriptionRepository.save(subscription);
+
+        // Gửi email thông báo cho driver
+        try {
+            String reason = String.format(
+                    "Gói dịch vụ '%s' của bạn đã bị hủy bởi quản trị viên hệ thống. " +
+                            "Nếu bạn cho rằng đây là một nhầm lẫn hoặc cần thêm thông tin, " +
+                            "vui lòng liên hệ với bộ phận hỗ trợ khách hàng của chúng tôi.",
+                    subscription.getServicePackage().getName()
+            );
+
+            emailService.sendSubscriptionDeletedEmail(driver, subscription, adminName, reason);
+            log.info("Subscription deletion email sent successfully to driver: {}", driver.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send subscription deletion email to driver {}: {}",
+                    driver.getEmail(), e.getMessage());
+            // Không throw exception để không ảnh hưởng đến quá trình xóa subscription
+        }
     }
 
     // ========================================
@@ -299,7 +329,7 @@ public class DriverSubscriptionService {
         ServicePackage oldPackage = oldSubscription.getServicePackage();
 
         // Log thông tin upgrade
-        log.info("🔄 UPGRADE PACKAGE - Driver: {} | Old: {} ({} swaps, {} remaining) | New: {} ({} swaps, {} VND)",
+        log.info("UPGRADE PACKAGE - Driver: {} | Old: {} ({} swaps, {} remaining) | New: {} ({} swaps, {} VND)",
                 driver.getEmail(),
                 oldPackage.getName(),
                 oldPackage.getMaxSwaps(),
@@ -314,7 +344,7 @@ public class DriverSubscriptionService {
         oldSubscription.setEndDate(LocalDate.now()); // Kết thúc ngay hôm nay
         driverSubscriptionRepository.save(oldSubscription);
 
-        log.info("✅ Old subscription {} expired. Remaining {} swaps forfeited.",
+        log.info("Old subscription {} expired. Remaining {} swaps forfeited.",
                 oldSubscription.getId(), oldSubscription.getRemainingSwaps());
 
         // Tạo subscription mới
@@ -331,7 +361,7 @@ public class DriverSubscriptionService {
 
         DriverSubscription savedSubscription = driverSubscriptionRepository.save(newSubscription);
 
-        log.info("🎉 UPGRADE SUCCESS - New subscription {} created: {} swaps, expires {}",
+        log.info("UPGRADE SUCCESS - New subscription {} created: {} swaps, expires {}",
                 savedSubscription.getId(),
                 savedSubscription.getRemainingSwaps(),
                 savedSubscription.getEndDate()
@@ -352,7 +382,7 @@ public class DriverSubscriptionService {
     ) {
         StringBuilder recommendation = new StringBuilder();
 
-        recommendation.append("📊 Phân tích: ");
+        recommendation.append("Phân tích: ");
 
         if (savingsPerSwap.compareTo(BigDecimal.ZERO) > 0) {
             recommendation.append(String.format(
@@ -363,14 +393,14 @@ public class DriverSubscriptionService {
 
         if (remainingSwaps > currentPackage.getMaxSwaps() / 2) {
             recommendation.append(String.format(
-                    "⚠️ Bạn còn %d/%d lượt chưa dùng (%d%%). " +
+                    "Bạn còn %d/%d lượt chưa dùng (%d%%). " +
                             "Nên sử dụng thêm vài lượt trước khi nâng cấp để tối ưu chi phí. ",
                     remainingSwaps,
                     currentPackage.getMaxSwaps(),
                     (remainingSwaps * 100 / currentPackage.getMaxSwaps())
             ));
         } else {
-            recommendation.append("✅ Thời điểm nâng cấp hợp lý! ");
+            recommendation.append("Thời điểm nâng cấp hợp lý! ");
         }
 
         int additionalSwaps = newPackage.getMaxSwaps() - currentPackage.getMaxSwaps();
@@ -642,7 +672,7 @@ public class DriverSubscriptionService {
 
         DriverSubscription savedSubscription = driverSubscriptionRepository.save(newSubscription);
 
-        log.info("🎉 DOWNGRADE SUCCESS - New subscription {} created: {} swaps, expires {} (extended {} days)",
+        log.info("DOWNGRADE SUCCESS - New subscription {} created: {} swaps, expires {} (extended {} days)",
                 savedSubscription.getId(),
                 savedSubscription.getRemainingSwaps(),
                 savedSubscription.getEndDate(),
@@ -693,6 +723,333 @@ public class DriverSubscriptionService {
             rec.append("Hợp lý nếu bạn thực sự dùng ít hơn dự kiến. ");
         } else {
             rec.append("Cân nhắc kỹ! Bạn vẫn còn nhiều lượt, có thể dùng hết rồi mua gói mới sẽ tốt hơn. ");
+        }
+
+        return rec.toString();
+    }
+
+    // ========================================
+    // GIA HẠN GÓI (RENEWAL/EXTEND)
+    // ========================================
+
+    /**
+     * TÍNH TOÁN CHI PHÍ GIA HẠN GÓI (FLEXIBLE RENEWAL)
+     *
+     * Inspired by NIO & Gogoro best practices:
+     *
+     * CASE 1: EARLY RENEWAL (còn hạn)
+     * - Stack swaps: totalSwaps = remainingSwaps + newMaxSwaps
+     * - Stack duration: newEndDate = currentEndDate + newDuration
+     * - Discount: 5% (khuyến khích renew sớm)
+     * - Bonus: Thêm 10% nếu renew SAME package
+     *
+     * CASE 2: LATE RENEWAL (hết hạn)
+     * - Reset swaps: totalSwaps = newMaxSwaps (mất lượt cũ)
+     * - Reset duration: newEndDate = today + newDuration
+     * - No discount
+     *
+     * @param renewalPackageId ID của gói muốn gia hạn (có thể khác gói hiện tại)
+     * @return RenewalCalculationResponse
+     */
+    @Transactional(readOnly = true)
+    public RenewalCalculationResponse calculateRenewalCost(Long renewalPackageId) {
+        User currentDriver = authenticationService.getCurrentUser();
+
+        if (currentDriver.getRole() != User.Role.DRIVER) {
+            throw new AuthenticationException("Only drivers can calculate renewal cost");
+        }
+
+        // 1. Lấy subscription hiện tại (có thể ACTIVE hoặc EXPIRED)
+        List<DriverSubscription> allSubs = driverSubscriptionRepository.findByDriver_Id(currentDriver.getId());
+
+        if (allSubs.isEmpty()) {
+            throw new NotFoundException("Bạn chưa có gói dịch vụ nào. Vui lòng mua gói mới thay vì gia hạn.");
+        }
+
+        // Lấy subscription mới nhất dựa trên ID (gói được tạo sau cùng)
+        DriverSubscription latestSub = allSubs.stream()
+                .max((s1, s2) -> s1.getId().compareTo(s2.getId()))
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy subscription"));
+
+        // Kiểm tra gói mới nhất có bị CANCELLED không
+        if (latestSub.getStatus() == DriverSubscription.Status.CANCELLED) {
+            throw new IllegalArgumentException(
+                    "Gói gần nhất của bạn đã bị hủy. Vui lòng mua gói mới thay vì gia hạn."
+            );
+        }
+
+        // Chỉ chấp nhận renewal nếu gói mới nhất là ACTIVE hoặc EXPIRED
+        if (latestSub.getStatus() != DriverSubscription.Status.ACTIVE
+                && latestSub.getStatus() != DriverSubscription.Status.EXPIRED) {
+            throw new IllegalArgumentException(
+                    "Không thể gia hạn gói với trạng thái: " + latestSub.getStatus()
+            );
+        }
+
+        DriverSubscription currentSub = latestSub;
+
+        ServicePackage currentPackage = currentSub.getServicePackage();
+
+        // 2. Lấy thông tin gói muốn gia hạn
+        ServicePackage renewalPackage = servicePackageRepository.findById(renewalPackageId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + renewalPackageId));
+
+        // 3. Xác định loại renewal: EARLY hay LATE
+        LocalDate today = LocalDate.now();
+        boolean isExpired = currentSub.getEndDate().isBefore(today);
+        String renewalType = isExpired ? "LATE" : "EARLY";
+
+        long daysRemaining = isExpired ? 0 : ChronoUnit.DAYS.between(today, currentSub.getEndDate());
+        Integer remainingSwaps = currentSub.getRemainingSwaps();
+
+        // 4. Kiểm tra có renew same package không
+        boolean isSamePackage = currentPackage.getId().equals(renewalPackageId);
+
+        // 5. TÍNH TOÁN CHI PHÍ
+        BigDecimal originalPrice = renewalPackage.getPrice();
+        BigDecimal earlyDiscount = BigDecimal.ZERO;
+        BigDecimal samePackageDiscount = BigDecimal.ZERO;
+
+        // 5.1. Early renewal discount (5%)
+        if (!isExpired) {
+            earlyDiscount = originalPrice.multiply(new BigDecimal("0.05"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        // 5.2. Same package bonus (10%)
+        if (isSamePackage) {
+            samePackageDiscount = originalPrice.multiply(new BigDecimal("0.10"))
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
+        // 5.3. Tổng discount
+        BigDecimal totalDiscount = earlyDiscount.add(samePackageDiscount);
+        BigDecimal finalPrice = originalPrice.subtract(totalDiscount)
+                .max(BigDecimal.ZERO)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // 6. TÍNH TOÁN SAU GIA HẠN
+        Integer totalSwaps;
+        LocalDate newStartDate;
+        LocalDate newEndDate;
+        Integer totalDuration;
+        Integer stackedSwaps = 0;
+
+        if (isExpired) {
+            // LATE RENEWAL - Reset hoàn toàn
+            totalSwaps = renewalPackage.getMaxSwaps();
+            newStartDate = today;
+            newEndDate = today.plusDays(renewalPackage.getDuration());
+            totalDuration = renewalPackage.getDuration();
+        } else {
+            // EARLY RENEWAL - Stack swaps & duration
+            totalSwaps = remainingSwaps + renewalPackage.getMaxSwaps();
+            stackedSwaps = remainingSwaps; // Số lượt được giữ lại
+            newStartDate = today;
+            newEndDate = currentSub.getEndDate().plusDays(renewalPackage.getDuration());
+            totalDuration = (int) ChronoUnit.DAYS.between(today, newEndDate);
+        }
+
+        // 7. Tính giá/lượt và tiết kiệm
+        BigDecimal pricePerSwap = finalPrice.divide(new BigDecimal(renewalPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
+        BigDecimal savingsAmount = totalDiscount;
+
+        // 8. Generate recommendation
+        String recommendation = generateRenewalRecommendation(
+                currentPackage, renewalPackage, isExpired, isSamePackage,
+                totalDiscount, stackedSwaps
+        );
+
+        String message = isExpired
+                ? "Gói của bạn đã hết hạn. Gia hạn ngay để tiếp tục sử dụng dịch vụ!"
+                : String.format("Bạn có thể gia hạn sớm và nhận ưu đãi! Còn %d ngày và %d lượt swap.",
+                daysRemaining, remainingSwaps);
+
+        // 9. Build response
+        return RenewalCalculationResponse.builder()
+                // Current subscription
+                .currentSubscriptionId(currentSub.getId())
+                .currentPackageName(currentPackage.getName())
+                .currentPackagePrice(currentPackage.getPrice())
+                .currentMaxSwaps(currentPackage.getMaxSwaps())
+                .remainingSwaps(remainingSwaps)
+                .currentStartDate(currentSub.getStartDate())
+                .currentEndDate(currentSub.getEndDate())
+                .daysRemaining((int) daysRemaining)
+                .isExpired(isExpired)
+
+                // Renewal package
+                .renewalPackageId(renewalPackage.getId())
+                .renewalPackageName(renewalPackage.getName())
+                .renewalPackagePrice(renewalPackage.getPrice())
+                .renewalMaxSwaps(renewalPackage.getMaxSwaps())
+                .renewalDuration(renewalPackage.getDuration())
+
+                // Pricing
+                .renewalType(renewalType)
+                .isSamePackage(isSamePackage)
+                .earlyRenewalDiscount(earlyDiscount)
+                .samePackageDiscount(samePackageDiscount)
+                .totalDiscount(totalDiscount)
+                .originalPrice(originalPrice)
+                .finalPrice(finalPrice)
+
+                // After renewal
+                .totalSwapsAfterRenewal(totalSwaps)
+                .newStartDate(newStartDate)
+                .newEndDate(newEndDate)
+                .totalDuration(totalDuration)
+                .stackedSwaps(stackedSwaps)
+
+                // Info
+                .canRenew(true)
+                .message(message)
+                .recommendation(recommendation)
+                .pricePerSwap(pricePerSwap)
+                .savingsAmount(savingsAmount)
+                .build();
+    }
+
+    /**
+     * XỬ LÝ GIA HẠN SAU KHI THANH TOÁN THÀNH CÔNG
+     *
+     * @param renewalPackageId ID gói gia hạn
+     * @param driverId ID driver
+     * @return DriverSubscription mới sau renewal
+     */
+    @Transactional
+    public DriverSubscription renewSubscriptionAfterPayment(Long renewalPackageId, Long driverId) {
+        User driver = userRepository.findById(driverId)
+                .orElseThrow(() -> new NotFoundException("Driver not found with id: " + driverId));
+
+        ServicePackage renewalPackage = servicePackageRepository.findById(renewalPackageId)
+                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + renewalPackageId));
+
+        // Lấy subscription hiện tại (có thể đã expire)
+        List<DriverSubscription> allSubs = driverSubscriptionRepository.findByDriver_Id(driverId);
+        DriverSubscription oldSubscription = allSubs.stream()
+                .filter(s -> s.getStatus() == DriverSubscription.Status.ACTIVE
+                        || s.getStatus() == DriverSubscription.Status.EXPIRED)
+                .max((s1, s2) -> s1.getEndDate().compareTo(s2.getEndDate()))
+                .orElse(null);
+
+        LocalDate today = LocalDate.now();
+        boolean isEarlyRenewal = false;
+        Integer stackedSwaps = 0;
+        LocalDate newStartDate = today;
+        LocalDate newEndDate;
+
+        if (oldSubscription != null) {
+            ServicePackage oldPackage = oldSubscription.getServicePackage();
+            boolean isExpired = oldSubscription.getEndDate().isBefore(today);
+
+            log.info("RENEWAL - Driver: {} | Old: {} (expired: {}, {} swaps remaining) | New: {}",
+                    driver.getEmail(),
+                    oldPackage.getName(),
+                    isExpired,
+                    oldSubscription.getRemainingSwaps(),
+                    renewalPackage.getName()
+            );
+
+            if (!isExpired) {
+                // EARLY RENEWAL - Stack swaps & duration
+                isEarlyRenewal = true;
+                stackedSwaps = oldSubscription.getRemainingSwaps();
+                newEndDate = oldSubscription.getEndDate().plusDays(renewalPackage.getDuration());
+            } else {
+                // LATE RENEWAL - Reset
+                newEndDate = today.plusDays(renewalPackage.getDuration());
+            }
+
+            // Expire gói cũ
+            oldSubscription.setStatus(DriverSubscription.Status.EXPIRED);
+            oldSubscription.setEndDate(today);
+            driverSubscriptionRepository.save(oldSubscription);
+
+            log.info("Old subscription {} expired.", oldSubscription.getId());
+        } else {
+            // Lần đầu mua gói (không có subscription cũ)
+            newEndDate = today.plusDays(renewalPackage.getDuration());
+        }
+
+        // Tạo subscription mới
+        DriverSubscription newSubscription = new DriverSubscription();
+        newSubscription.setDriver(driver);
+        newSubscription.setServicePackage(renewalPackage);
+        newSubscription.setStartDate(newStartDate);
+        newSubscription.setEndDate(newEndDate);
+        newSubscription.setStatus(DriverSubscription.Status.ACTIVE);
+
+        // STACK swaps nếu early renewal
+        Integer totalSwaps = renewalPackage.getMaxSwaps() + stackedSwaps;
+        newSubscription.setRemainingSwaps(totalSwaps);
+
+        DriverSubscription savedSubscription = driverSubscriptionRepository.save(newSubscription);
+
+        log.info("🎉 RENEWAL SUCCESS - New subscription {} created: {} swaps (stacked: {}), expires {}",
+                savedSubscription.getId(),
+                savedSubscription.getRemainingSwaps(),
+                stackedSwaps,
+                savedSubscription.getEndDate()
+        );
+
+        return savedSubscription;
+    }
+
+    /**
+     * GENERATE RENEWAL RECOMMENDATION
+     */
+    private String generateRenewalRecommendation(
+            ServicePackage currentPackage,
+            ServicePackage renewalPackage,
+            boolean isExpired,
+            boolean isSamePackage,
+            BigDecimal totalDiscount,
+            Integer stackedSwaps
+    ) {
+        StringBuilder rec = new StringBuilder();
+
+        rec.append("Phân tích: ");
+
+        if (isExpired) {
+            rec.append("Gói đã hết hạn! Gia hạn ngay để không bỏ lỡ dịch vụ. ");
+            if (isSamePackage) {
+                rec.append(String.format("Gia hạn gói cũ \"%s\" để tiết kiệm 10%% (-%,d VNĐ). ",
+                        renewalPackage.getName(), totalDiscount.intValue()));
+            }
+        } else {
+            rec.append("Gia hạn sớm! ");
+            if (stackedSwaps > 0) {
+                rec.append(String.format("Bạn sẽ giữ được %d lượt chưa dùng + thêm %d lượt mới = %d lượt! ",
+                        stackedSwaps, renewalPackage.getMaxSwaps(), stackedSwaps + renewalPackage.getMaxSwaps()));
+            }
+
+            if (totalDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                rec.append(String.format("Tiết kiệm %,d VNĐ nhờ ưu đãi ", totalDiscount.intValue()));
+                if (isSamePackage) {
+                    rec.append("(5% early + 10% same package). ");
+                } else {
+                    rec.append("(5% early renewal). ");
+                }
+            }
+        }
+
+        // So sánh gói
+        if (!isSamePackage) {
+            if (renewalPackage.getMaxSwaps() > currentPackage.getMaxSwaps()) {
+                rec.append(String.format("Bạn đang chuyển sang gói cao hơn (%s → %s) để có thêm %d lượt/tháng. ",
+                        currentPackage.getName(),
+                        renewalPackage.getName(),
+                        renewalPackage.getMaxSwaps() - currentPackage.getMaxSwaps()
+                ));
+            } else {
+                rec.append(String.format("Bạn đang chuyển sang gói thấp hơn (%s → %s). ",
+                        currentPackage.getName(),
+                        renewalPackage.getName()
+                ));
+            }
+        } else {
+            rec.append("Renew đúng gói đang dùng - Lựa chọn thông minh! ");
         }
 
         return rec.toString();

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -59,10 +60,10 @@ public class VehicleService {
         vehicle.setModel(vehicleRequest.getModel());
         User currentUser = authenticationService.getCurrentUser();
 
-        // Enforce max 2 vehicles per user
-        long myVehicles = vehicleRepository.findByDriver(currentUser).size();
-        if (myVehicles >= 2) {
-            throw new AuthenticationException("You can only register up to 2 vehicles.");
+        // Enforce max 2 ACTIVE vehicles per user (không đếm xe đã xóa)
+        long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
+        if (activeVehicles >= 2) {
+            throw new AuthenticationException("You can only register up to 2 active vehicles.");
         }
 
         vehicle.setDriver(currentUser);
@@ -72,12 +73,12 @@ public class VehicleService {
     }
 
     /**
-     * READ - Lấy vehicles của tôi (Driver only)
+     * READ - Lấy vehicles của tôi (Driver only) - chỉ lấy xe ACTIVE
      */
     @Transactional(readOnly = true)
     public List<Vehicle> getMyVehicles() {
         User currentUser = authenticationService.getCurrentUser();
-        return vehicleRepository.findByDriver(currentUser);
+        return vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE);
     }
 
     /**
@@ -167,17 +168,30 @@ public class VehicleService {
     }
 
     /**
-     * DELETE - Xóa xe (Admin/Staff only)
+     * DELETE - Soft delete xe (đổi status thành INACTIVE)
+     * Admin/Staff only
      */
     @Transactional
-    public void deleteVehicle(Long id) {
+    public Vehicle deleteVehicle(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Access denied. Admin/Staff role required.");
         }
+
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Vehicle not found with id: " + id));
-        vehicleRepository.delete(vehicle);
+
+        // Kiểm tra nếu vehicle đã bị xóa rồi
+        if (vehicle.getStatus() == Vehicle.VehicleStatus.INACTIVE) {
+            throw new AuthenticationException("Vehicle is already deleted");
+        }
+
+        // Soft delete: chỉ đổi status
+        vehicle.setStatus(Vehicle.VehicleStatus.INACTIVE);
+        vehicle.setDeletedAt(LocalDateTime.now());
+        vehicle.setDeletedBy(currentUser);
+
+        return vehicleRepository.save(vehicle);
     }
 
     /**

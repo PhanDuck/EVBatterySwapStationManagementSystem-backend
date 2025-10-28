@@ -318,6 +318,38 @@ public class EmailService {
         }
     }
 
+    /**
+     * Gửi email thông báo subscription bị xóa bởi Admin đến Driver
+     */
+    public void sendSubscriptionDeletedEmail(User driver, DriverSubscription subscription, String cancelledBy, String reason) {
+        try {
+            log.info("Đang gửi email thông báo xóa subscription đến driver: {} cho subscription: {}",
+                    driver.getEmail(), subscription.getId());
+
+            Context context = createSubscriptionDeletedEmailContext(driver, subscription, cancelledBy, reason);
+
+            String htmlContent = templateEngine.process("subscription-deleted-email", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(driver.getEmail());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject("⚠️ THÔNG BÁO: Gói dịch vụ của bạn đã bị hủy - EV Battery Swap");
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email xóa subscription đã được gửi thành công cho driver: {}", driver.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email xóa subscription cho driver {}: {}",
+                    driver.getEmail(), e.getMessage());
+            System.err.println("Failed to send subscription deleted email: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     // ==================== HELPER METHODS ====================
 
     private Context createPaymentEmailContext(User driver, Payment payment, ServicePackage servicePackage) {
@@ -457,6 +489,45 @@ public class EmailService {
             context.setVariable("hasStation", false);
         }
 
+        context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+        context.setVariable("systemName", "EV Battery Swap Station");
+
+        return context;
+    }
+
+    private Context createSubscriptionDeletedEmailContext(User driver, DriverSubscription subscription, String cancelledBy, String reason) {
+        Context context = new Context();
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+        ServicePackage servicePackage = subscription.getServicePackage();
+
+        // Thông tin driver
+        context.setVariable("driverName", driver.getFullName());
+        context.setVariable("driverEmail", driver.getEmail());
+
+        // Thông tin subscription
+        context.setVariable("subscriptionId", subscription.getId().toString());
+        context.setVariable("packageName", servicePackage.getName());
+        context.setVariable("packagePrice", formatCurrency(servicePackage.getPrice()));
+        context.setVariable("startDate", subscription.getStartDate().format(dateFormatter));
+        context.setVariable("endDate", subscription.getEndDate().format(dateFormatter));
+
+        // Tính số lượt đã sử dụng và còn lại
+        Integer maxSwaps = servicePackage.getMaxSwaps();
+        Integer remainingSwaps = subscription.getRemainingSwaps();
+        Integer usedSwaps = maxSwaps - remainingSwaps;
+
+        context.setVariable("usedSwaps", usedSwaps.toString());
+        context.setVariable("remainingSwaps", remainingSwaps.toString());
+
+        // Thông tin hủy bỏ
+        context.setVariable("cancellationTime", java.time.LocalDateTime.now().format(dateTimeFormatter));
+        context.setVariable("cancelledBy", cancelledBy != null ? cancelledBy : "Quản trị viên");
+        context.setVariable("reason", reason != null && !reason.isEmpty() ? reason :
+                "Gói dịch vụ đã bị hủy bởi quản trị viên hệ thống. Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với bộ phận hỗ trợ khách hàng.");
+
+        // Thông tin hỗ trợ
         context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
         context.setVariable("systemName", "EV Battery Swap Station");
 

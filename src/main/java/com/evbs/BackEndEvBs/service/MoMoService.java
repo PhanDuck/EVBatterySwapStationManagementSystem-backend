@@ -8,12 +8,12 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
+import com.evbs.BackEndEvBs.model.response.RenewalCalculationResponse;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.PaymentRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
 import com.evbs.BackEndEvBs.repository.UserRepository;
 import com.evbs.BackEndEvBs.util.MoMoUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -235,9 +235,10 @@ public class MoMoService {
             ServicePackage servicePackage = servicePackageRepository.findById(packageId)
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ ID: " + packageId));
 
-            // BUOC 3.5: Kiểm tra loại thanh toán (NEW PURCHASE hay UPGRADE)
+            // BUOC 3.5: Kiểm tra loại thanh toán (NEW PURCHASE hay UPGRADE hay RENEWAL)
             String paymentType = extraDataMap.getOrDefault("type", "NEW");
             boolean isUpgrade = "UPGRADE".equals(paymentType);
+            boolean isRenewal = "RENEWAL".equals(paymentType);
 
             // BUOC 4: Xử lý kết quả thanh toán
             if ("0".equals(resultCode)) {
@@ -249,11 +250,15 @@ public class MoMoService {
 
                 if (isUpgrade) {
                     // XỬ LÝ UPGRADE GÓI
-                    log.info("🔄 IPN - Processing UPGRADE payment...");
+                    log.info("IPN - Processing UPGRADE payment...");
                     subscription = driverSubscriptionService.upgradeSubscriptionAfterPayment(packageId, driverId);
+                } else if (isRenewal) {
+                    // XỬ LÝ RENEWAL/GIA HẠN
+                    log.info("IPN - Processing RENEWAL payment...");
+                    subscription = driverSubscriptionService.renewSubscriptionAfterPayment(packageId, driverId);
                 } else {
                     // XỬ LÝ MUA GÓI MỚI
-                    log.info("📦 IPN - Processing NEW PURCHASE payment...");
+                    log.info("IPN - Processing NEW PURCHASE payment...");
                     subscription = driverSubscriptionService.createSubscriptionAfterPayment(packageId, driverId);
                 }
 
@@ -266,7 +271,7 @@ public class MoMoService {
                 payment.setStatus(Payment.Status.COMPLETED);
                 paymentRepository.save(payment);
 
-                log.info("✅ IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
+                log.info("IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
 
                 // Gửi email thông báo thanh toán thành công
                 try {
@@ -284,7 +289,9 @@ public class MoMoService {
                 result.put("success", true);
                 result.put("message", isUpgrade ?
                         "Nâng cấp gói thành công! Gói mới đã được kích hoạt." :
-                        "Thanh toán thành công! Gói dịch vụ đã được kích hoạt.");
+                        (isRenewal ?
+                                "Gia hạn gói thành công! Gói đã được gia hạn." :
+                                "Thanh toán thành công! Gói dịch vụ đã được kích hoạt."));
                 result.put("paymentType", paymentType);
                 result.put("subscriptionId", subscription.getId());
                 result.put("packageName", servicePackage.getName());
@@ -364,7 +371,7 @@ public class MoMoService {
                 ? customRedirectUrl
                 : moMoConfig.getRedirectUrl();
 
-        log.info("🔄 UPGRADE - Creating MoMo payment URL: Driver={}, OldPackage={}, NewPackage={}, Amount={} VND",
+        log.info("UPGRADE - Creating MoMo payment URL: Driver={}, OldPackage={}, NewPackage={}, Amount={} VND",
                 currentDriver.getEmail(),
                 calculation.getCurrentPackageName(),
                 calculation.getNewPackageName(),
@@ -424,7 +431,7 @@ public class MoMoService {
             if (responseBody != null && responseBody.get("resultCode").equals(0)) {
                 String payUrl = (String) responseBody.get("payUrl");
 
-                log.info("✅ UPGRADE - MoMo payment URL created: OrderID={}, Amount={} VND",
+                log.info("UPGRADE - MoMo payment URL created: OrderID={}, Amount={} VND",
                         orderId, amount);
 
                 Map<String, String> result = new HashMap<>();
@@ -496,5 +503,126 @@ public class MoMoService {
             }
         }
         return null;
+    }
+
+    /**
+     * TẠO URL THANH TOÁN MOMO CHO GIA HẠN GÓI (RENEWAL)
+     *
+     * Hỗ trợ flexible renewal:
+     * - Early renewal: Được discount và stack swaps
+     * - Late renewal: Không discount, reset swaps
+     * - Allow package change: Renew sang gói khác
+     *
+     * @param renewalPackageId ID của gói muốn gia hạn
+     * @param customRedirectUrl URL redirect sau payment (optional, nếu null thì dùng config)
+     * @return Map chứa payUrl và orderId
+     */
+    public Map<String, String> createRenewalPaymentUrl(Long renewalPackageId, String customRedirectUrl) {
+        // BUOC 1: Tính toán cost gia hạn (có discount nếu early renewal)
+        RenewalCalculationResponse calculation = driverSubscriptionService.calculateRenewalCost(renewalPackageId);
+
+        if (!calculation.getCanRenew()) {
+            throw new AuthenticationException(calculation.getMessage());
+        }
+
+        User currentDriver = authenticationService.getCurrentUser();
+
+        // BUOC 2: Chuẩn bị thông tin thanh toán
+        String orderId = MoMoUtil.generateOrderId();
+        String requestId = MoMoUtil.generateRequestId();
+        long amount = calculation.getFinalPrice().longValue(); // Đã trừ discount
+
+        // QUAN TRỌNG: Thêm type=RENEWAL để callback biết đây là renewal
+        String extraData = String.format("packageId=%d&driverId=%d&type=RENEWAL",
+                renewalPackageId, currentDriver.getId());
+
+        // Xác định redirectUrl
+        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty())
+                ? customRedirectUrl
+                : moMoConfig.getRedirectUrl();
+
+        log.info("RENEWAL Payment - Driver: {} | Package: {} | Amount: {} VNĐ (discount: {} VNĐ) | Type: {}",
+                currentDriver.getEmail(),
+                calculation.getRenewalPackageName(),
+                amount,
+                calculation.getTotalDiscount().longValue(),
+                calculation.getRenewalType()
+        );
+
+        // BUOC 3: Signature parameters
+        Map<String, String> signatureParams = new LinkedHashMap<>();
+        signatureParams.put("accessKey", moMoConfig.getAccessKey());
+        signatureParams.put("amount", String.valueOf(amount));
+        signatureParams.put("extraData", extraData);
+        signatureParams.put("ipnUrl", moMoConfig.getIpnUrl());
+        signatureParams.put("orderId", orderId);
+        signatureParams.put("orderInfo", "Gia han goi: " + calculation.getRenewalPackageName());
+        signatureParams.put("partnerCode", moMoConfig.getPartnerCode());
+        signatureParams.put("redirectUrl", finalRedirectUrl);
+        signatureParams.put("requestId", requestId);
+        signatureParams.put("requestType", moMoConfig.getRequestType());
+
+        String rawSignature = MoMoUtil.buildRawSignature(signatureParams);
+        String signature = MoMoUtil.hmacSHA256(rawSignature, moMoConfig.getSecretKey());
+
+        // BUOC 4: Build request body
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("partnerCode", moMoConfig.getPartnerCode());
+        requestBody.put("partnerName", "EVBattery Swap System");
+        requestBody.put("storeId", "EVBatteryStore");
+        requestBody.put("requestId", requestId);
+        requestBody.put("amount", amount);
+        requestBody.put("orderId", orderId);
+        requestBody.put("orderInfo", "Gia han goi: " + calculation.getRenewalPackageName());
+        requestBody.put("redirectUrl", finalRedirectUrl);
+        requestBody.put("ipnUrl", moMoConfig.getIpnUrl());
+        requestBody.put("lang", "vi");
+        requestBody.put("extraData", extraData);
+        requestBody.put("requestType", moMoConfig.getRequestType());
+        requestBody.put("signature", signature);
+
+        // BUOC 5: Gọi MoMo API
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    moMoConfig.getEndpoint(),
+                    entity,
+                    Map.class
+            );
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null || !"0".equals(String.valueOf(responseBody.get("resultCode")))) {
+                String errorMessage = responseBody != null
+                        ? (String) responseBody.get("message")
+                        : "Unknown error";
+
+                log.error("RENEWAL - MoMo payment URL creation failed: {}", errorMessage);
+                throw new RuntimeException("Không thể tạo URL thanh toán MoMo: " + errorMessage);
+            }
+
+            String payUrl = (String) responseBody.get("payUrl");
+
+            log.info("RENEWAL - Payment URL created successfully: orderId={}, payUrl={}",
+                    orderId, payUrl);
+
+            Map<String, String> result = new HashMap<>();
+            result.put("payUrl", payUrl);
+            result.put("orderId", orderId);
+            result.put("amount", String.valueOf(amount));
+            result.put("discount", calculation.getTotalDiscount().toString());
+            result.put("renewalType", calculation.getRenewalType());
+            result.put("packageName", calculation.getRenewalPackageName());
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("RENEWAL - Exception when calling MoMo API: {}", e.getMessage());
+            throw new RuntimeException("Lỗi khi gọi MoMo API: " + e.getMessage(), e);
+        }
     }
 }

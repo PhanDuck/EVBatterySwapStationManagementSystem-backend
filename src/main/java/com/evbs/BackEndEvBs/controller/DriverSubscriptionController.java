@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.entity.DriverSubscription;
 import com.evbs.BackEndEvBs.model.request.DriverSubscriptionRequest;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
 import com.evbs.BackEndEvBs.model.response.DowngradeCalculationResponse;
+import com.evbs.BackEndEvBs.model.response.RenewalCalculationResponse;
 import com.evbs.BackEndEvBs.service.DriverSubscriptionService;
 import com.evbs.BackEndEvBs.service.MoMoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -118,7 +119,7 @@ public class DriverSubscriptionController {
             summary = "Confirm package downgrade",
             description = "Xác nhận hạ cấp gói (KHÔNG CẦN THANH TOÁN). " +
                     "Gói cũ sẽ bị expire, gói mới được kích hoạt với số lượt đã trừ penalty. " +
-                    "⚠️ KHÔNG HOÀN TIỀN! Hãy kiểm tra kỹ bằng /downgrade/calculate trước."
+                    "KHÔNG HOÀN TIỀN! Hãy kiểm tra kỹ bằng /downgrade/calculate trước."
     )
     public ResponseEntity<DriverSubscription> confirmDowngrade(
             @RequestParam Long newPackageId
@@ -126,5 +127,48 @@ public class DriverSubscriptionController {
         DriverSubscription newSubscription = driverSubscriptionService.downgradeSubscription(newPackageId);
         return ResponseEntity.ok(newSubscription);
     }
+
+    // ========================================
+    // RENEWAL/GIA HẠN GÓI ENDPOINTS
+    // ========================================
+
+    @GetMapping("/renewal/calculate")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "Calculate renewal cost (Flexible Renewal)",
+            description = "Tính toán chi phí gia hạn gói (có thể renew sang gói khác). " +
+                    "\n\n**EARLY RENEWAL** (còn hạn):" +
+                    "\n- Discount 5% + thêm 10% nếu renew SAME package" +
+                    "\n- STACK swaps: giữ lại lượt cũ + thêm lượt mới" +
+                    "\n- STACK duration: endDate = currentEndDate + newDuration" +
+                    "\n\n**LATE RENEWAL** (hết hạn):" +
+                    "\n- No discount" +
+                    "\n- RESET swaps: chỉ có lượt mới (mất lượt cũ)" +
+                    "\n- RESET duration: endDate = today + newDuration" +
+                    "\n\n**Khuyến nghị**: Renew sớm để được discount và giữ lại lượt chưa dùng!"
+    )
+    public ResponseEntity<RenewalCalculationResponse> calculateRenewalCost(
+            @RequestParam Long renewalPackageId
+    ) {
+        RenewalCalculationResponse response = driverSubscriptionService.calculateRenewalCost(renewalPackageId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/renewal/initiate")
+    @PreAuthorize("hasRole('DRIVER')")
+    @Operation(
+            summary = "Initiate renewal payment",
+            description = "Tạo URL thanh toán MoMo để gia hạn gói. " +
+                    "Sau khi thanh toán thành công, gói cũ sẽ được expire và gói mới tự động kích hoạt. " +
+                    "\n\n**Lưu ý**: Nên gọi /renewal/calculate trước để xem chi tiết discount và số lượt sau renewal."
+    )
+    public ResponseEntity<Map<String, String>> initiateRenewal(
+            @RequestParam Long renewalPackageId,
+            @RequestParam(required = false) String redirectUrl
+    ) {
+        Map<String, String> paymentInfo = moMoService.createRenewalPaymentUrl(renewalPackageId, redirectUrl);
+        return ResponseEntity.status(HttpStatus.CREATED).body(paymentInfo);
+    }
 }
+
 

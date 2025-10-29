@@ -703,22 +703,22 @@ public class DriverSubscriptionService {
     // ========================================
 
     /**
-     * TÍNH TOÁN CHI PHÍ GIA HẠN GÓI (FLEXIBLE RENEWAL)
+     * TÍNH TOÁN CHI PHÍ GIA HẠN GÓI (RENEWAL - SAME PACKAGE ONLY)
      *
-     * Inspired by NIO & Gogoro best practices:
+     * CHỈ CHO PHÉP GIA HẠN CÙNG GÓI HIỆN TẠI!
+     * Nếu muốn đổi gói khác → Dùng chức năng NÂNG CẤP hoặc HẠ CẤP
      *
      * CASE 1: EARLY RENEWAL (còn hạn)
      * - Stack swaps: totalSwaps = remainingSwaps + newMaxSwaps
      * - Stack duration: newEndDate = currentEndDate + newDuration
      * - Discount: 5% (khuyến khích renew sớm)
-     * - Bonus: Thêm 10% nếu renew SAME package
      *
      * CASE 2: LATE RENEWAL (hết hạn)
      * - Reset swaps: totalSwaps = newMaxSwaps (mất lượt cũ)
      * - Reset duration: newEndDate = today + newDuration
      * - No discount
      *
-     * @param renewalPackageId ID của gói muốn gia hạn (có thể khác gói hiện tại)
+     * @param renewalPackageId ID của gói muốn gia hạn (PHẢI CÙNG GÓI HIỆN TẠI)
      * @return RenewalCalculationResponse
      */
     @Transactional(readOnly = true)
@@ -788,7 +788,6 @@ public class DriverSubscriptionService {
         // 5. TÍNH TOÁN CHI PHÍ
         BigDecimal originalPrice = renewalPackage.getPrice();
         BigDecimal earlyDiscount = BigDecimal.ZERO;
-        BigDecimal samePackageDiscount = BigDecimal.ZERO;
 
         // 5.1. Early renewal discount (5%)
         if (!isExpired) {
@@ -796,12 +795,8 @@ public class DriverSubscriptionService {
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
-        // 5.2. Same package bonus (10%) - Luôn được áp dụng vì chỉ cho phép gia hạn cùng gói
-        samePackageDiscount = originalPrice.multiply(new BigDecimal("0.10"))
-                .setScale(2, RoundingMode.HALF_UP);
-
-        // 5.3. Tổng discount
-        BigDecimal totalDiscount = earlyDiscount.add(samePackageDiscount);
+        // 5.2. Tổng discount
+        BigDecimal totalDiscount = earlyDiscount;
         BigDecimal finalPrice = originalPrice.subtract(totalDiscount)
                 .max(BigDecimal.ZERO)
                 .setScale(2, RoundingMode.HALF_UP);
@@ -867,7 +862,7 @@ public class DriverSubscriptionService {
                 .renewalType(renewalType)
                 .isSamePackage(isSamePackage)
                 .earlyRenewalDiscount(earlyDiscount)
-                .samePackageDiscount(samePackageDiscount)
+                .samePackageDiscount(BigDecimal.ZERO)
                 .totalDiscount(totalDiscount)
                 .originalPrice(originalPrice)
                 .finalPrice(finalPrice)
@@ -930,7 +925,7 @@ public class DriverSubscriptionService {
             ServicePackage oldPackage = oldSubscription.getServicePackage();
             if (!oldPackage.getId().equals(renewalPackageId)) {
                 throw new IllegalArgumentException(
-                        "KHÔNG THỂ GIA HẠN! Bạn chỉ được gia hạn cùng gói hiện tại. " +
+                        "❌ KHÔNG THỂ GIA HẠN! Bạn chỉ được gia hạn cùng gói hiện tại. " +
                                 "Gói hiện tại: \"" + oldPackage.getName() + "\" (ID: " + oldPackage.getId() + "). " +
                                 "Gói bạn chọn: \"" + renewalPackage.getName() + "\" (ID: " + renewalPackageId + "). " +
                                 "Nếu muốn đổi gói khác, vui lòng sử dụng chức năng NÂNG CẤP hoặc HẠ CẤP gói."
@@ -1017,8 +1012,6 @@ public class DriverSubscriptionService {
 
         if (isExpired) {
             rec.append("Gói đã hết hạn! Gia hạn ngay để không bỏ lỡ dịch vụ. ");
-            rec.append(String.format("Gia hạn gói \"%s\" để tiết kiệm 10%% (-%,d VNĐ). ",
-                    renewalPackage.getName(), totalDiscount.intValue()));
         } else {
             rec.append("Gia hạn sớm! ");
             if (stackedSwaps > 0) {
@@ -1027,12 +1020,12 @@ public class DriverSubscriptionService {
             }
 
             if (totalDiscount.compareTo(BigDecimal.ZERO) > 0) {
-                rec.append(String.format("Tiết kiệm %,d VNĐ nhờ ưu đãi (5%% early + 10%% same package). ",
+                rec.append(String.format("Tiết kiệm %,d VNĐ nhờ ưu đãi gia hạn sớm (5%%). ",
                         totalDiscount.intValue()));
             }
         }
 
-        rec.append("🎯 Renew đúng gói đang dùng - Lựa chọn thông minh! ");
+        rec.append("Gia hạn gói đang dùng - Lựa chọn thông minh! ");
 
         return rec.toString();
     }

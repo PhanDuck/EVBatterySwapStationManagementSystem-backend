@@ -403,8 +403,8 @@ public class DatabaseInitializer implements CommandLineRunner {
             BatteryType batteryType = currentBattery.getBatteryType();
 
             Vehicle vehicle = createVehicle(
-                    "VFMOTO202400" + (1000 + i),
-                    "51-" + (char)('A' + (i / 10)) + (char)('A' + (i % 10)) + " " + (10000 + i),
+                    "VFMOTO2024001" + (1000 + i),
+                    "51" + (char)('A' + (i / 10)) + (char)('A' + (i % 10)) + "" + (10000 + i),
                     getVehicleModel(batteryType, i),
                     driver,
                     batteryType,

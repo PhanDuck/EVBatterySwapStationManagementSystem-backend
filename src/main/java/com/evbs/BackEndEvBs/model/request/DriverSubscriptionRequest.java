@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 public class DriverSubscriptionRequest {
-    @NotNull(message = "Package ID cannot be null!")
+    @NotNull(message = "ID gói không thể rỗng!")
     private Long packageId;
 }

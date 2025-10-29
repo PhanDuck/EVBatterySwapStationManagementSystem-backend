@@ -1,18 +1,13 @@
 package com.evbs.BackEndEvBs.service;
 
-
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.model.request.CreateUserRequest;
 import com.evbs.BackEndEvBs.model.request.UpdateUserRequest;
-
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.UserRepository;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-
-
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,12 +35,12 @@ public class UserService {
     public UserResponse createUser(CreateUserRequest request) {
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AuthenticationException("Email already exists!");
+            throw new AuthenticationException("Email đã tồn tại!");
         }
 
         // Kiểm tra phone number đã tồn tại
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new AuthenticationException("Phone number already exists!");
+            throw new AuthenticationException("Số điện thoại đã tồn tại!");
         }
 
         // Tạo user mới
@@ -66,7 +61,7 @@ public class UserService {
      */
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new AuthenticationException("User not found with id: " + id));
+                .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng với id: " + id));
         return modelMapper.map(user, UserResponse.class);
     }
 
@@ -77,11 +72,11 @@ public class UserService {
         // Kiểm tra user hiện tại không được cập nhật chính mình
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getId().equals(id)) {
-            throw new AuthenticationException("You cannot update your own account");
+            throw new AuthenticationException("Bạn không thể cập nhật tài khoản của chính mình");
         }
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new AuthenticationException("User not found with id: " + id));
+                .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng với id: " + id));
 
         // Cập nhật các field nếu có giá trị mới
         if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
@@ -91,7 +86,7 @@ public class UserService {
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             // Kiểm tra email mới có trùng với user khác không
             if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-                throw new AuthenticationException("Email already exists!");
+                throw new AuthenticationException("Email đã tồn tại!");
             }
             user.setEmail(request.getEmail());
         }
@@ -99,7 +94,7 @@ public class UserService {
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
             // Kiểm tra phone number mới có trùng với user khác không
             if (!user.getPhoneNumber().equals(request.getPhoneNumber()) && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-                throw new AuthenticationException("Phone number already exists!");
+                throw new AuthenticationException("Số điện thoại đã tồn tại!");
             }
             user.setPhoneNumber(request.getPhoneNumber());
         }
@@ -123,12 +118,12 @@ public class UserService {
         // Kiểm tra user hiện tại không được xóa chính mình
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getId().equals(id)) {
-            throw new AuthenticationException("You cannot delete your own account");
+            throw new AuthenticationException("Bạn không thể xóa tài khoản của chính mình");
         }
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new AuthenticationException("User not found with id: " + id));
-        
+                .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng với id: " + id));
+
         user.setStatus(User.Status.INACTIVE); // Có thể tạo thêm DELETED status nếu cần
         userRepository.save(user);
     }

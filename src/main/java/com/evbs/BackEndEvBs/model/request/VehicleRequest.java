@@ -9,20 +9,20 @@ import lombok.Data;
 @Data
 public class VehicleRequest {
 
-    @NotEmpty(message = "VIN cannot be empty!")
-    @Size(min = 17, max = 17, message = "VIN must be exactly 17 characters!")
+    @NotEmpty(message = "VIN không được để trống!")
+    @Size(min = 17, max = 17, message = "VIN phải có chính xác 17 ký tự!")
     private String vin;
 
-    @NotEmpty(message = "PlateNumber cannot be empty!")
+    @NotEmpty(message = "Số hiệu tấm không được để trống!")
     @Pattern(
             regexp = "^[0-9]{2}[a-zA-Z]{1,2}[0-9]{5,6}(\\\\.[a-zA-Z]{1,2})?$",
-            message = "Invalid Vietnamese motorcycle plate format! Valid examples: 29X112345, 51F11234, 30H112350"
+            message = "Định dạng biển số xe máy Việt Nam không hợp lệ! Ví dụ hợp lệ: 29X112345, 51F11234, 30H112350"
     )
     private String plateNumber;
 
-    @NotEmpty(message = "Vehicle model cannot be empty!")
+    @NotEmpty(message = "Mẫu xe không được để trống!")
     private String model;
 
-    @NotNull(message = "Battery type ID cannot be null!")
+    @NotNull(message = "ID loại pin không thể để trống!")
     private Long batteryTypeId;
 }

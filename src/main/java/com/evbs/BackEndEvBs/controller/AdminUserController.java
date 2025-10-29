@@ -82,7 +82,7 @@ public class AdminUserController {
             @Parameter(description = "User ID") @PathVariable Long id) {
         userService.deleteUser(id);
         Map<String, String> response = new HashMap<>();
-        response.put("message", "User deleted successfully");
+        response.put("message", "xóa người dùng thành công");
         return ResponseEntity.ok(response);
     }
 }

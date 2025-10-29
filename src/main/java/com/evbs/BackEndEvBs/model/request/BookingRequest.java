@@ -6,10 +6,10 @@ import lombok.Data;
 @Data
 public class BookingRequest {
 
-    @NotNull(message = "Vehicle ID cannot be null!")
+    @NotNull(message = "ID xe không thể rỗng!")
     private Long vehicleId;
 
-    @NotNull(message = "Station ID cannot be null!")
+        @NotNull(message = "ID trạm không thể để giá trị null!")
     private Long stationId;
 
     // ĐÃ XÓA TRƯỜNG bookingTime - hệ thống tự động set thời gian 3 tiếng sau

@@ -16,16 +16,16 @@ import java.time.LocalDate;
 @Data
 public class BatteryRequest {
 
-    @NotEmpty(message = "Battery model cannot be empty!")
+    @NotEmpty(message = "model không được để trống!")
     private String model;
 
-    @NotNull(message = "Capacity cannot be null!")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Capacity must be greater than 0")
-    @Digits(integer = 8, fraction = 2, message = "Capacity must have max 8 integer and 2 fraction digits")
+    @NotNull(message = "Dung lượng không được để trống!")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Dung lượng phải lớn hơn 0")
+    @Digits(integer = 8, fraction = 2, message = "Dung lượng phải có tối đa 8 chữ số nguyên và 2 chữ số thập phân")
     private BigDecimal capacity;
 
-    @DecimalMin(value = "0.0", message = "State of health cannot be negative")
-    @Digits(integer = 3, fraction = 2, message = "State of health must have max 3 integer and 2 fraction digits")
+    @DecimalMin(value = "0.0", message = "State of health không được âm")
+    @Digits(integer = 3, fraction = 2, message = "State of health tối đa 3 số nguyên va 2 chữ số thập phân")
     private BigDecimal stateOfHealth;
 
     @Enumerated(EnumType.STRING)
@@ -36,7 +36,7 @@ public class BatteryRequest {
 
     private LocalDate lastMaintenanceDate;
 
-    @NotNull(message = "Battery type ID cannot be null!")
+    @NotNull(message = "batteryTypeId không được để trống!")
     private Long batteryTypeId;
 
     private Long currentStationId;

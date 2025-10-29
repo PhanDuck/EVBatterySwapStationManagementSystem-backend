@@ -57,7 +57,7 @@ public class SupportTicketService {
         if (currentUser.getRole() == User.Role.DRIVER) {
             long openTickets = supportTicketRepository.countByDriverAndStatus(currentUser, SupportTicket.Status.OPEN);
             if (openTickets >= 5) {
-                throw new AuthenticationException("You have reached the maximum limit of 5 open support tickets");
+                throw new AuthenticationException("Bạn đã đạt đến giới hạn tối đa 5 ticket hỗ trợ đang mở");
             }
         }
 
@@ -70,7 +70,7 @@ public class SupportTicketService {
         // Set station nếu có
         if (request.getStationId() != null) {
             Station station = stationRepository.findById(request.getStationId())
-                    .orElseThrow(() -> new NotFoundException("Station not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
             ticket.setStation(station);
         }
 
@@ -90,7 +90,7 @@ public class SupportTicketService {
 
                     if (!stationStaff.isEmpty()) {
                         emailService.sendTicketCreatedToStaff(stationStaff, savedTicket);
-                        log.info("Sent ticket notification to {} staff members for station: {}",
+                        log.info("Đã gửi thông báo ticket đến {} nhân viên cho trạm: {}",
                                 stationStaff.size(), request.getStationId());
                     } else {
                         // Không có staff nào -> Gửi đến Admin
@@ -98,7 +98,7 @@ public class SupportTicketService {
                                 .filter(user -> user.getRole() == User.Role.ADMIN)
                                 .toList();
                         emailService.sendTicketCreatedToAdmin(adminList, savedTicket);
-                        log.info("No staff found for station, sent to {} admins instead", adminList.size());
+                        log.info("Không tìm thấy nhân viên cho trạm, đã gửi đến {} quản trị viên thay thế", adminList.size());
                     }
                 }
             } else {
@@ -107,11 +107,11 @@ public class SupportTicketService {
                         .filter(user -> user.getRole() == User.Role.ADMIN)
                         .toList();
                 emailService.sendTicketCreatedToAdmin(adminList, savedTicket);
-                log.info("Sent general support ticket to {} admins", adminList.size());
+                log.info("Đã gửi ticket hỗ trợ chung đến {} quản trị viên", adminList.size());
             }
 
         } catch (Exception e) {
-            log.error("Failed to send email notifications for ticket: {}", savedTicket.getId(), e);
+            log.error("Không thể gửi thông báo email cho ticket: {}", savedTicket.getId(), e);
             // Không throw exception để không ảnh hưởng đến việc tạo ticket
         }
 
@@ -134,7 +134,7 @@ public class SupportTicketService {
     public SupportTicket getMyTicket(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         return supportTicketRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Ticket not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket"));
     }
 
     /**
@@ -144,11 +144,11 @@ public class SupportTicketService {
     public SupportTicket updateMyTicket(Long id, SupportTicketRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         SupportTicket ticket = supportTicketRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Ticket not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket"));
 
         // Chỉ cho phép update khi ticket chưa được trả lời
         if (!SupportTicket.Status.OPEN.equals(ticket.getStatus())) {
-            throw new AuthenticationException("Cannot update ticket that is already being processed");
+            throw new AuthenticationException("Không thể cập nhật ticket đang được xử lý");
         }
 
         // Update các field
@@ -163,7 +163,7 @@ public class SupportTicketService {
         // Update station nếu có
         if (request.getStationId() != null) {
             Station station = stationRepository.findById(request.getStationId())
-                    .orElseThrow(() -> new NotFoundException("Station not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
             ticket.setStation(station);
         }
 
@@ -177,16 +177,16 @@ public class SupportTicketService {
     public void deleteMyTicket(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         SupportTicket ticket = supportTicketRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Ticket not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket"));
 
         // Kiểm tra xem ticket có responses hay không
         if (!ticket.getResponses().isEmpty()) {
-            throw new AuthenticationException("Cannot delete ticket that has responses from staff");
+            throw new AuthenticationException("Không thể xóa ticket đã có phản hồi từ nhân viên");
         }
 
         // Chỉ cho phép xóa ticket có status OPEN
         if (!SupportTicket.Status.OPEN.equals(ticket.getStatus())) {
-            throw new AuthenticationException("Can only delete tickets with OPEN status");
+            throw new AuthenticationException("Chỉ có thể xóa các ticket có trạng thái OPEN");
         }
 
         supportTicketRepository.delete(ticket);
@@ -201,7 +201,7 @@ public class SupportTicketService {
     public List<SupportTicket> getAllTickets() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         // Admin có thể xem tất cả tickets
@@ -212,7 +212,7 @@ public class SupportTicketService {
         // Staff chỉ xem tickets của các station họ quản lý
         List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
         if (myStations.isEmpty()) {
-            throw new AuthenticationException("Staff not assigned to any station");
+            throw new AuthenticationException("Nhân viên chưa được phân công vào trạm nào");
         }
 
         return supportTicketRepository.findByStationIn(myStations);
@@ -228,19 +228,19 @@ public class SupportTicketService {
         User currentUser = authenticationService.getCurrentUser();
 
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         SupportTicket ticket = supportTicketRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Ticket not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket với id: " + id));
 
         // Staff phải kiểm tra quyền truy cập ticket
         if (currentUser.getRole() == User.Role.STAFF) {
             // Nếu ticket không có station, staff không thể cập nhật
             if (ticket.getStation() == null) {
                 throw new AuthenticationException(
-                        "Cannot update ticket without station assignment. " +
-                                "Please contact admin."
+                        "Không thể cập nhật ticket không có trạm được chỉ định. " +
+                                "Vui lòng liên hệ quản trị viên."
                 );
             }
 
@@ -250,8 +250,8 @@ public class SupportTicketService {
 
             if (!hasAccess) {
                 throw new AuthenticationException(
-                        "Access denied. You can only update tickets from stations you manage. " +
-                                "This ticket belongs to station: " + ticket.getStation().getName()
+                        "Truy cập bị từ chối. Bạn chỉ có thể cập nhật tickets từ các trạm bạn quản lý. " +
+                                "Ticket này thuộc về trạm: " + ticket.getStation().getName()
                 );
             }
         }

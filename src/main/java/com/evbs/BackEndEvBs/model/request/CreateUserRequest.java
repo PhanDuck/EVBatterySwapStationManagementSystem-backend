@@ -13,20 +13,20 @@ import lombok.Setter;
 @Setter
 public class CreateUserRequest {
     
-    @NotEmpty(message = "FullName cannot be empty!")
+    @NotEmpty(message = "FullName không được để trống!")
     private String fullName;
     
-    @Email(message = "Email invalid!")
-    @NotEmpty(message = "Email cannot be empty!")
+    @Email(message = "Email không hợp lệ")
+    @NotEmpty(message = "Email không được để trống!")
     private String email;
     
     @Pattern(
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
-            message = "Phone invalid!"
+            message = "Số điện thoại không hợp lệ!"
     )
     private String phoneNumber;
     
-    @NotEmpty(message = "Password cannot be empty!")
+    @NotEmpty(message = "Mật khẩu không được để trống!")
     private String password;
     
     private User.Role role = User.Role.DRIVER; // default

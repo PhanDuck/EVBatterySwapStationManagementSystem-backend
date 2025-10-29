@@ -10,21 +10,21 @@ import java.math.BigDecimal;
 @Data
 public class ServicePackageRequest {
 
-    @NotEmpty(message = "Name cannot be empty!")
+    @NotEmpty(message = "Tên không được để trống!")
     private String name;
 
-    @NotEmpty(message = "Description cannot be empty!")
+    @NotEmpty(message = "Không được để trống phần mô tả!")
     private String description;
 
-    @NotNull(message = "Price cannot be null!")
-    @Positive(message = "Price must be positive!")
+    @NotNull(message = "Giá không thể để trống!")
+    @Positive(message = "Giá phải là số dương!")
     private BigDecimal price;
 
-    @NotNull(message = "Duration cannot be null!")
-    @Positive(message = "Duration must be positive!")
+    @NotNull(message = "Thời lượng không thể rỗng!")
+    @Positive(message = "Thời lượng phải là số dương!")
     private Integer duration;
 
-    @NotNull(message = "MaxSwaps cannot be null!")
-    @Positive(message = "MaxSwaps must be positive!")
+    @NotNull(message = "MaxSwaps không thể để giá trị null!")
+    @Positive(message = "MaxSwaps phải là số dương!")
     private Integer maxSwaps;
 }

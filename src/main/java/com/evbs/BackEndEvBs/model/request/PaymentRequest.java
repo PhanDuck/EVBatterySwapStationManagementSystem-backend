@@ -10,13 +10,13 @@ import java.math.BigDecimal;
 @Data
 public class PaymentRequest {
 
-    @NotNull(message = "Transaction ID cannot be null")
+    @NotNull(message = "ID giao dịch không thể rỗng")
     private Long transactionId;
 
-    @NotNull(message = "Amount cannot be null")
-    @Positive(message = "Amount must be positive")
+    @NotNull(message = "Số tiền không thể là nulll")
+    @Positive(message = "Số tiền phải là số dương")
     private BigDecimal amount;
 
-    @NotEmpty(message = "Payment method cannot be empty")
+    @NotEmpty(message = "Phương thức thanh toán không được để trống")
     private String paymentMethod;  // CASH, CARD, EWALLET, etc.
 }

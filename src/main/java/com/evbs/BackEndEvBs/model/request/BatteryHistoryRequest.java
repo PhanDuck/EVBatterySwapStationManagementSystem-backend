@@ -7,10 +7,10 @@ import lombok.Data;
 @Data
 public class BatteryHistoryRequest {
 
-    @NotNull(message = "Battery ID cannot be null!")
+    @NotNull(message = "không được để trống batteryId!")
     private Long batteryId;
 
-    @NotEmpty(message = "Event type cannot be empty!")
+    @NotEmpty(message = "không được để trống eventType!")
     private String eventType;
 
     private Long stationId;

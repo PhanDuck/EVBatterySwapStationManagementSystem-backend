@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class UpgradePackageRequest {
 
-    @NotNull(message = "New package ID cannot be null!")
+    @NotNull(message = "ID gói mới không thể để giá trị null!")
     private Long newPackageId;
 
     // Optional: Custom redirect URL after MoMo payment

@@ -28,7 +28,7 @@ public class ServicePackageService {
     public ServicePackage createServicePackage(ServicePackageRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Truy cập bị từ chối. Chỉ quản trị viên (Admin) mới được phép thực hiện thao tác này.");
         }
 
         long currentPackageCount = servicePackageRepository.count();
@@ -37,17 +37,17 @@ public class ServicePackageService {
         }
 
         if (servicePackageRepository.existsByName(request.getName())) {
-            throw new IllegalArgumentException("Service package with name '" + request.getName() + "' already exists");
+            throw new IllegalArgumentException("Gói dịch vụ với tên '" + request.getName() + "' đã tồn tại.");
         }
 
-        //  Tạo service package thủ công thay vì dùng ModelMapper (tránh conflict)
+        //  Tạo service package thủ công thay vì dùng ModelMapper (tránh xung đột)
         ServicePackage servicePackage = new ServicePackage();
         servicePackage.setName(request.getName());
         servicePackage.setDescription(request.getDescription());
         servicePackage.setPrice(request.getPrice());
         servicePackage.setDuration(request.getDuration());
         servicePackage.setMaxSwaps(request.getMaxSwaps());
-        
+
         return servicePackageRepository.save(servicePackage);
     }
 
@@ -59,44 +59,44 @@ public class ServicePackageService {
     @Transactional(readOnly = true)
     public ServicePackage getServicePackageById(Long id) {
         return servicePackageRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + id));
     }
 
     @Transactional
     public ServicePackage updateServicePackage(Long id, ServicePackageUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Truy cập bị từ chối. Chỉ quản trị viên (Admin) mới được phép thực hiện thao tác này.");
         }
 
         ServicePackage existingPackage = servicePackageRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + id));
 
-        // Chỉ update name nếu có giá trị mới và không trùng
+        // Chỉ cập nhật tên nếu có giá trị mới và không bị trùng
         if (request.getName() != null && !request.getName().trim().isEmpty()) {
             if (!existingPackage.getName().equals(request.getName()) &&
                     servicePackageRepository.existsByName(request.getName())) {
-                throw new IllegalArgumentException("Service package with name '" + request.getName() + "' already exists");
+                throw new IllegalArgumentException("Gói dịch vụ với tên '" + request.getName() + "' đã tồn tại.");
             }
             existingPackage.setName(request.getName());
         }
 
-        // Chỉ update description nếu có giá trị mới
+        // Chỉ cập nhật mô tả nếu có giá trị mới
         if (request.getDescription() != null) {
             existingPackage.setDescription(request.getDescription());
         }
 
-        // Chỉ update price nếu có giá trị mới
+        // Chỉ cập nhật giá nếu có giá trị mới
         if (request.getPrice() != null) {
             existingPackage.setPrice(request.getPrice());
         }
 
-        // Chỉ update duration nếu có giá trị mới
+        // Chỉ cập nhật thời hạn nếu có giá trị mới
         if (request.getDuration() != null) {
             existingPackage.setDuration(request.getDuration());
         }
 
-        // Chỉ update maxSwaps nếu có giá trị mới
+        // Chỉ cập nhật số lần đổi tối đa nếu có giá trị mới
         if (request.getMaxSwaps() != null) {
             existingPackage.setMaxSwaps(request.getMaxSwaps());
         }
@@ -108,14 +108,14 @@ public class ServicePackageService {
     public void deleteServicePackage(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Truy cập bị từ chối. Chỉ quản trị viên (Admin) mới được phép thực hiện thao tác này.");
         }
 
         ServicePackage servicePackage = servicePackageRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Service package not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + id));
 
         if (!servicePackage.getSubscriptions().isEmpty()) {
-            throw new IllegalStateException("Cannot delete service package with active subscriptions");
+            throw new IllegalStateException("Không thể xóa gói dịch vụ đang có người đăng ký hoạt động.");
         }
 
         servicePackageRepository.delete(servicePackage);

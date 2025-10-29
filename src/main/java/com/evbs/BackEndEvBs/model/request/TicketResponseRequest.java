@@ -7,9 +7,9 @@ import lombok.Data;
 @Data
 public class TicketResponseRequest {
 
-    @NotNull(message = "Ticket ID cannot be null!")
+    @NotNull(message = "Ticket ID không được để trống!")
     private Long ticketId;
 
-    @NotEmpty(message = "Message cannot be empty!")
+    @NotEmpty(message = "Message không được để trống!")
     private String message;
 }

@@ -20,7 +20,7 @@ public class BatteryType {
     @Column(name = "BatteryTypeID")
     private Long id;
 
-    @NotEmpty(message = "Name cannot be empty!")
+    @NotEmpty(message = "Tên không được để trống!")
     @Column(name = "Name", nullable = false, unique = true, length = 100, columnDefinition = "NVARCHAR(100)")
     private String name;
 

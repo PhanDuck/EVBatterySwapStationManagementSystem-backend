@@ -15,12 +15,12 @@ public class BatteryUpdateRequest {
 
     private String model;
 
-    @DecimalMin(value = "0.0", inclusive = false, message = "Capacity must be greater than 0")
-    @Digits(integer = 8, fraction = 2, message = "Capacity must have max 8 integer and 2 fraction digits")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Dung lượng phải lớn hơn 0  ")
+    @Digits(integer = 8, fraction = 2, message = "Dung lượng phải có tối đa 8 chữ số nguyên và 2 chữ số thập phân")
     private BigDecimal capacity;
 
-    @DecimalMin(value = "0.0", message = "State of health cannot be negative")
-    @Digits(integer = 3, fraction = 2, message = "State of health must have max 3 integer and 2 fraction digits")
+    @DecimalMin(value = "0.0", message = "Tình trạng pin không để ")
+    @Digits(integer = 3, fraction = 2, message = "Tình trạng pin có tối đa 3 chữ số nguyên và 2 chữ số thập phân")
     private BigDecimal stateOfHealth;
 
     @Enumerated(EnumType.STRING)

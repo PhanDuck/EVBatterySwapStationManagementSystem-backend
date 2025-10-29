@@ -58,12 +58,12 @@ public class BatteryService {
         // VALIDATION: Không cho phép tạo pin với trạng thái IN_USE hoặc PENDING
         // Trong method
         if (request.getStatus() == Battery.Status.IN_USE || request.getStatus() == Battery.Status.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New battery cannot be created with IN_USE or PENDING status");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể tạo pin mới với trạng thái ĐANG SỬ DỤNG hoặc ĐANG CHỜ XỬ LÝ");
         }
 
         // Validate battery type
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
         // Create battery manually to avoid ModelMapper conflicts
         Battery battery = new Battery();
@@ -118,7 +118,7 @@ public class BatteryService {
     public List<Battery> getAllBatteries() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
         return batteryRepository.findAll();
     }
@@ -130,10 +130,10 @@ public class BatteryService {
     public Battery getBatteryById(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
         return batteryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Battery not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
     }
 
     /**
@@ -151,7 +151,7 @@ public class BatteryService {
     public List<Battery> getBatteriesByStation(Long stationId) {
         // Kiểm tra station có tồn tại không
         if (!stationRepository.existsById(stationId)) {
-            throw new NotFoundException("Station not found");
+            throw new NotFoundException("Không tìm thấy trạm");
         }
         return batteryRepository.findByCurrentStation_Id(stationId);
     }
@@ -163,11 +163,11 @@ public class BatteryService {
     public Battery updateBattery(Long id, BatteryUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         Battery battery = batteryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Battery not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
         // Chỉ update những field không null
         if (request.getModel() != null && !request.getModel().trim().isEmpty()) {
@@ -190,13 +190,13 @@ public class BatteryService {
         }
         if (request.getBatteryTypeId() != null) {
             BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
-                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
             battery.setBatteryType(batteryType);
         }
         if (request.getCurrentStationId() != null) {
             // Tìm station và set
             battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
-                    .orElseThrow(() -> new NotFoundException("Station not found")));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm")));
         }
 
         return batteryRepository.save(battery);
@@ -209,11 +209,11 @@ public class BatteryService {
     public void deleteBattery(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         Battery battery = batteryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Battery not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
         battery.setStatus(Battery.Status.RETIRED);
         batteryRepository.save(battery);
@@ -225,7 +225,7 @@ public class BatteryService {
     @Transactional
     public Battery incrementBatteryUsage(Long batteryId) {
         Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("Battery not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
         battery.incrementUsageCount();
         return batteryRepository.save(battery);
@@ -237,7 +237,7 @@ public class BatteryService {
     @Transactional
     public Battery updateMaintenanceDate(Long batteryId, LocalDate maintenanceDate) {
         Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("Battery not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
         battery.setLastMaintenanceDate(maintenanceDate);
         return batteryRepository.save(battery);

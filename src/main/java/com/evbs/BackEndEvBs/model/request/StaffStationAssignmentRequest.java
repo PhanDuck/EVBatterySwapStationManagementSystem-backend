@@ -6,9 +6,9 @@ import lombok.Data;
 @Data
 public class StaffStationAssignmentRequest {
 
-    @NotNull(message = "Staff ID cannot be null")
+    @NotNull(message = "ID nhân viên không thể để giá trị null")
     private Long staffId;
 
-    @NotNull(message = "Station ID cannot be null")
+    @NotNull(message = "ID trạm không thể là null")
     private Long stationId;
 }

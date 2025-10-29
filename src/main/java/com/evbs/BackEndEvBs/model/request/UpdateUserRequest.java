@@ -14,12 +14,12 @@ public class UpdateUserRequest {
     
     private String fullName;
     
-    @Email(message = "Email invalid!")
+    @Email(message = "Email không hợp lệ!!")
     private String email;
     
     @Pattern(
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
-            message = "Phone invalid!"
+            message = "Phone không hợp lệ!!"
     )
     private String phoneNumber;
     

@@ -21,7 +21,7 @@ public class Station {
     @Column(name = "StationID")
     private Long id;
 
-    @NotEmpty(message = "Name cannot be empty!")
+    @NotEmpty(message = "Tên không được để trống!")
     @Column(name = "Name", nullable = false, length = 150, columnDefinition = "NVARCHAR(150)")
     private String name;
 
@@ -33,7 +33,7 @@ public class Station {
 
     @Pattern(
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
-            message = "Contact phone number invalid! Must be Vietnamese phone number format."
+            message = "Số điện thoại liên lạc không hợp lệ! Phải là số điện thoại theo định dạng tiếng Việt."
     )
     @Column(name = "ContactInfo", length = 12)
     private String contactInfo;

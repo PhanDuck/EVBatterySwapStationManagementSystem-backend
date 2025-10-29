@@ -95,7 +95,7 @@ public class BookingService {
         );
 
         if (!activeBookings.isEmpty()) {
-            throw new AuthenticationException("You already have an active booking. Please Complete or Cancel it before creating a new one.");
+            throw new AuthenticationException("Bạn đã có đặt chỗ đang hoạt động. Vui lòng Hoàn tất hoặc Hủy trước khi tạo đặt chỗ mới.");
         }
 
         // VALIDATION: Max 10 bookings per user per day
@@ -105,24 +105,24 @@ public class BookingService {
                 .filter(b -> b.getBookingTime() != null && b.getBookingTime().toLocalDate().isEqual(today))
                 .count();
         if (bookingsToday >= 10) {
-            throw new AuthenticationException("You have reached the maximum of 10 bookings for today.");
+            throw new AuthenticationException("Bạn đã đạt tối đa 10 lượt đặt chỗ trong ngày hôm nay.");
         }
 
         // Validate vehicle thuộc về driver
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
         if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
-            throw new AuthenticationException("Vehicle does not belong to current user");
+            throw new AuthenticationException("Xe không thuộc sở hữu của người dùng hiện tại");
         }
 
         // Validate station
         Station station = stationRepository.findById(request.getStationId())
-                .orElseThrow(() -> new NotFoundException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
 
         // Validate station có cùng loại pin với xe
         if (!station.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
-            throw new AuthenticationException("Station does not support the battery type of your vehicle");
+            throw new AuthenticationException("Trạm không hỗ trợ loại pin của xe bạn");
         }
 
         // ========== TỰ ĐỘNG SET THỜI GIAN 3 TIẾNG SAU ==========
@@ -216,7 +216,7 @@ public class BookingService {
     public Booking cancelMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         Booking booking = bookingRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy đặt chỗ"));
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -296,20 +296,20 @@ public class BookingService {
         if (currentUser.getRole() == User.Role.STAFF) {
             Station bookingStation = booking.getStation();
             if (bookingStation == null) {
-                throw new AuthenticationException("Booking khong co station");
+                throw new AuthenticationException("lịch đặt không có trạm liên quan");
             }
 
             if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, bookingStation)) {
-                throw new AuthenticationException("Ban khong duoc phan cong quan ly tram nay. Chi co the huy booking cua tram minh quan ly.");
+                throw new AuthenticationException("Bạn không được phân công quản lý trạm này. Chỉ có thể hủy đặt chỗ của những trạm do bạn quản lý.\n");
             }
         }
 
         // Kiểm tra: Không cho hủy booking đã COMPLETED hoặc CANCELLED
         if (booking.getStatus() == Booking.Status.COMPLETED) {
-            throw new AuthenticationException("Khong the huy booking da COMPLETED");
+            throw new AuthenticationException("Không thể hủy đặt chỗ đã hoàn tất");
         }
         if (booking.getStatus() == Booking.Status.CANCELLED) {
-            throw new AuthenticationException("Booking nay da duoc huy truoc do");
+            throw new AuthenticationException("Không thể hủy đặt chỗ đã hủy trước đó");
         }
 
         // NẾU BOOKING ĐÃ CONFIRMED VÀ CÓ PIN RESERVED → GIẢI PHÓNG PIN
@@ -323,9 +323,9 @@ public class BookingService {
                 batteryRepository.save(battery);
 
                 System.out.println(String.format(
-                        "Staff hủy booking CONFIRMED. BookingID: %d, StaffID: %d, Reason: %s, BatteryID: %d da giai phong",
+                        "Nhân viên đã hủy đơn đặt chỗ ở trạng thái XÁC NHẬN. Mã đơn: %d, Mã nhân viên: %d, Lý do: %s, Pin có mã %d đã được giải phóng.",
                         booking.getId(), currentUser.getId(),
-                        reason != null ? reason : "Khong co ly do",
+                        reason != null ? reason : "Không có lí do",
                         battery.getId()
                 ));
             }
@@ -338,9 +338,9 @@ public class BookingService {
         booking.setStatus(Booking.Status.CANCELLED);
 
         System.out.println(String.format(
-                "Staff hủy booking. BookingID: %d, DriverID: %d, StaffID: %d, Reason: %s",
+                "Nhân viên đã hủy đơn đặt chỗ. Mã đơn: %d, Mã tài xế: %d, Mã nhân viên: %d, Lý do: %s",
                 booking.getId(), booking.getDriver().getId(), currentUser.getId(),
-                reason != null ? reason : "Khong co ly do"
+                reason != null ? reason : "Không có lí do"
         ));
 
         // Gửi email thông báo hủy booking
@@ -360,7 +360,7 @@ public class BookingService {
 
             EmailDetail emailDetail = new EmailDetail();
             emailDetail.setRecipient(driver.getEmail());
-            emailDetail.setSubject("ĐẶT LỊCH THÀNH CÔNG - Mã swap pin: " + booking.getConfirmationCode());
+            emailDetail.setSubject("ĐẶT LỊCH THÀNH CÔNG - Mã đổi pin: " + booking.getConfirmationCode());
             emailDetail.setFullName(driver.getFullName());
 
             emailDetail.setBookingId(booking.getId());
@@ -386,12 +386,12 @@ public class BookingService {
 
             // Thêm thông tin về chính sách hủy booking
             emailDetail.setCancellationPolicy(
-                    String.format("Lưu ý: Bạn chỉ có thể hủy booking trước %d phút so với giờ đã đặt. Sau đó vui lòng liên hệ staff để được hỗ trợ.", ALLOW_CANCEL_BEFORE_MINUTES)
+                    String.format("Lưu ý: Bạn chỉ có thể hủy đơn đặt chỗ trước %d phút so với thời gian đã đặt. Sau thời gian này, vui lòng liên hệ nhân viên để được hỗ trợ.", ALLOW_CANCEL_BEFORE_MINUTES)
             );
 
             emailService.sendBookingConfirmedEmail(emailDetail);
         } catch (Exception e) {
-            System.err.println("Failed to send booking confirmed email: " + e.getMessage());
+            System.err.println("Gửi email xác nhận đơn đặt chỗ thất bại: " + e.getMessage());
         }
     }
 
@@ -406,7 +406,7 @@ public class BookingService {
 
             EmailDetail emailDetail = new EmailDetail();
             emailDetail.setRecipient(driver.getEmail());
-            emailDetail.setSubject("THÔNG BÁO HỦY BOOKING - " + booking.getConfirmationCode());
+            emailDetail.setSubject("THÔNG BÁO HỦY ĐẶT LỊCH - " + booking.getConfirmationCode());
             emailDetail.setFullName(driver.getFullName());
 
             emailDetail.setBookingId(booking.getId());
@@ -425,15 +425,15 @@ public class BookingService {
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
             );
-            emailDetail.setStatus("CANCELLED");
+            emailDetail.setStatus("HỦY");
             emailDetail.setConfirmationCode(booking.getConfirmationCode());
 
             // Thêm thông tin chính sách hủy
-            emailDetail.setCancellationPolicy("Booking của bạn đã được hủy thành công. Pin đã được giải phóng.");
+            emailDetail.setCancellationPolicy("Lịch đặt của bạn đã được hủy thành công. Pin đã được giải phóng.");
 
             emailService.sendBookingCancellationEmail(emailDetail);
         } catch (Exception e) {
-            System.err.println("Failed to send booking cancellation email: " + e.getMessage());
+            System.err.println("Gửi email xác nhận đơn đặt chỗ thất bại: " + e.getMessage());
         }
     }
 
@@ -449,13 +449,13 @@ public class BookingService {
     public Booking getMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         return bookingRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Booking not found"));
+                .orElseThrow(() -> new NotFoundException("Lịch đặt không tìm thấy"));
     }
 
     @Transactional(readOnly = true)
     public List<Station> getCompatibleStations(Long vehicleId) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
-                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+                .orElseThrow(() -> new NotFoundException("xe không tìm thấy"));
         return stationRepository.findStationsWithAvailableBatteries(
                 vehicle.getBatteryType(),
                 80
@@ -466,7 +466,7 @@ public class BookingService {
     public List<Booking> getAllBookings() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Từ chối truy cập");
         }
 
         if (currentUser.getRole() == User.Role.ADMIN) {
@@ -486,7 +486,7 @@ public class BookingService {
         User currentUser = authenticationService.getCurrentUser();
 
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Chi Staff/Admin moi xem duoc bookings");
+            throw new AuthenticationException("Chỉ nhân viên hoặc quản trị viên mới có quyền xem danh sách đơn đặt chỗ.");
         }
 
         if (currentUser.getRole() == User.Role.ADMIN) {
@@ -496,7 +496,7 @@ public class BookingService {
         List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
 
         if (myStations.isEmpty()) {
-            throw new AuthenticationException("Ban chua duoc assign vao tram nao");
+            throw new AuthenticationException("Bạn chưa được phân công vào trạm nào.");
         }
 
         return bookingRepository.findByStationIn(myStations);
@@ -506,7 +506,7 @@ public class BookingService {
     public List<Booking> getBookingsByStation(Long stationId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Từ chối truy cập");
         }
         return bookingRepository.findByStationId(stationId);
     }
@@ -515,7 +515,7 @@ public class BookingService {
     public List<Booking> getBookingsByStatus(Booking.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Từ chối truy cập");
         }
         return bookingRepository.findByStatus(status);
     }

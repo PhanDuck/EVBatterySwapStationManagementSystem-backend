@@ -15,7 +15,7 @@ public class StationUpdateRequest {
 
     @Pattern(
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
-            message = "Contact phone number invalid! Must be Vietnamese phone number format."
+            message = "Số điện thoại liên lạc không hợp lệ! Phải là số điện thoại theo định dạng tiếng Việt.."
     )
     private String contactInfo;
 

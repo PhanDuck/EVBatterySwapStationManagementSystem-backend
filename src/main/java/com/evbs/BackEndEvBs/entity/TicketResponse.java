@@ -31,7 +31,7 @@ public class TicketResponse {
     @JsonIgnore
     private User staff;
 
-    @NotEmpty(message = "Message cannot be empty!")
+    @NotEmpty(message = "Tin nhắn không được để trống!")
     @Column(name = "Message", nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String message;
 

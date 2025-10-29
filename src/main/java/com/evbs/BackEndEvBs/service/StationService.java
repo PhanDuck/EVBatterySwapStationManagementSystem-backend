@@ -42,17 +42,17 @@ public class StationService {
     public Station createStation(StationRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         // Kiểm tra trùng tên station
         if (stationRepository.existsByName(request.getName())) {
-            throw new AuthenticationException("Station name already exists");
+            throw new AuthenticationException("Tên trạm đã tồn tại");
         }
 
         // Validate battery type
         BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
         //  Tạo station thủ công thay vì dùng ModelMapper (tránh conflict)
         Station station = new Station();
@@ -66,7 +66,7 @@ public class StationService {
         station.setLongitude(request.getLongitude());
         station.setBatteryType(batteryType);
         // status = ACTIVE (default)
-        
+
         return stationRepository.save(station);
     }
 
@@ -85,7 +85,7 @@ public class StationService {
     @Transactional(readOnly = true)
     public Station getStationById(Long id) {
         return stationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
     }
 
     /**
@@ -94,7 +94,7 @@ public class StationService {
     @Transactional(readOnly = true)
     public List<Station> getStationsByBatteryType(Long batteryTypeId) {
         BatteryType batteryType = batteryTypeRepository.findById(batteryTypeId)
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
         return stationRepository.findByBatteryType(batteryType);
     }
 
@@ -113,23 +113,23 @@ public class StationService {
     public Station updateStation(Long id, StationUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         Station station = stationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
 
         //  Staff chỉ update được stations được assign
         if (currentUser.getRole() == User.Role.STAFF) {
             if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
-                throw new AuthenticationException("You are not assigned to manage this station");
+                throw new AuthenticationException("Bạn không được phân công quản lý trạm này");
             }
         }
 
         // Kiểm tra trùng tên station (nếu thay đổi tên)
         if (request.getName() != null && !station.getName().equals(request.getName()) &&
                 stationRepository.existsByName(request.getName())) {
-            throw new AuthenticationException("Station name already exists");
+            throw new AuthenticationException("Tên trạm đã tồn tại");
         }
 
         // Chỉ update những field không null (giữ lại giá trị cũ nếu không nhập)
@@ -159,7 +159,7 @@ public class StationService {
         }
         if (request.getBatteryTypeId() != null) {
             BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
-                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
             station.setBatteryType(batteryType);
         }
 
@@ -168,7 +168,7 @@ public class StationService {
             // Staff chỉ update status cho stations được assign
             if (currentUser.getRole() == User.Role.STAFF) {
                 if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
-                    throw new AuthenticationException("You are not assigned to manage this station");
+                    throw new AuthenticationException("Bạn không được phân công quản lý trạm này");
                 }
             }
             station.setStatus(request.getStatus());
@@ -184,14 +184,14 @@ public class StationService {
     public void deleteStation(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         Station station = stationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
         station.setStatus(Station.Status.INACTIVE);
         stationRepository.save(station);
-        
+
     }
 
     /**
@@ -201,16 +201,16 @@ public class StationService {
     public Station updateStationStatus(Long id, Station.Status status) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         Station station = stationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Station not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
 
         //  Staff chỉ update được stations được assign
         if (currentUser.getRole() == User.Role.STAFF) {
             if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
-                throw new AuthenticationException("You are not assigned to manage this station");
+                throw new AuthenticationException("Bạn không được phân công quản lý trạm này");
             }
         }
 

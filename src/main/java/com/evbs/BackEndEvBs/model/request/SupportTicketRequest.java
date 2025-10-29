@@ -8,9 +8,9 @@ public class SupportTicketRequest {
 
     private Long stationId;
 
-    @NotEmpty(message = "Subject cannot be empty!")
+    @NotEmpty(message = "Chủ đề không được để trống!")
     private String subject;
 
-    @NotEmpty(message = "Description cannot be empty!")
+    @NotEmpty(message = "Mô tả không được để trống!")
     private String description;
 }

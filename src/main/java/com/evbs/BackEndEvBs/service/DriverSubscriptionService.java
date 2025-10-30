@@ -40,6 +40,9 @@ public class DriverSubscriptionService {
     @Autowired
     private final UserRepository userRepository;
 
+    @Autowired
+    private final EmailService emailService;
+
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId, Long driverId) {
         // Tìm tài xế theo ID (thay vì getCurrentUser)
@@ -125,11 +128,38 @@ public class DriverSubscriptionService {
         }
 
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy đăng ký trình điều khiển có id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy đăng ký trình điều khiển có id:" + id));
+
+        // Lưu thông tin trước khi xóa để gửi email
+        User driver = subscription.getDriver();
+        String adminName = currentUser.getFullName() != null ? currentUser.getFullName() : "Quản trị viên";
+
+        // Log thông tin
+        log.info("Quản trị viên {} đang xóa đăng ký {} cho trình điều khiển {}",
+                currentUser.getEmail(),
+                subscription.getId(),
+                driver.getEmail());
 
         // Chuyển status thành CANCELLED
         subscription.setStatus(DriverSubscription.Status.CANCELLED);
         driverSubscriptionRepository.save(subscription);
+
+        // Gửi email thông báo cho driver
+        try {
+            String reason = String.format(
+                    "Gói dịch vụ '%s' của bạn đã bị hủy bởi quản trị viên hệ thống. " +
+                            "Nếu bạn cho rằng đây là một nhầm lẫn hoặc cần thêm thông tin, " +
+                            "vui lòng liên hệ với bộ phận hỗ trợ khách hàng của chúng tôi.",
+                    subscription.getServicePackage().getName()
+            );
+
+            emailService.sendSubscriptionDeletedEmail(driver, subscription, adminName, reason);
+            log.info("Email xóa đăng ký đã được gửi thành công đến tài xế: {}", driver.getEmail());
+        } catch (Exception e) {
+            log.error("Không gửi được email xóa đăng ký cho tài xế {}: {}",
+                    driver.getEmail(), e.getMessage());
+            // Không throw exception để không ảnh hưởng đến quá trình xóa subscription
+        }
     }
 
     // ========================================

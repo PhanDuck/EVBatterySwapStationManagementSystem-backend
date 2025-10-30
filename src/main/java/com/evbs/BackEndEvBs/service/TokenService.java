@@ -40,6 +40,16 @@ public class TokenService {
 
     }
 
+    // Token reset password (có thể thêm type nếu muốn phân biệt)
+    public String generatePasswordResetToken(User user){
+        return Jwts.builder()
+                .subject(user.getId() + "")
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 1000*60*15)) // 15 phút
+                .signWith(getSignInKey())
+                .compact();
+    }
+
     //verify
 
     public User extractToken(String token) {

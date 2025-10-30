@@ -41,7 +41,6 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-
     /**
      * Gửi email thông báo booking đã được confirm với confirmation code
      */

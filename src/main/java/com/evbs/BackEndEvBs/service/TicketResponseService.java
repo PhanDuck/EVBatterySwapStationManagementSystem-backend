@@ -39,7 +39,7 @@ public class TicketResponseService {
     private final EmailService emailService;
     /**
      * CREATE - Tạo response cho ticket (Staff/Admin only)
-     * 
+     *
      * VALIDATION:
      * - Admin: Có thể trả lời TẤT CẢ tickets
      * - Staff: Chỉ có thể trả lời tickets của stations mà họ quản lý
@@ -48,12 +48,12 @@ public class TicketResponseService {
     public TicketResponse createResponse(TicketResponseRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         // Validate ticket trong cùng transaction
         SupportTicket ticket = supportTicketRepository.findById(request.getTicketId())
-                .orElseThrow(() -> new NotFoundException("Ticket not found with id: " + request.getTicketId()));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket với id: " + request.getTicketId()));
 
         // Kiểm tra quyền trả lời ticket
         validateTicketAccess(currentUser, ticket);
@@ -78,9 +78,9 @@ public class TicketResponseService {
         try {
             // Gửi email thông báo phản hồi đến Driver
             emailService.sendTicketResponseToDriver(savedResponse);
-            log.info("Sent response notification email for ticket: {}", ticket.getId());
+            log.info("Đã gửi email thông báo phản hồi cho ticket: {}", ticket.getId());
         } catch (Exception e) {
-            log.error("Failed to send response notification email for ticket: {}",
+            log.error("Không thể gửi email thông báo phản hồi cho ticket: {}",
                     ticket.getId(), e);
             // Không throw exception để không ảnh hưởng đến việc tạo response
         }
@@ -97,7 +97,7 @@ public class TicketResponseService {
     public List<TicketResponse> getAllResponses() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         // Admin có thể xem tất cả responses
@@ -108,7 +108,7 @@ public class TicketResponseService {
         // Staff chỉ xem responses của tickets thuộc stations họ quản lý
         var myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
         if (myStations.isEmpty()) {
-            throw new AuthenticationException("Staff not assigned to any station");
+            throw new AuthenticationException("Nhân viên chưa được phân công vào trạm nào");
         }
 
         return ticketResponseRepository.findByTicketStationIn(myStations);
@@ -123,27 +123,27 @@ public class TicketResponseService {
     public List<TicketResponse> getResponsesByTicket(Long ticketId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         // Validate ticket exists
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new NotFoundException("Ticket not found with id: " + ticketId));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket với id: " + ticketId));
 
         // Staff phải check quyền truy cập ticket
         if (currentUser.getRole() == User.Role.STAFF) {
             if (ticket.getStation() == null) {
                 throw new AuthenticationException(
-                    "Cannot view responses for ticket without station assignment."
+                        "Không thể xem responses cho ticket không có trạm được chỉ định."
                 );
             }
 
             boolean hasAccess = staffStationAssignmentRepository
-                .existsByStaffAndStation(currentUser, ticket.getStation());
+                    .existsByStaffAndStation(currentUser, ticket.getStation());
 
             if (!hasAccess) {
                 throw new AuthenticationException(
-                    "Access denied. You can only view responses for tickets from stations you manage."
+                        "Truy cập bị từ chối. Bạn chỉ có thể xem responses cho tickets từ các trạm bạn quản lý."
                 );
             }
         }
@@ -158,7 +158,7 @@ public class TicketResponseService {
     public List<TicketResponse> getMyResponses() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
         return ticketResponseRepository.findByStaff_Id(currentUser.getId());
     }
@@ -169,13 +169,13 @@ public class TicketResponseService {
     @Transactional(readOnly = true)
     public List<TicketResponse> getResponsesForMyTicket(Long ticketId) {
         User currentUser = authenticationService.getCurrentUser();
-        
+
         // Validate ticket thuộc về driver
         SupportTicket ticket = supportTicketRepository.findById(ticketId)
-                .orElseThrow(() -> new NotFoundException("Ticket not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket"));
 
         if (!ticket.getDriver().getId().equals(currentUser.getId())) {
-            throw new AuthenticationException("Ticket does not belong to you");
+            throw new AuthenticationException("Ticket không thuộc về bạn");
         }
 
         return ticketResponseRepository.findByTicketId(ticketId);
@@ -188,15 +188,15 @@ public class TicketResponseService {
     public TicketResponse updateResponse(Long id, TicketResponseRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         TicketResponse response = ticketResponseRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Response not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy response"));
 
         // Chỉ cho phép staff tạo response được sửa
         if (!response.getStaff().getId().equals(currentUser.getId())) {
-            throw new AuthenticationException("Can only update your own responses");
+            throw new AuthenticationException("Chỉ có thể cập nhật responses của chính bạn");
         }
 
         if (request.getMessage() != null) {
@@ -213,11 +213,11 @@ public class TicketResponseService {
     public void deleteResponse(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied");
+            throw new AuthenticationException("Truy cập bị từ chối");
         }
 
         TicketResponse response = ticketResponseRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Response not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy response"));
         ticketResponseRepository.delete(response);
     }
 
@@ -243,19 +243,19 @@ public class TicketResponseService {
             // Nếu ticket không có station, staff không thể trả lời
             if (ticket.getStation() == null) {
                 throw new AuthenticationException(
-                    "Cannot respond to ticket without station assignment. " +
-                    "Please contact admin to assign this ticket to a station."
+                        "Không thể trả lời ticket không có trạm được chỉ định. " +
+                                "Vui lòng liên hệ quản trị viên để chỉ định ticket này cho một trạm."
                 );
             }
 
             // Kiểm tra staff có được assign cho station của ticket không
             boolean hasAccess = staffStationAssignmentRepository
-                .existsByStaffAndStation(user, ticket.getStation());
+                    .existsByStaffAndStation(user, ticket.getStation());
 
             if (!hasAccess) {
                 throw new AuthenticationException(
-                    "Access denied. You can only respond to tickets from stations you manage. " +
-                    "This ticket belongs to station: " + ticket.getStation().getName()
+                        "Truy cập bị từ chối. Bạn chỉ có thể trả lời tickets từ các trạm bạn quản lý. " +
+                                "Ticket này thuộc về trạm: " + ticket.getStation().getName()
                 );
             }
         }

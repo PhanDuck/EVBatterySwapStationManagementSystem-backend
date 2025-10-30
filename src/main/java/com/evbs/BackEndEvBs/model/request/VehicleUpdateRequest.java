@@ -7,12 +7,12 @@ import lombok.Data;
 @Data
 public class VehicleUpdateRequest {
 
-    @Size(min = 17, max = 17, message = "VIN must be exactly 17 characters!")
+    @Size(min = 17, max = 17, message = "VIN phải có chính xác 17 ký tự!")
     private String vin;
 
     @Pattern(
             regexp = "^[0-9]{2}[a-zA-Z]{1,2}[0-9]{5,6}(\\\\.[a-zA-Z]{1,2})?$",
-            message = "Invalid Vietnamese motorcycle plate format! Valid examples: 29X112345, 51F11234, 30H112350"
+            message = "Định dạng biển số xe máy Việt Nam không hợp lệ! Ví dụ hợp lệ: 29X112345, 51F11234, 30H112350"
     )
     private String plateNumber;
 

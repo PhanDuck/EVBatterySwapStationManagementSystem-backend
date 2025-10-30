@@ -10,10 +10,10 @@ import lombok.Data;
 @Data
 public class StationInventoryRequest {
 
-    @NotNull(message = "Station ID cannot be null!")
+    @NotNull(message = "ID trạm không thể để giá trị null!")
     private Long stationId;
 
-    @NotNull(message = "Battery ID cannot be null!")
+    @NotNull(message = "ID pin không thể để giá trị null!")
     private Long batteryId;
 
     @Enumerated(EnumType.STRING)

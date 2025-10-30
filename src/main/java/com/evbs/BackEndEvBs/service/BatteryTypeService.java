@@ -27,11 +27,11 @@ public class BatteryTypeService {
     public BatteryType createBatteryType(BatteryTypeRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
         }
 
         if (batteryTypeRepository.existsByName(request.getName())) {
-            throw new AuthenticationException("Battery type name already exists");
+            throw new AuthenticationException("Tên loại pin đã tồn tại");
         }
 
         //  Tạo battery type thủ công thay vì dùng ModelMapper (tránh conflict)
@@ -54,23 +54,23 @@ public class BatteryTypeService {
     @Transactional(readOnly = true)
     public BatteryType getBatteryTypeById(Long id) {
         return batteryTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
     }
 
     @Transactional
     public BatteryType updateBatteryType(Long id, BatteryTypeRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
         }
 
         BatteryType batteryType = batteryTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
         // Kiểm tra trùng tên nếu thay đổi
         if (request.getName() != null && !batteryType.getName().equals(request.getName()) &&
                 batteryTypeRepository.existsByName(request.getName())) {
-            throw new AuthenticationException("Battery type name already exists");
+            throw new AuthenticationException("Tên loại pin đã tồn tại");
         }
 
         // Cập nhật các field
@@ -100,17 +100,17 @@ public class BatteryTypeService {
     public void deleteBatteryType(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
         }
 
         BatteryType batteryType = batteryTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
         // Kiểm tra xem battery type có đang được sử dụng không
         if (!batteryType.getBatteries().isEmpty() ||
                 !batteryType.getVehicles().isEmpty() ||
                 !batteryType.getStations().isEmpty()) {
-            throw new AuthenticationException("Cannot delete battery type that is in use");
+            throw new AuthenticationException("Không thể xóa loại pin đang sử dụng");
         }
 
         batteryTypeRepository.delete(batteryType);

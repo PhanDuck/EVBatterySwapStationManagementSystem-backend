@@ -48,12 +48,12 @@ public class BatteryHealthService {
     @Scheduled(cron = "0 0 2 * * *")  // 2:00 AM mỗi ngày
     @Transactional
     public void dailyBatteryHealthCheck() {
-        log.info(" [Battery Health] Starting daily health check...");
+        log.info("[Tình trạng pin] Bắt đầu kiểm tra tình trạng pin hàng ngày...");
 
         List<Battery> allBatteries = batteryRepository.findAll();
         
         if (allBatteries.isEmpty()) {
-            log.info(" [Battery Health] No batteries found.");
+            log.info("[Tình trạng pin] Không tìm thấy pin.");
             return;
         }
 
@@ -87,7 +87,7 @@ public class BatteryHealthService {
                         break;
                 }
             } catch (Exception e) {
-                log.error(" [Battery Health] Error checking battery {}: {}", battery.getId(), e.getMessage());
+                log.error("[Tình trạng pin] Lỗi khi kiểm tra pin {}: {}", battery.getId(), e.getMessage());
             }
         }
 
@@ -105,7 +105,7 @@ public class BatteryHealthService {
         BigDecimal soh = battery.getStateOfHealth();
         
         if (soh == null) {
-            log.warn("[Battery {}] SOH is null, setting to 100%", battery.getId());
+            log.warn("[Pin {}] SOH là null, cài đặt thành 100%", battery.getId());
             battery.setStateOfHealth(BigDecimal.valueOf(100.0));
             batteryRepository.save(battery);
             return HealthStatus.HEALTHY;
@@ -113,15 +113,15 @@ public class BatteryHealthService {
 
         // Kiểm tra ngưỡng
         if (soh.compareTo(SOH_MAINTENANCE_THRESHOLD) < 0) {
-            log.error(" [Battery {}]  MAINTENANCE REQUIRED! SOH = {:.1f}%",
+            log.error("[Pin {}] CẦN BẢO TRÌ! SOH = {:.1f}%",
                      battery.getId(), soh.doubleValue());
             return HealthStatus.MAINTENANCE_REQUIRED;
         } else if (soh.compareTo(SOH_CRITICAL_THRESHOLD) < 0) {
-            log.warn(" [Battery {}]  CRITICAL! SOH = {:.1f}% - Needs maintenance soon!",
+            log.warn(" [Pin {}] QUAN TRỌNG! SOH = {:.1f}% - Cần bảo trì sớm!",
                     battery.getId(), soh.doubleValue());
             return HealthStatus.CRITICAL;
         } else if (soh.compareTo(SOH_WARNING_THRESHOLD) < 0) {
-            log.warn(" [Battery {}]  WARNING! SOH = {:.1f}% - Monitor closely",
+            log.warn("[Pin {}] CẢNH BÁO! SOH = {:.1f}% - Theo dõi chặt chẽ",
                     battery.getId(), soh.doubleValue());
             return HealthStatus.WARNING;
         }
@@ -136,17 +136,17 @@ public class BatteryHealthService {
     public void moveBatteryToMaintenance(Battery battery) {
         // Lưu trạm hiện tại để biết lấy pin từ đâu
         if (battery.getCurrentStation() != null) {
-            log.info("[Battery {}] Moving to MAINTENANCE from Station {}",
+            log.info("[Pin {}] Di chuyển đến BẢO TRÌ từ Trạm {}",
                     battery.getId(), battery.getCurrentStation().getId());
         } else {
-            log.info(" [Battery {}] Moving to MAINTENANCE (no current station)", battery.getId());
+            log.info("[Pin {}] Đang chuyển đến BẢO TRÌ (không có trạm hiện tại)", battery.getId());
         }
 
         battery.setStatus(Battery.Status.MAINTENANCE);
         battery.setLastMaintenanceDate(LocalDate.now());
         batteryRepository.save(battery);
 
-        log.info(" [Battery {}] Status changed to MAINTENANCE. SOH: {:.1f}%",
+        log.info("[Pin {}] Trạng thái đã thay đổi thành BẢO TRÌ. SOH: {:.1f}%",
                 battery.getId(), 
                 battery.getStateOfHealth() != null ? battery.getStateOfHealth().doubleValue() : 0);
     }
@@ -178,7 +178,7 @@ public class BatteryHealthService {
             battery.setStateOfHealth(newSOH);
             batteryRepository.save(battery);
 
-            log.info(" [Battery {}] SOH degraded: {:.1f}% → {:.1f}% (after {} uses)",
+            log.info("[Pin {}] SOH bị suy giảm: {:.1f}% → {:.1f}% (sau khi sử dụng {})",
                     battery.getId(), 
                     currentSOH.doubleValue(), 
                     newSOH.doubleValue(), 
@@ -186,10 +186,10 @@ public class BatteryHealthService {
 
             // Kiểm tra ngay nếu SOH giảm xuống ngưỡng nguy hiểm
             if (newSOH.compareTo(SOH_MAINTENANCE_THRESHOLD) < 0) {
-                log.error(" [Battery {}]  SOH dropped below 60%! Moving to MAINTENANCE!", battery.getId());
+                log.error("[Pin {}] SOH giảm xuống dưới 60%! Chuyển sang BỘ PHẬN BẢO TRÌ!", battery.getId());
                 moveBatteryToMaintenance(battery);
             } else if (newSOH.compareTo(SOH_CRITICAL_THRESHOLD) < 0) {
-                log.warn(" [Battery {}]  SOH below 70%! Critical maintenance needed soon!", battery.getId());
+                log.warn("[Pin {}] SOH dưới 70%! Cần bảo trì khẩn cấp sớm!", battery.getId());
             }
         }
     }
@@ -202,7 +202,7 @@ public class BatteryHealthService {
         log.info(" Batteries needing maintenance:");
         
         for (Battery battery : batteries) {
-            log.info("   - Battery ID: {}, SOH: {:.1f}%, Station: {}", 
+            log.info(" - ID pin: {}, SOH: {:.1f}%, Trạm:{}",
                     battery.getId(),
                     battery.getStateOfHealth() != null ? battery.getStateOfHealth().doubleValue() : 0,
                     battery.getCurrentStation() != null ? battery.getCurrentStation().getName() : "N/A");
@@ -212,7 +212,7 @@ public class BatteryHealthService {
         // - Email notification
         // - In-app notification
         // - Push notification
-        log.info(" [Notification] Alert sent successfully!");
+        log.info("[Thông báo] Đã gửi cảnh báo thành công!");
     }
 
     /**

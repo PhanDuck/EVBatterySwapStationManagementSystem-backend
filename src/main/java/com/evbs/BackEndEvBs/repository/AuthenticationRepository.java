@@ -11,4 +11,6 @@ public interface AuthenticationRepository extends JpaRepository<User, Long> {
 
     User findUserById(long id);
 
+    User findUserByEmail(String email);
+
 }

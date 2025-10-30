@@ -22,22 +22,22 @@ public class ServicePackage {
     @Column(name = "PackageID")
     private Long id;
 
-    @NotEmpty(message = "Name cannot be empty!")
+    @NotEmpty(message = "Tên không được để trống!")
     @Column(name = "Name", nullable = false, length = 150,columnDefinition = "NVARCHAR(150)")
     private String name;
 
     @Column(name = "Description", length = 255, columnDefinition = "NVARCHAR(255)")
     private String description;
 
-    @NotNull(message = "Price cannot be null!")
+    @NotNull(message = "Giá không thể để trống!")
     @Column(name = "Price", nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
-    @NotNull(message = "Duration cannot be null!")
+    @NotNull(message = "Thời lượng không thể là null!")
     @Column(name = "Duration", nullable = false)
     private Integer duration; // days
 
-    @NotNull(message = "MaxSwaps cannot be null!")
+    @NotNull(message = "MaxSwaps không thể rỗng!")
     @Column(name = "MaxSwaps", nullable = false)
     private Integer maxSwaps;
     

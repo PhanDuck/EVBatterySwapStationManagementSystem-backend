@@ -9,32 +9,32 @@ import lombok.Data;
 @Data
 public class StationRequest {
 
-    @NotEmpty(message = "Name cannot be empty!")
+    @NotEmpty(message = "Tên không được để trống!")
     private String name;
 
-    @NotEmpty(message = "Location cannot be empty!")
+    @NotEmpty(message = "Vị trí không được để trống!")
     private String location;
 
-    @NotNull(message = "Capacity cannot be null!")
-    @Positive(message = "Capacity must be positive!")
+    @NotNull(message = "Sức chứa không thể để trống!")
+    @Positive(message = "Công suất phải là số dương!")
     private Integer capacity;
 
     @Pattern(
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
-            message = "Contact phone number invalid! Must be Vietnamese phone number format."
+            message = "Số điện thoại liên lạc không hợp lệ! Phải là số điện thoại theo định dạng tiếng Việt."
     )
     private String contactInfo;
 
-    @NotEmpty(message = "City cannot be empty!")
+    @NotEmpty(message = "Thành phố không thể trống rỗng!")
     private String city;
 
-    @NotEmpty(message = "District cannot be empty!")
+    @NotEmpty(message = "Quận không được để trống!")
     private String district;
 
     private Double latitude;
 
     private Double longitude;
 
-    @NotNull(message = "Battery type ID cannot be null!")
+    @NotNull(message = "ID loại pin không thể để trống!")
     private Long batteryTypeId;
 }

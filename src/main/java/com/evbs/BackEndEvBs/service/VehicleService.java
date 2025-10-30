@@ -41,17 +41,17 @@ public class VehicleService {
     public Vehicle createVehicle(VehicleRequest vehicleRequest) {
         // Validate VIN unique
         if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
-            throw new AuthenticationException("VIN already exists!");
+            throw new AuthenticationException("VIN đã tồn tại!");
         }
 
         // Validate PlateNumber unique
         if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
-            throw new AuthenticationException("Plate number already exists!");
+            throw new AuthenticationException("Biển số xe đã tồn tại!");
         }
 
         // Validate battery type exists
         BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
-                .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
         // Create vehicle manually to avoid ModelMapper conflicts
         Vehicle vehicle = new Vehicle();
@@ -63,7 +63,7 @@ public class VehicleService {
         // Enforce max 2 ACTIVE vehicles per user (không đếm xe đã xóa)
         long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
         if (activeVehicles >= 2) {
-            throw new AuthenticationException("You can only register up to 2 active vehicles.");
+            throw new AuthenticationException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
         }
 
         vehicle.setDriver(currentUser);
@@ -88,7 +88,7 @@ public class VehicleService {
     public List<Vehicle> getAllVehicles() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin/Staff role required.");
+            throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
         }
         return vehicleRepository.findAll();
     }
@@ -100,7 +100,7 @@ public class VehicleService {
     public Vehicle updateMyVehicle(Long id, VehicleUpdateRequest vehicleRequest) {
         User currentUser = authenticationService.getCurrentUser();
         Vehicle existingVehicle = vehicleRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Vehicle not found or access denied"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe hoặc truy cập bị từ chối"));
 
         // Driver chỉ được update model, không được thay đổi VIN, PlateNumber
         if (vehicleRequest.getModel() != null && !vehicleRequest.getModel().trim().isEmpty()) {
@@ -110,7 +110,7 @@ public class VehicleService {
         // Driver có thể update battery type
         if (vehicleRequest.getBatteryTypeId() != null) {
             BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
-                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
             existingVehicle.setBatteryType(batteryType);
         }
 
@@ -124,11 +124,11 @@ public class VehicleService {
     public Vehicle updateVehicle(Long id, VehicleUpdateRequest vehicleRequest) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin/Staff role required.");
+            throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
         }
 
         Vehicle existingVehicle = vehicleRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
         // Admin/Staff được update tất cả thông tin
         if (vehicleRequest.getModel() != null) {
@@ -138,7 +138,7 @@ public class VehicleService {
         // Kiểm tra trùng VIN nếu thay đổi
         if (vehicleRequest.getVin() != null && !vehicleRequest.getVin().equals(existingVehicle.getVin())) {
             if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
-                throw new AuthenticationException("VIN already exists!");
+                throw new AuthenticationException("VIN đã tồn tại!");
             }
             existingVehicle.setVin(vehicleRequest.getVin());
         }
@@ -146,7 +146,7 @@ public class VehicleService {
         // Kiểm tra trùng PlateNumber nếu thay đổi
         if (vehicleRequest.getPlateNumber() != null && !vehicleRequest.getPlateNumber().equals(existingVehicle.getPlateNumber())) {
             if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
-                throw new AuthenticationException("Plate number already exists!");
+                throw new AuthenticationException("Biển số xe đã tồn tại!");
             }
             existingVehicle.setPlateNumber(vehicleRequest.getPlateNumber());
         }
@@ -154,7 +154,7 @@ public class VehicleService {
         // Update battery type nếu có
         if (vehicleRequest.getBatteryTypeId() != null) {
             BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
-                    .orElseThrow(() -> new NotFoundException("Battery type not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
             existingVehicle.setBatteryType(batteryType);
         }
 
@@ -175,15 +175,15 @@ public class VehicleService {
     public Vehicle deleteVehicle(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Access denied. Admin/Staff role required.");
+            throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
         }
 
         Vehicle vehicle = vehicleRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Vehicle not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với id: " + id));
 
         // Kiểm tra nếu vehicle đã bị xóa rồi
         if (vehicle.getStatus() == Vehicle.VehicleStatus.INACTIVE) {
-            throw new AuthenticationException("Vehicle is already deleted");
+            throw new AuthenticationException("Xe đã bị xóa trước đó");
         }
 
         // Soft delete: chỉ đổi status

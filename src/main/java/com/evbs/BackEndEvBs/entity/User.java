@@ -34,23 +34,23 @@ public class User implements UserDetails {
     @Column(name = "UserID")
     private Long id;
 
-    @NotEmpty(message = "FullName cannot be empty!")
+    @NotEmpty(message = "FullName không được để trống!")
     @Column(name = "FullName", nullable = false, length = 150, columnDefinition = "NVARCHAR(150)")
     private String fullName;
 
-    @Email(message = "Email invalid!")
-    @NotEmpty(message = "Email cannot be empty!")
+    @Email(message = "Email không hợp lệ!")
+    @NotEmpty(message = "Email không được để trống!")
     @Column(name = "Email", nullable = false, unique = true, length = 150)
     private String email;
 
     @Pattern(
             regexp = "^(03|05|07|08|09)[0-9]{8}$",
-            message = "Phone invalid!"
+            message = "Số điện thoại không hợp lệ!"
     )
     @Column(name = "PhoneNumber", unique = true, length = 30) // nên unique để login
     private String phoneNumber;
 
-    @NotEmpty(message = "Password cannot be empty!")
+    @NotEmpty(message = "Mật khẩu không được để trống!")
     @Column(name = "PasswordHash", nullable = false, length = 255)
     private String passwordHash;
 

@@ -31,6 +31,11 @@ public class ServicePackageService {
             throw new AuthenticationException("Truy cập bị từ chối. Chỉ quản trị viên (Admin) mới được phép thực hiện thao tác này.");
         }
 
+        long currentPackageCount = servicePackageRepository.count();
+        if (currentPackageCount >= 12) {
+            throw new IllegalArgumentException("Maximum limit of 12 service packages reached. Cannot create more.");
+        }
+
         if (servicePackageRepository.existsByName(request.getName())) {
             throw new IllegalArgumentException("Gói dịch vụ với tên '" + request.getName() + "' đã tồn tại.");
         }

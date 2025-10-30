@@ -3,6 +3,7 @@ package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.User;
 
+import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.AuthenticationRepository;
@@ -44,6 +45,9 @@ public class AuthenticationService implements UserDetailsService {
     @Autowired
     TokenService tokenService;
 
+    @Autowired
+    EmailService emailService;
+
     public User register(User user){
         //xử lí logic cho register
         user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
@@ -79,4 +83,61 @@ public class AuthenticationService implements UserDetailsService {
     public User getCurrentUser(){
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
+
+
+    /**
+     * QUÊN MẬT KHẨU: Gửi email reset password (không cần đăng nhập)
+     */
+    public boolean resetPassword(String email) {
+        User user = authenticationRepository.findUserByEmail(email);
+
+        if (user == null) return true;
+
+        // Tạo token đặc biệt cho reset password
+        String token = tokenService.generatePasswordResetToken(user);
+
+        // Tạo URL reset password
+        String url = "http://evbatteryswapsystem.com/reset-password?token=" + token;
+
+        // Tạo email detail
+        EmailDetail emailDetail = new EmailDetail();
+        emailDetail.setRecipient(user.getEmail());
+        emailDetail.setSubject("Reset Password - EV Battery Swap Station");
+        emailDetail.setFullName(user.getFullName());
+        emailDetail.setUrl(url);
+
+        // Gửi email chứa link reset password
+        emailService.sendPasswordResetEmail(emailDetail);
+
+        return true;
+    }
+
+    /**
+     * QUÊN MẬT KHẨU: Cập nhật password mới với token
+     */
+    public boolean updatePasswordWithToken(String token, String newPassword) {
+        try {
+            // 1. Xác thực token reset password
+            if (!tokenService.validateToken(token)) {
+                throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn");
+            }
+
+            // 2. Lấy user từ token (KHÔNG cần đăng nhập)
+            User user = tokenService.extractToken(token);
+            if (user == null) {
+                throw new RuntimeException("User không tồn tại");
+            }
+
+            // 3. Cập nhật password mới
+            user.setPasswordHash(passwordEncoder.encode(newPassword));
+            authenticationRepository.save(user);
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
 }

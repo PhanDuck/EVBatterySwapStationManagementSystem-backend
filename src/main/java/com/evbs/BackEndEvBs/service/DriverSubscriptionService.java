@@ -40,6 +40,9 @@ public class DriverSubscriptionService {
     @Autowired
     private final UserRepository userRepository;
 
+    @Autowired
+    private final EmailService emailService;
+
     @Transactional
     public DriverSubscription createSubscriptionAfterPayment(Long packageId, Long driverId) {
         // Tìm tài xế theo ID (thay vì getCurrentUser)
@@ -121,15 +124,42 @@ public class DriverSubscriptionService {
     public void deleteSubscription(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
+            throw new AuthenticationException("Access denied. Admin role required.");
         }
 
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy đăng ký trình điều khiển có id: " + id));
+                .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
+
+        // Lưu thông tin trước khi xóa để gửi email
+        User driver = subscription.getDriver();
+        String adminName = currentUser.getFullName() != null ? currentUser.getFullName() : "Quản trị viên";
+
+        // Log thông tin
+        log.info("Admin {} is deleting subscription {} for driver {}",
+                currentUser.getEmail(),
+                subscription.getId(),
+                driver.getEmail());
 
         // Chuyển status thành CANCELLED
         subscription.setStatus(DriverSubscription.Status.CANCELLED);
         driverSubscriptionRepository.save(subscription);
+
+        // Gửi email thông báo cho driver
+        try {
+            String reason = String.format(
+                    "Gói dịch vụ '%s' của bạn đã bị hủy bởi quản trị viên hệ thống. " +
+                            "Nếu bạn cho rằng đây là một nhầm lẫn hoặc cần thêm thông tin, " +
+                            "vui lòng liên hệ với bộ phận hỗ trợ khách hàng của chúng tôi.",
+                    subscription.getServicePackage().getName()
+            );
+
+            emailService.sendSubscriptionDeletedEmail(driver, subscription, adminName, reason);
+            log.info("Subscription deletion email sent successfully to driver: {}", driver.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send subscription deletion email to driver {}: {}",
+                    driver.getEmail(), e.getMessage());
+            // Không throw exception để không ảnh hưởng đến quá trình xóa subscription
+        }
     }
 
     // ========================================

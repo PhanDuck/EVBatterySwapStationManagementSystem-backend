@@ -41,38 +41,6 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    /**
-     * Gửi email xác nhận đặt lịch booking
-     */
-    public void sendBookingConfirmationEmail(EmailDetail emailDetail){
-        try {
-            Context context = new Context();
-            context.setVariable("customerName", emailDetail.getFullName());
-            context.setVariable("bookingId", emailDetail.getBookingId());
-            context.setVariable("stationName", emailDetail.getStationName());
-            context.setVariable("stationLocation", emailDetail.getStationLocation());
-            context.setVariable("stationContact", emailDetail.getStationContact());
-            context.setVariable("bookingTime", emailDetail.getBookingTime());
-            context.setVariable("vehicleModel", emailDetail.getVehicleModel());
-            context.setVariable("batteryType", emailDetail.getBatteryType());
-            context.setVariable("status", emailDetail.getStatus());
-
-            String text = templateEngine.process("booking-confirmation", context);
-
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
-
-            mimeMessageHelper.setFrom(fromEmail);
-            mimeMessageHelper.setTo(emailDetail.getRecipient());
-            mimeMessageHelper.setText(text, true);
-            mimeMessageHelper.setSubject(emailDetail.getSubject());
-            mailSender.send(mimeMessage);
-
-        } catch (MessagingException e) {
-            System.err.println("Failed to send booking confirmation email: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
 
     /**
      * Gửi email thông báo booking đã được confirm với confirmation code
@@ -541,4 +509,39 @@ public class EmailService {
         NumberFormat formatter = NumberFormat.getInstance(new Locale("vi", "VN"));
         return formatter.format(amount) + " VNĐ";
     }
+
+
+    // Thêm vào EmailService.java
+    /**
+     * Gửi email reset password
+     */
+    public void sendPasswordResetEmail(EmailDetail emailDetail) {
+        try {
+            Context context = new Context();
+            context.setVariable("customerName", emailDetail.getFullName());
+            context.setVariable("resetLink", emailDetail.getUrl());
+            context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+            context.setVariable("systemName", "EV Battery Swap Station");
+
+            String htmlContent = templateEngine.process("forgot-password", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(emailDetail.getRecipient());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject(emailDetail.getSubject());
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email reset password đã được gửi thành công cho: {}", emailDetail.getRecipient());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email reset password cho {}: {}", emailDetail.getRecipient(), e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
 }

@@ -50,15 +50,6 @@ public class TokenService {
                 .compact();
     }
 
-    public boolean validateToken(String token) {
-        try {
-            extractAllClaims(token);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     //verify
 
     public User extractToken(String token) {

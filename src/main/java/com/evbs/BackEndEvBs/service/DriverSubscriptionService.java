@@ -124,18 +124,18 @@ public class DriverSubscriptionService {
     public void deleteSubscription(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Access denied. Admin role required.");
+            throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
         }
 
         DriverSubscription subscription = driverSubscriptionRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Driver subscription not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy đăng ký trình điều khiển có id:" + id));
 
         // Lưu thông tin trước khi xóa để gửi email
         User driver = subscription.getDriver();
         String adminName = currentUser.getFullName() != null ? currentUser.getFullName() : "Quản trị viên";
 
         // Log thông tin
-        log.info("Admin {} is deleting subscription {} for driver {}",
+        log.info("Quản trị viên {} đang xóa đăng ký {} cho trình điều khiển {}",
                 currentUser.getEmail(),
                 subscription.getId(),
                 driver.getEmail());
@@ -154,9 +154,9 @@ public class DriverSubscriptionService {
             );
 
             emailService.sendSubscriptionDeletedEmail(driver, subscription, adminName, reason);
-            log.info("Subscription deletion email sent successfully to driver: {}", driver.getEmail());
+            log.info("Email xóa đăng ký đã được gửi thành công đến tài xế: {}", driver.getEmail());
         } catch (Exception e) {
-            log.error("Failed to send subscription deletion email to driver {}: {}",
+            log.error("Không gửi được email xóa đăng ký cho tài xế {}: {}",
                     driver.getEmail(), e.getMessage());
             // Không throw exception để không ảnh hưởng đến quá trình xóa subscription
         }

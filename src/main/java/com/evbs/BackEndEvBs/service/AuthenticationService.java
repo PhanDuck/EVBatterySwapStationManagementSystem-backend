@@ -5,6 +5,7 @@ import com.evbs.BackEndEvBs.entity.User;
 
 import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
+import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.AuthenticationRepository;
 import com.evbs.BackEndEvBs.repository.UserRepository;
@@ -93,7 +94,7 @@ public class AuthenticationService implements UserDetailsService {
 
         if (user == null) return true;
 
-        // Tạo token đặc biệt cho reset password
+        // Tạo token cho reset password được 15 thôi ehhehe
         String token = tokenService.generatePasswordResetToken(user);
 
         // Tạo URL reset password
@@ -112,31 +113,10 @@ public class AuthenticationService implements UserDetailsService {
         return true;
     }
 
-    /**
-     * QUÊN MẬT KHẨU: Cập nhật password mới với token
-     */
-    public boolean updatePasswordWithToken(String token, String newPassword) {
-        try {
-            // 1. Xác thực token reset password
-            if (!tokenService.validateToken(token)) {
-                throw new RuntimeException("Token không hợp lệ hoặc đã hết hạn");
-            }
-
-            // 2. Lấy user từ token (KHÔNG cần đăng nhập)
-            User user = tokenService.extractToken(token);
-            if (user == null) {
-                throw new RuntimeException("User không tồn tại");
-            }
-
-            // 3. Cập nhật password mới
-            user.setPasswordHash(passwordEncoder.encode(newPassword));
-            authenticationRepository.save(user);
-
-            return true;
-
-        } catch (Exception e) {
-            return false;
-        }
+    public UserResponse updatePassword(UpdatePasswordRequest updatePasswordRequest) {
+        User user = getCurrentUser();
+        user.setPasswordHash(passwordEncoder.encode(updatePasswordRequest.getPassword()));
+        return modelMapper.map(authenticationRepository.save(user), UserResponse.class);
     }
 
 

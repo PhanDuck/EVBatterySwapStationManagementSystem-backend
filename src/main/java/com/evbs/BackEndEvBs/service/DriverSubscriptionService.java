@@ -154,9 +154,9 @@ public class DriverSubscriptionService {
             );
 
             emailService.sendSubscriptionDeletedEmail(driver, subscription, adminName, reason);
-            log.info("Email xóa đăng ký đã được gửi thành công đến tài xế: {}", driver.getEmail());
+            log.info("Subscription deletion email sent successfully to driver: {}", driver.getEmail());
         } catch (Exception e) {
-            log.error("Không gửi được email xóa đăng ký cho tài xế {}: {}",
+            log.error("Failed to send subscription deletion email to driver {}: {}",
                     driver.getEmail(), e.getMessage());
             // Không throw exception để không ảnh hưởng đến quá trình xóa subscription
         }
@@ -545,7 +545,7 @@ public class DriverSubscriptionService {
 
         // 6. Cảnh báo & khuyến nghị
         String warning = String.format(
-                "⚠️ HẠ CẤP KHÔNG HOÀN TIỀN! Bạn đã thanh toán %,d VNĐ cho gói \"%s\". " +
+                "HẠ CẤP KHÔNG HOÀN TIỀN! Bạn đã thanh toán %,d VNĐ cho gói \"%s\". " +
                         "Khi hạ xuống \"%s\", bạn sẽ KHÔNG được hoàn lại phần chênh lệch. " +
                         "Ngoài ra, bạn sẽ bị trừ %d lượt đổi pin (phí phạt 10%%).",
                 currentPackage.getPrice().intValue(),

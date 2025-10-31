@@ -5,6 +5,7 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BatteryTypeRequest;
+import com.evbs.BackEndEvBs.model.request.BatteryTypeUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,7 +59,7 @@ public class BatteryTypeService {
     }
 
     @Transactional
-    public BatteryType updateBatteryType(Long id, BatteryTypeRequest request) {
+    public BatteryType updateBatteryType(Long id, BatteryTypeUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
@@ -96,23 +97,4 @@ public class BatteryTypeService {
         return batteryTypeRepository.save(batteryType);
     }
 
-    @Transactional
-    public void deleteBatteryType(Long id) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
-        }
-
-        BatteryType batteryType = batteryTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
-
-        // Kiểm tra xem battery type có đang được sử dụng không
-        if (!batteryType.getBatteries().isEmpty() ||
-                !batteryType.getVehicles().isEmpty() ||
-                !batteryType.getStations().isEmpty()) {
-            throw new AuthenticationException("Không thể xóa loại pin đang sử dụng");
-        }
-
-        batteryTypeRepository.delete(batteryType);
-    }
 }

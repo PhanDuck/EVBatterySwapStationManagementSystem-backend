@@ -219,29 +219,6 @@ public class BatteryService {
         batteryRepository.save(battery);
     }
 
-    /**
-     * UPDATE - Tăng số lần sử dụng pin
-     */
-    @Transactional
-    public Battery incrementBatteryUsage(Long batteryId) {
-        Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
-
-        battery.incrementUsageCount();
-        return batteryRepository.save(battery);
-    }
-
-    /**
-     * UPDATE - Cập nhật ngày bảo trì
-     */
-    @Transactional
-    public Battery updateMaintenanceDate(Long batteryId, LocalDate maintenanceDate) {
-        Battery battery = batteryRepository.findById(batteryId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
-
-        battery.setLastMaintenanceDate(maintenanceDate);
-        return batteryRepository.save(battery);
-    }
 
     // ==================== HELPER METHODS ====================
 

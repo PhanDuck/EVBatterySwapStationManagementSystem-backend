@@ -430,7 +430,7 @@ public class SwapTransactionService {
         subscription.setRemainingSwaps(currentRemaining - 1);
         driverSubscriptionRepository.save(subscription);
 
-        // 3. Auto-complete booking nếu có
+        // 3. booking nếu có
         if (booking != null && booking.getStatus() == Booking.Status.CONFIRMED) {
             booking.setStatus(Booking.Status.COMPLETED);
             bookingRepository.save(booking);

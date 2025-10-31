@@ -36,7 +36,6 @@ public class Filter extends OncePerRequestFilter {
             // AUTH & REGISTRATION
             "POST:/api/register",
             "POST:/api/login",
-            "POST:/api/forgot-password",
             "POST:/api/reset-password",
 
             // SWAGGER & API DOCS

@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
+import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,31 +33,14 @@ public class AuthenticationController {
         return ResponseEntity.ok(authenticationService.getCurrentUser());
     }
 
-    @PostMapping("/api/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        authenticationService.resetPassword(request.getEmail());
-        return ResponseEntity.ok("Email đặt lại mật khẩu sẽ được gửi nếu email đó tồn tại.");
-    }
-
     @PostMapping("/api/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
-        authenticationService.updatePasswordWithToken(request.getToken(), request.getNewPassword());
-        return ResponseEntity.ok("Mật khẩu đã được cập nhật thành công.");
+    public void resetPassword(@RequestParam String email) {
+        authenticationService.resetPassword(email);
     }
 
-    // Inner classes cho request
-    public static class ForgotPasswordRequest {
-        private String email;
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-    }
-
-    public static class ResetPasswordRequest {
-        private String token;
-        private String newPassword;
-        public String getToken() { return token; }
-        public void setToken(String token) { this.token = token; }
-        public String getNewPassword() { return newPassword; }
-        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    @PostMapping("/api/update-password")
+    public ResponseEntity updatePassword(@RequestBody UpdatePasswordRequest updatePasswordRequest) {
+        UserResponse user = authenticationService.updatePassword(updatePasswordRequest);
+        return ResponseEntity.ok(user);
     }
 }

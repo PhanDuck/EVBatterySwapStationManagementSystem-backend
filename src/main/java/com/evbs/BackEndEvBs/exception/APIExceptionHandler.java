@@ -27,19 +27,19 @@ public class APIExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     @ResponseStatus()
     public ResponseEntity handleBadCredentialsException(BadCredentialsException exception) {
-        return ResponseEntity.status(401).body("Invalid username or password");
+        return ResponseEntity.status(401).body("Số điện thoại hoặc mật khẩu không hợp lệ");
     }
 
     @ExceptionHandler(InternalAuthenticationServiceException.class)
     public ResponseEntity handleInternalAuthenticationServiceException(InternalAuthenticationServiceException exception) {
-        return ResponseEntity.status(401).body("Invalid username or password");
+        return ResponseEntity.status(401).body("Số điện thoại hoặc mật khẩu không hợp lệ");
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity handleAuthenticationException(AuthenticationException exception) {
         // Kiểm tra nếu là lỗi không được thao tác trên chính mình
-        if (exception.getMessage().contains("Cannot update your own account") || 
-            exception.getMessage().contains("Cannot delete your own account")) {
+        if (exception.getMessage().contains("Không thể cập nhật tài khoản của riêng bạn") ||
+            exception.getMessage().contains("Không thể cập nhật tài khoản của riêng bạn")) {
             return ResponseEntity.status(403).body(exception.getMessage());
         }
         return ResponseEntity.status(401).body(exception.getMessage());

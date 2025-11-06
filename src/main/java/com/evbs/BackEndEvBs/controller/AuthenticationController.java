@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
+import com.evbs.BackEndEvBs.model.request.RegisterRequest;
 import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.service.AuthenticationService;
@@ -19,8 +20,8 @@ public class AuthenticationController {
     private AuthenticationService authenticationService;
 
     @PostMapping("/api/register")
-    public ResponseEntity<User> register(@Valid @RequestBody User user) {
-        return ResponseEntity.ok(authenticationService.register(user));
+    public ResponseEntity<User> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authenticationService.register(request));
     }
 
     @PostMapping("/api/login")

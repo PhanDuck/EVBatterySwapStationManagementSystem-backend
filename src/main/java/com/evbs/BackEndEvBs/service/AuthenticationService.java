@@ -3,8 +3,10 @@ package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.User;
 
+import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
+import com.evbs.BackEndEvBs.model.request.RegisterRequest;
 import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.AuthenticationRepository;
@@ -49,30 +51,44 @@ public class AuthenticationService implements UserDetailsService {
     @Autowired
     EmailService emailService;
 
-    public User register(User user){
-        //xử lí logic cho register
-        user.setPasswordHash(passwordEncoder.encode(user.getPasswordHash()));
+    public User register(RegisterRequest request){
+        // Kiểm tra email đã tồn tại
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new AuthenticationException("Email đã tồn tại!");
+        }
 
-        //lưu vô database
+        // Kiểm tra phone number đã tồn tại
+        if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            throw new AuthenticationException("Số điện thoại đã tồn tại!");
+        }
+
+        // Tạo user mới
+        User user = new User();
+        user.setFullName(request.getFullName());
+        user.setEmail(request.getEmail());
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setRole(User.Role.DRIVER); // Mặc định DRIVER
+        user.setStatus(User.Status.ACTIVE); // Mặc định ACTIVE
+
+        // Lưu vô database
         return authenticationRepository.save(user);
     }
-
-
 
 
     public UserResponse login(LoginRequest loginRequest){
 
         //xứ lí logic
-            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                    loginRequest.getPhone(),
-                    loginRequest.getPassword()
-            ));
-            User user = (User) authentication.getPrincipal();
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                loginRequest.getPhone(),
+                loginRequest.getPassword()
+        ));
+        User user = (User) authentication.getPrincipal();
 
-            UserResponse userResponse = modelMapper.map(user, UserResponse.class);
-            String token = tokenService.generateToken(user);
-            userResponse.setToken(token);
-            return userResponse;
+        UserResponse userResponse = modelMapper.map(user, UserResponse.class);
+        String token = tokenService.generateToken(user);
+        userResponse.setToken(token);
+        return userResponse;
     }
 
 
@@ -118,6 +134,4 @@ public class AuthenticationService implements UserDetailsService {
         user.setPasswordHash(passwordEncoder.encode(updatePasswordRequest.getPassword()));
         return modelMapper.map(authenticationRepository.save(user), UserResponse.class);
     }
-
-
 }

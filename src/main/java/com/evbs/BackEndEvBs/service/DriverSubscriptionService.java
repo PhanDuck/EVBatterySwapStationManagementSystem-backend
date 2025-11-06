@@ -6,7 +6,6 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
-import com.evbs.BackEndEvBs.model.response.DowngradeCalculationResponse;
 import com.evbs.BackEndEvBs.model.response.RenewalCalculationResponse;
 import com.evbs.BackEndEvBs.repository.DriverSubscriptionRepository;
 import com.evbs.BackEndEvBs.repository.ServicePackageRepository;
@@ -167,19 +166,25 @@ public class DriverSubscriptionService {
     // ========================================
 
     /**
-     * TÍNH TOÁN CHI PHÍ NÂNG CẤP GÓI
+     * TÍNH TOÁN CHI PHÍ NÂNG CẤP GÓI - MÔ HÌNH TELCO (ĐƠN GIẢN NHẤT)
      *
-     * Công thức (theo yêu cầu của bạn):
-     * 1. Giá trị hoàn lại = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ)
-     * 2. Phí nâng cấp = Giá gói cũ × 7%
-     * 3. Số tiền cần trả = Giá gói mới + Phí nâng cấp - Giá trị hoàn lại
+     * BUSINESS RULES:
+     * 1. HỦY gói cũ ngay lập tức (CANCELLED)
+     * 2. KÍCH HOẠT gói mới FULL 100%
+     * 3. THANH TOÁN = Giá FULL gói mới
      *
-     * Ví dụ:
-     * - Gói cũ: 20 lượt = 400,000đ (đã dùng 5, còn 15)
-     * - Gói mới: 50 lượt = 800,000đ
-     * - Giá trị hoàn lại = 15 × (400,000 / 20) = 15 × 20,000 = 300,000đ
-     * - Phí nâng cấp = 400,000 × 7% = 28,000đ
-     * - Tổng tiền = 800,000 + 28,000 - 300,000 = 528,000đ
+     * VÍ DỤ:
+     * - Gói cũ: Basic (20 lượt = 400,000đ, còn 15 lượt, 20 ngày)
+     * - Gói mới: Premium (50 lượt = 800,000đ, 60 ngày)
+     *
+     * KẾT QUẢ:
+     * - GÓI CŨ: Bị HỦY ngay → MẤT 15 lượt + 20 ngày
+     * - GÓI MỚI: FULL 50 lượt + 60 ngày MỚI
+     * - THANH TOÁN: 800,000đ (FULL giá gói mới)
+     *
+     * → GIỐNG MÔ HÌNH VIETTEL/VINAPHONE ĐỔI GÓI DATA
+     * → KHÔNG hoàn tiền, KHÔNG bonus, KHÔNG phí phạt
+     * → CỰC KỲ ĐƠN GIẢN, NGĂN 100% LẠM DỤNG
      *
      * @param newPackageId ID của gói mới muốn nâng cấp
      * @return UpgradeCalculationResponse chứa chi tiết tính toán
@@ -216,55 +221,67 @@ public class DriverSubscriptionService {
         }
 
         // 4. Tính toán các thông số
-        Integer usedSwaps = currentPackage.getMaxSwaps() - currentSub.getRemainingSwaps();
         Integer remainingSwaps = currentSub.getRemainingSwaps();
 
         LocalDate today = LocalDate.now();
         long daysUsed = ChronoUnit.DAYS.between(currentSub.getStartDate(), today);
         long daysRemaining = ChronoUnit.DAYS.between(today, currentSub.getEndDate());
 
-        // 5. CÔNG THỨC TÍNH TIỀN (theo yêu cầu của bạn)
+        // ========================================
+        // 5. TÍNH TOÁN THANH TOÁN - SIÊU ĐƠN GIẢN!
+        // ========================================
 
-        // 5.1. Giá mỗi lượt của gói cũ = Giá gói cũ / Tổng lượt
-        BigDecimal pricePerSwapOld = currentPackage.getPrice()
-                .divide(new BigDecimal(currentPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
+        // PHƯƠNG ÁN A: Trả FULL giá gói mới
+        BigDecimal paymentRequired = newPackage.getPrice();
 
-        // 5.2. Giá trị hoàn lại = Lượt chưa dùng × Giá/lượt
-        BigDecimal refundValue = pricePerSwapOld
-                .multiply(new BigDecimal(remainingSwaps))
-                .setScale(2, RoundingMode.HALF_UP);
+        // Ước tính giá trị mất mát (chỉ để hiển thị cho user)
+        long totalDays = ChronoUnit.DAYS.between(currentSub.getStartDate(), currentSub.getEndDate());
+        BigDecimal estimatedLostValue = totalDays > 0
+                ? currentPackage.getPrice()
+                .multiply(new BigDecimal(daysRemaining))
+                .divide(new BigDecimal(totalDays), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
 
-        // 5.3. Phí nâng cấp = Giá gói cũ × 7%
-        BigDecimal upgradeFeePercent = new BigDecimal("0.07"); // 7%
-        BigDecimal upgradeFee = currentPackage.getPrice()
-                .multiply(upgradeFeePercent)
-                .setScale(2, RoundingMode.HALF_UP);
+        // 6. Thông tin sau nâng cấp
+        LocalDate newStartDate = LocalDate.now();
+        LocalDate newEndDate = newStartDate.plusDays(newPackage.getDuration());
 
-        // 5.4. Tổng tiền cần trả = Giá gói mới + Phí nâng cấp - Giá trị hoàn lại
-        BigDecimal totalPayment = newPackage.getPrice()
-                .add(upgradeFee)
-                .subtract(refundValue)
-                .setScale(2, RoundingMode.HALF_UP);
-
-        // 6. Tính lợi ích
-        BigDecimal pricePerSwapNew = newPackage.getPrice()
-                .divide(new BigDecimal(newPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
-
-        BigDecimal savingsPerSwap = pricePerSwapOld.subtract(pricePerSwapNew);
-
-        // 7. Gợi ý
-        String recommendation = generateUpgradeRecommendation(
-                currentPackage, newPackage, usedSwaps, remainingSwaps, savingsPerSwap
+        // 7. Cảnh báo QUAN TRỌNG
+        String warning = String.format(
+                "CẢNH BÁO QUAN TRỌNG - VUI LÒNG ĐỌC KỸ:\n\n" +
+                        "KHI NÂNG CẤP, BẠN SẼ:\n" +
+                        "MẤT NGAY: %d lượt đổi pin còn lại\n" +
+                        "MẤT NGAY: %d ngày thời hạn còn lại  \n" +
+                        "GÓI CŨ: Bị HỦY hoàn toàn (CANCELLED)\n\n" +
+                        "SAU NÂNG CẤP, BẠN NHẬN:\n" +
+                        "GÓI MỚI: %d lượt FULL (không bonus)\n" +
+                        "THỜI HẠN: %d ngày MỚI (bắt đầu từ hôm nay)\n\n" +
+                        "THANH TOÁN:\n" +
+                        "• Giá: %,d VNĐ (FULL giá gói mới)\n" +
+                        "• Không hoàn lại phần gói cũ\n\n" +
+                        "LƯU Ý: Nếu gói cũ còn nhiều, hãy sử dụng thêm trước khi nâng cấp!",
+                remainingSwaps,
+                daysRemaining,
+                newPackage.getMaxSwaps(),
+                newPackage.getDuration(),
+                newPackage.getPrice().intValue()
         );
 
-        // 8. Build response
+        // 8. Phân tích
+        String analysis = generateTelcoStyleAnalysis(
+                currentPackage, newPackage,
+                remainingSwaps, daysRemaining, totalDays,
+                estimatedLostValue, paymentRequired
+        );
+
+        // 9. Build response
         return UpgradeCalculationResponse.builder()
                 // Gói hiện tại
                 .currentSubscriptionId(currentSub.getId())
                 .currentPackageName(currentPackage.getName())
                 .currentPackagePrice(currentPackage.getPrice())
                 .currentMaxSwaps(currentPackage.getMaxSwaps())
-                .usedSwaps(usedSwaps)
+                .usedSwaps(currentPackage.getMaxSwaps() - remainingSwaps)
                 .remainingSwaps(remainingSwaps)
                 .currentStartDate(currentSub.getStartDate())
                 .currentEndDate(currentSub.getEndDate())
@@ -278,36 +295,120 @@ public class DriverSubscriptionService {
                 .newMaxSwaps(newPackage.getMaxSwaps())
                 .newDuration(newPackage.getDuration())
 
-                // Tính toán
-                .pricePerSwapOld(pricePerSwapOld)
-                .refundValue(refundValue)
-                .upgradeFeePercent(upgradeFeePercent.multiply(new BigDecimal(100))) // 7%
-                .upgradeFee(upgradeFee)
-                .totalPaymentRequired(totalPayment)
+                // Tính toán (ĐƠN GIẢN!)
+                .refundValue(BigDecimal.ZERO) // KHÔNG HOÀN
+                .upgradeFee(BigDecimal.ZERO) // KHÔNG PHÍ
+                .totalPaymentRequired(paymentRequired) // FULL PRICE
+                .estimatedLostValue(estimatedLostValue) // CHỈ ĐỂ HIỂN THỊ
 
                 // Sau nâng cấp
-                .totalSwapsAfterUpgrade(newPackage.getMaxSwaps())
-                .newStartDate(LocalDate.now())
-                .newEndDate(LocalDate.now().plusDays(newPackage.getDuration()))
+                .totalSwapsAfterUpgrade(newPackage.getMaxSwaps()) // FULL
+                .newStartDate(newStartDate)
+                .newEndDate(newEndDate)
 
-                // So sánh
-                .pricePerSwapNew(pricePerSwapNew)
-                .savingsPerSwap(savingsPerSwap)
-                .recommendation(recommendation)
-
-                // Status
+                // Thông báo
                 .canUpgrade(true)
-                .message("Bạn có thể nâng cấp gói dịch vụ. Chi tiết tính toán đã được cung cấp.")
+                .message("Bạn có thể nâng cấp. Gói cũ sẽ BỊ HỦY, gói mới kích hoạt FULL.")
+                .warning(warning)
+                .recommendation(analysis)
                 .build();
     }
 
     /**
-     * XỬ LÝ NÂNG CẤP GÓI SAU KHI THANH TOÁN THÀNH CÔNG
+     * PHÂN TÍCH THEO MÔ HÌNH TELCO
+     */
+    private String generateTelcoStyleAnalysis(
+            ServicePackage currentPackage,
+            ServicePackage newPackage,
+            Integer remainingSwaps,
+            long daysRemaining,
+            long totalDays,
+            BigDecimal estimatedLostValue,
+            BigDecimal paymentRequired
+    ) {
+        StringBuilder analysis = new StringBuilder();
+
+        analysis.append("PHÂN TÍCH CHI TIẾT:\n\n");
+
+        // 1. Thông tin mất mát
+        analysis.append(String.format(
+                "BẠN SẼ MẤT:\n" +
+                        "   • %d lượt đổi pin\n" +
+                        "   • %d ngày thời hạn\n" +
+                        "   • Giá trị ước tính: ~%,d VNĐ\n" +
+                        "   • GÓI CŨ: Bị hủy hoàn toàn\n\n",
+                remainingSwaps,
+                daysRemaining,
+                estimatedLostValue.intValue()
+        ));
+
+        // 2. Thông tin nhận được
+        analysis.append(String.format(
+                "BẠN SẼ NHẬN:\n" +
+                        "   • %d lượt đổi FULL (100%%, không bonus)\n" +
+                        "   • %d ngày MỚI (bắt đầu từ hôm nay)\n" +
+                        "   • Giá trị: %,d VNĐ\n\n",
+                newPackage.getMaxSwaps(),
+                newPackage.getDuration(),
+                newPackage.getPrice().intValue()
+        ));
+
+        // 3. Thanh toán
+        analysis.append(String.format(
+                "THANH TOÁN:\n" +
+                        "   • TỔNG: %,d VNĐ (FULL giá gói mới)\n" +
+                        "   • Không hoàn lại: 0 VNĐ\n" +
+                        "   • Không phí phạt: 0 VNĐ\n\n",
+                paymentRequired.intValue()
+        ));
+
+        // 4. Gợi ý
+        double remainPercent = totalDays > 0 ? (daysRemaining * 100.0) / totalDays : 0;
+
+        if (remainPercent > 70) {
+            analysis.append(
+                    "CẢNH BÁO:\n" +
+                            String.format("   • Gói cũ còn %.0f%% (%d/%d ngày)\n",
+                                    remainPercent, daysRemaining, totalDays) +
+                            String.format("   • Bạn sẽ MẤT TRẮNG ~%,d VNĐ\n", estimatedLostValue.intValue()) +
+                            "   • GỢI Ý: Hãy dùng thêm gói cũ trước!\n\n"
+            );
+        } else if (remainPercent > 30) {
+            analysis.append(
+                    "CÂN NHẮC:\n" +
+                            String.format("   • Gói cũ còn %.0f%%\n", remainPercent) +
+                            String.format("   • Mất ~%,d VNĐ nếu nâng ngay\n\n", estimatedLostValue.intValue())
+            );
+        } else {
+            analysis.append("THỜI ĐIỂM TỐT: Gói cũ sắp hết!\n\n");
+        }
+
+        // 5. So sánh Telco
+        analysis.append(
+                "📱 TƯƠNG TỰ VIETTEL/VINA:\n" +
+                        "   • Gói cũ → MẤT NGAY\n" +
+                        "   • Gói mới → FULL 100%\n" +
+                        "   • Trả → FULL giá mới\n"
+        );
+
+        return analysis.toString();
+    }
+
+    /**
+     * XỬ LÝ NÂNG CẤP GÓI SAU KHI THANH TOÁN THÀNH CÔNG (TELCO MODEL)
      *
-     * Logic:
-     * 1. Expire gói cũ (set status = UPGRADED)
-     * 2. Tạo gói mới với full swaps
-     * 3. Ghi nhận thông tin upgrade vào log
+     * MÔ HÌNH TELCO - PHƯƠNG ÁN A (ĐƠN GIẢN NHẤT):
+     * 1. HỦY gói cũ ngay lập tức (Status = EXPIRED, mất hết lượt và ngày còn lại)
+     * 2. KÍCH HOẠT gói mới với FULL capacity:
+     *    - Swaps = 100% (newPackage.getMaxSwaps())
+     *    - Duration = 100% (newPackage.getDuration())
+     *    - StartDate = TODAY
+     * 3. KHÔNG có bonus, KHÔNG có refund
+     *
+     * Giống như Viettel/Vinaphone đổi gói data:
+     * - Data cũ: MẤT HẾT
+     * - Data mới: FULL 100%
+     * - Thanh toán: GIÁ ĐẦY ĐỦ
      *
      * @param newPackageId ID gói mới
      * @param driverId ID driver
@@ -330,24 +431,31 @@ public class DriverSubscriptionService {
 
         ServicePackage oldPackage = oldSubscription.getServicePackage();
 
-        // Ghi log thông tin nâng cấp
-        log.info("NÂNG CẤP GÓI - Tài xế: {} | Gói cũ: {} ({} lượt đổi, còn lại {}) | Gói mới: {} ({} lượt đổi, {} VND)",
-                driver.getEmail(),
+        // Ghi log thông tin nâng cấp TELCO STYLE
+        log.info("========== NÂNG CẤP GÓI (TELCO MODEL) ==========");
+        log.info("Tài xế: {}", driver.getEmail());
+        log.info("Gói CỦ: {} - {} lượt - Còn lại: {} lượt - Status: {} → EXPIRED (HỦY TOÀN BỘ)",
                 oldPackage.getName(),
                 oldPackage.getMaxSwaps(),
                 oldSubscription.getRemainingSwaps(),
+                oldSubscription.getStatus()
+        );
+        log.info("Gói MỚI: {} - {} lượt FULL - {} VNĐ - {} ngày",
                 newPackage.getName(),
                 newPackage.getMaxSwaps(),
-                newPackage.getPrice()
+                newPackage.getPrice(),
+                newPackage.getDuration()
         );
 
-        // Hết hạn gói cũ (đánh dấu EXPIRED để phân biệt với CANCELLED)
+        // HỦY gói cũ (TELCO: mất hết)
         oldSubscription.setStatus(DriverSubscription.Status.EXPIRED);
         oldSubscription.setEndDate(LocalDate.now()); // Kết thúc ngay hôm nay
         driverSubscriptionRepository.save(oldSubscription);
 
-        log.info("Gói cũ {} đã được hết hạn. {} lượt đổi còn lại sẽ bị hủy bỏ.",
-                oldSubscription.getId(), oldSubscription.getRemainingSwaps());
+        log.info("Gói cũ ID={} đã HỦY. {} lượt bị MẤT TRẮNG (TELCO model).",
+                oldSubscription.getId(),
+                oldSubscription.getRemainingSwaps()
+        );
 
         // Tạo gói đăng ký mới
         LocalDate startDate = LocalDate.now();
@@ -359,15 +467,16 @@ public class DriverSubscriptionService {
         newSubscription.setStartDate(startDate);
         newSubscription.setEndDate(endDate);
         newSubscription.setStatus(DriverSubscription.Status.ACTIVE);
-        newSubscription.setRemainingSwaps(newPackage.getMaxSwaps()); // Số lượt đổi tối đa của gói mới
+        newSubscription.setRemainingSwaps(newPackage.getMaxSwaps()); // FULL 100% - KHÔNG BONUS
 
         DriverSubscription savedSubscription = driverSubscriptionRepository.save(newSubscription);
 
-        log.info("NÂNG CẤP THÀNH CÔNG - Đã tạo gói đăng ký mới {}: {} lượt đổi, hết hạn vào {}.",
+        log.info("NÂNG CẤP THÀNH CÔNG - Gói mới ID={}: {} lượt FULL (100%), hết hạn {}",
                 savedSubscription.getId(),
                 savedSubscription.getRemainingSwaps(),
                 savedSubscription.getEndDate()
         );
+        log.info("================================================");
 
         return savedSubscription;
     }
@@ -416,318 +525,6 @@ public class DriverSubscriptionService {
         }
 
         return recommendation.toString();
-    }
-
-    // ========================================
-    // HẠ CẤP GÓI (DOWNGRADE PACKAGE)
-    // ========================================
-
-    /**
-     * TÍNH TOÁN CHI PHÍ & ĐIỀU KIỆN HẠ CẤP GÓI
-     *
-     * BUSINESS RULES:
-     * 1. CHO PHÉP nếu: remainingSwaps <= newPackageMaxSwaps
-     *    TỪ CHỐI nếu: remainingSwaps > newPackageMaxSwaps (còn quá nhiều lượt)
-     *
-     * 2. KHÔNG HOÀN TIỀN (driver đã sử dụng dịch vụ cao cấp)
-     *
-     * 3. PENALTY: Trừ 10% số lượt còn lại
-     *    VD: Còn 50 lượt → Trừ 5 lượt → Còn 45 lượt
-     *
-     * 4. EXTENSION: Kéo dài thời hạn dựa trên lượt còn lại
-     *    Công thức: extensionDays = (finalSwaps / newMaxSwaps) × newDuration
-     *    VD: 45 lượt / 30 lượt × 30 ngày = 45 ngày
-     *
-     * @param newPackageId ID của gói mới (RẺ HƠN)
-     * @return DowngradeCalculationResponse
-     */
-    @Transactional(readOnly = true)
-    public DowngradeCalculationResponse calculateDowngradeCost(Long newPackageId) {
-        User currentDriver = authenticationService.getCurrentUser();
-
-        if (currentDriver.getRole() != User.Role.DRIVER) {
-            throw new AuthenticationException("Chỉ tài xế mới có thể tính toán chi phí hạ cấp gói.");
-        }
-
-        // 1. Lấy gói đăng ký hiện tại
-        DriverSubscription currentSub = driverSubscriptionRepository
-                .findActiveSubscriptionByDriver(currentDriver, LocalDate.now())
-                .orElseThrow(() -> new NotFoundException(
-                        "Bạn chưa có gói dịch vụ nào đang hoạt động."
-                ));
-
-        ServicePackage currentPackage = currentSub.getServicePackage();
-
-        // 2. Lấy thông tin gói mới
-        ServicePackage newPackage = servicePackageRepository.findById(newPackageId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + newPackageId));
-
-        // 3. Tính toán các thông số
-        Integer usedSwaps = currentPackage.getMaxSwaps() - currentSub.getRemainingSwaps();
-        Integer remainingSwaps = currentSub.getRemainingSwaps();
-
-        LocalDate today = LocalDate.now();
-        long daysUsed = ChronoUnit.DAYS.between(currentSub.getStartDate(), today);
-        long daysRemaining = ChronoUnit.DAYS.between(today, currentSub.getEndDate());
-
-        BigDecimal pricePerSwapOld = currentPackage.getPrice()
-                .divide(new BigDecimal(currentPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
-
-        BigDecimal pricePerSwapNew = newPackage.getPrice()
-                .divide(new BigDecimal(newPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
-
-        // 4. Kiểm tra điều kiện hạ cấp
-
-        // 4.1. Gói mới phải RẺ HƠN hoặc ÍT LƯỢT HƠN
-        if (newPackage.getPrice().compareTo(currentPackage.getPrice()) >= 0
-                && newPackage.getMaxSwaps() >= currentPackage.getMaxSwaps()) {
-            return DowngradeCalculationResponse.builder()
-                    .canDowngrade(false)
-                    .reason("Gói mới phải có giá thấp hơn hoặc có số lượt đổi ít hơn gói hiện tại. " +
-                            "Gói hiện tại: " + currentPackage.getPrice() + " VNĐ / " + currentPackage.getMaxSwaps() + " lượt. " +
-                            "Gói mới: " + newPackage.getPrice() + " VNĐ / " + newPackage.getMaxSwaps() + " lượt.")
-                    .warning("Đây không phải là hạ cấp! Vui lòng chọn gói có giá thấp hơn.")
-                    .build();
-        }
-
-        // 4.2. Kiểm tra: Số lượt còn lại phải <= số lượt tối đa của gói mới
-        if (remainingSwaps > newPackage.getMaxSwaps()) {
-            return DowngradeCalculationResponse.builder()
-                    .currentSubscriptionId(currentSub.getId())
-                    .currentPackageName(currentPackage.getName())
-                    .currentPackagePrice(currentPackage.getPrice())
-                    .currentMaxSwaps(currentPackage.getMaxSwaps())
-                    .remainingSwaps(remainingSwaps)
-                    .newPackageId(newPackage.getId())
-                    .newPackageName(newPackage.getName())
-                    .newMaxSwaps(newPackage.getMaxSwaps())
-                    .canDowngrade(false)
-                    .reason(String.format(
-                            "KHÔNG THỂ HẠ CẤP! Bạn còn %d lượt đổi pin chưa sử dụng, " +
-                                    "trong khi gói \"%s\" chỉ hỗ trợ tối đa %d lượt. " +
-                                    "Vui lòng sử dụng bớt (còn ≤ %d lượt) hoặc chọn gói lớn hơn.",
-                            remainingSwaps,
-                            newPackage.getName(),
-                            newPackage.getMaxSwaps(),
-                            newPackage.getMaxSwaps()
-                    ))
-                    .warning(String.format(
-                            "Gợi ý: Hãy sử dụng thêm %d lượt nữa (còn lại %d lượt) để có thể hạ cấp xuống gói này.",
-                            remainingSwaps - newPackage.getMaxSwaps(),
-                            newPackage.getMaxSwaps()
-                    ))
-                    .build();
-        }
-
-        // 5. Đủ điều kiện hạ cấp → Tiến hành tính toán
-
-        // 5.1. Phí phạt (penalty): Trừ 10% số lượt còn lại
-        BigDecimal penaltyPercent = new BigDecimal("0.10"); // 10%
-        Integer penaltySwaps = new BigDecimal(remainingSwaps)
-                .multiply(penaltyPercent)
-                .setScale(0, RoundingMode.HALF_UP)
-                .intValue();
-
-        Integer finalSwaps = remainingSwaps - penaltySwaps;
-
-        // 5.2. Tính thời hạn gói mới dựa trên số lượt còn lại
-        // Công thức: extensionDays = (finalSwaps / newMaxSwaps) × newDuration
-        BigDecimal swapRatio = new BigDecimal(finalSwaps)
-                .divide(new BigDecimal(newPackage.getMaxSwaps()), 4, RoundingMode.HALF_UP);
-
-        Integer extensionDays = swapRatio
-                .multiply(new BigDecimal(newPackage.getDuration()))
-                .setScale(0, RoundingMode.HALF_UP)
-                .intValue();
-
-        LocalDate newStartDate = LocalDate.now();
-        LocalDate newEndDate = newStartDate.plusDays(extensionDays);
-
-        // 6. Cảnh báo & khuyến nghị
-        String warning = String.format(
-                "HẠ CẤP KHÔNG HOÀN TIỀN! Bạn đã thanh toán %,d VNĐ cho gói \"%s\". " +
-                        "Khi hạ xuống \"%s\", bạn sẽ KHÔNG được hoàn lại phần chênh lệch. " +
-                        "Ngoài ra, bạn sẽ bị trừ %d lượt đổi pin (phí phạt 10%%).",
-                currentPackage.getPrice().intValue(),
-                currentPackage.getName(),
-                newPackage.getName(),
-                penaltySwaps
-        );
-
-        String recommendation = generateDowngradeRecommendation(
-                currentPackage, newPackage, remainingSwaps, finalSwaps, extensionDays
-        );
-
-        // 7. Trả về kết quả
-        return DowngradeCalculationResponse.builder()
-                // Gói hiện tại
-                .currentSubscriptionId(currentSub.getId())
-                .currentPackageName(currentPackage.getName())
-                .currentPackagePrice(currentPackage.getPrice())
-                .currentMaxSwaps(currentPackage.getMaxSwaps())
-                .usedSwaps(usedSwaps)
-                .remainingSwaps(remainingSwaps)
-                .currentStartDate(currentSub.getStartDate())
-                .currentEndDate(currentSub.getEndDate())
-                .daysUsed((int) daysUsed)
-                .daysRemaining((int) daysRemaining)
-
-                // Gói mới
-                .newPackageId(newPackage.getId())
-                .newPackageName(newPackage.getName())
-                .newPackagePrice(newPackage.getPrice())
-                .newMaxSwaps(newPackage.getMaxSwaps())
-                .newDuration(newPackage.getDuration())
-
-                // Thông tin tính toán
-                .pricePerSwapOld(pricePerSwapOld)
-                .pricePerSwapNew(pricePerSwapNew)
-                .totalPaidForOldPackage(currentPackage.getPrice())
-                .noRefund(BigDecimal.ZERO)
-                .downgradePenaltyPercent(penaltyPercent.multiply(new BigDecimal(100)))
-                .penaltySwaps(penaltySwaps)
-                .finalRemainingSwaps(finalSwaps)
-
-                // Sau khi hạ cấp
-                .newStartDate(newStartDate)
-                .newEndDate(newEndDate)
-                .extensionDays(extensionDays)
-
-                // Trạng thái
-                .canDowngrade(true)
-                .reason("Bạn đủ điều kiện để hạ cấp gói. Vui lòng xem kỹ cảnh báo trước khi xác nhận.")
-                .warning(warning)
-                .recommendation(recommendation)
-                .build();
-    }
-
-    /**
-     * XỬ LÝ HẠ CẤP GÓI (KHÔNG CẦN THANH TOÁN)
-     *
-     * Logic:
-     * 1. Expire gói cũ
-     * 2. Tạo gói mới với:
-     *    - remainingSwaps = finalSwaps (sau khi trừ penalty)
-     *    - endDate = kéo dài tương ứng
-     * 3. KHÔNG thu thêm tiền, KHÔNG hoàn tiền
-     *
-     * @param newPackageId ID gói mới
-     * @return DriverSubscription mới sau downgrade
-     */
-    @Transactional
-    public DriverSubscription downgradeSubscription(Long newPackageId) {
-        User currentDriver = authenticationService.getCurrentUser();
-
-        if (currentDriver.getRole() != User.Role.DRIVER) {
-            throw new AuthenticationException("Chỉ tài xế mới được phép hạ cấp gói dịch vụ.");
-        }
-
-        // 1. Kiểm tra điều kiện hạ cấp bằng phương thức calculate
-        DowngradeCalculationResponse calculation = calculateDowngradeCost(newPackageId);
-
-        if (!calculation.getCanDowngrade()) {
-            throw new IllegalStateException(
-                    "Không thể hạ cấp gói: " + calculation.getReason()
-            );
-        }
-
-        // 2. Lấy gói đăng ký hiện tại
-        DriverSubscription oldSubscription = driverSubscriptionRepository
-                .findActiveSubscriptionByDriver(currentDriver, LocalDate.now())
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ nào đang hoạt động."));
-
-        ServicePackage oldPackage = oldSubscription.getServicePackage();
-        ServicePackage newPackage = servicePackageRepository.findById(newPackageId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ với ID: " + newPackageId));
-
-        // 3. Ghi log thông tin hạ cấp
-        log.info("HẠ CẤP GÓI - Tài xế: {} | Gói cũ: {} ({} lượt, còn {} lượt) | Gói mới: {} (phạt {} lượt, còn lại {} lượt, gia hạn {} ngày)",
-                currentDriver.getEmail(),
-                oldPackage.getName(),
-                oldPackage.getMaxSwaps(),
-                oldSubscription.getRemainingSwaps(),
-                newPackage.getName(),
-                calculation.getPenaltySwaps(),
-                calculation.getFinalRemainingSwaps(),
-                calculation.getExtensionDays()
-        );
-
-        // 4. Hết hạn gói cũ
-        oldSubscription.setStatus(DriverSubscription.Status.EXPIRED);
-        oldSubscription.setEndDate(LocalDate.now());
-        driverSubscriptionRepository.save(oldSubscription);
-
-        log.info("Gói cũ {} đã hết hạn. {} lượt bị hủy (bao gồm {} lượt phạt).",
-                oldSubscription.getId(),
-                oldSubscription.getRemainingSwaps(),
-                calculation.getPenaltySwaps()
-        );
-
-        // 5. Tạo gói dịch vụ mới
-        DriverSubscription newSubscription = new DriverSubscription();
-        newSubscription.setDriver(currentDriver);
-        newSubscription.setServicePackage(newPackage);
-        newSubscription.setStartDate(calculation.getNewStartDate());
-        newSubscription.setEndDate(calculation.getNewEndDate());
-        newSubscription.setStatus(DriverSubscription.Status.ACTIVE);
-        newSubscription.setRemainingSwaps(calculation.getFinalRemainingSwaps()); // Số lượt sau khi trừ penalty
-
-        DriverSubscription savedSubscription = driverSubscriptionRepository.save(newSubscription);
-
-        log.info("HẠ CẤP THÀNH CÔNG - Gói mới {} đã được tạo: {} lượt, hết hạn vào {} (được gia hạn thêm {} ngày).",
-                savedSubscription.getId(),
-                savedSubscription.getRemainingSwaps(),
-                savedSubscription.getEndDate(),
-                calculation.getExtensionDays()
-        );
-
-        return savedSubscription;
-    }
-
-    /**
-     * GENERATE DOWNGRADE RECOMMENDATION
-     */
-    private String generateDowngradeRecommendation(
-            ServicePackage currentPackage,
-            ServicePackage newPackage,
-            Integer remainingSwaps,
-            Integer finalSwaps,
-            Integer extensionDays
-    ) {
-        StringBuilder rec = new StringBuilder();
-
-        rec.append("Phân tích: ");
-
-        // Cảnh báo về mất tiền
-        BigDecimal lostValue = currentPackage.getPrice().subtract(newPackage.getPrice());
-        rec.append(String.format(
-                "Bạn sẽ KHÔNG được hoàn %,d VNĐ (chênh lệch giữa 2 gói). ",
-                lostValue.intValue()
-        ));
-
-        // Thông tin về penalty
-        int penaltySwaps = remainingSwaps - finalSwaps;
-        rec.append(String.format(
-                "Bị trừ %d lượt (10%% penalty), còn %d lượt. ",
-                penaltySwaps,
-                finalSwaps
-        ));
-
-        // Thông tin về extension
-        rec.append(String.format(
-                "Gói mới sẽ kéo dài %d ngày (tính theo %d lượt còn lại). ",
-                extensionDays,
-                finalSwaps
-        ));
-
-        // Gợi ý
-        if (remainingSwaps < newPackage.getMaxSwaps() / 2) {
-            rec.append("Hợp lý nếu bạn thực sự dùng ít hơn dự kiến. ");
-        } else {
-            rec.append("Cân nhắc kỹ! Bạn vẫn còn nhiều lượt, có thể dùng hết rồi mua gói mới sẽ tốt hơn. ");
-        }
-
-        return rec.toString();
     }
 
     // ========================================
@@ -956,7 +753,7 @@ public class DriverSubscriptionService {
             ServicePackage oldPackage = oldSubscription.getServicePackage();
             if (!oldPackage.getId().equals(renewalPackageId)) {
                 throw new IllegalArgumentException(
-                        "❌ KHÔNG THỂ GIA HẠN! Bạn chỉ được gia hạn cùng gói hiện tại. " +
+                        "KHÔNG THỂ GIA HẠN! Bạn chỉ được gia hạn cùng gói hiện tại. " +
                                 "Gói hiện tại: \"" + oldPackage.getName() + "\" (ID: " + oldPackage.getId() + "). " +
                                 "Gói bạn chọn: \"" + renewalPackage.getName() + "\" (ID: " + renewalPackageId + "). " +
                                 "Nếu muốn đổi gói khác, vui lòng sử dụng chức năng NÂNG CẤP hoặc HẠ CẤP gói."

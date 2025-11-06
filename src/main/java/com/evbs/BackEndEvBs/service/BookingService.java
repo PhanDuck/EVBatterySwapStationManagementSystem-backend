@@ -383,21 +383,18 @@ public class BookingService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
             emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
 
-            // Thêm biển số xe vào email
-            emailDetail.setVehicleModel(
-                    (vehicle.getModel() != null ? vehicle.getModel() : "Xe") + 
-                    " - Biển số: " + vehicle.getPlateNumber()
-            );
+            // TÁCH RIÊNG: Model xe và Biển số xe
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : "Xe điện");
+            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // ✅ Biển số riêng
+            
             emailDetail.setBatteryType(
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
             );
             emailDetail.setStatus(booking.getStatus().toString());
 
-            // Confirmation code kèm biển số xe để dễ nhận diện
-            emailDetail.setConfirmationCode(
-                    booking.getConfirmationCode() + " (Xe: " + vehicle.getPlateNumber() + ")"
-            );
+            // Mã xác nhận KHÔNG kèm biển số nữa
+            emailDetail.setConfirmationCode(booking.getConfirmationCode());
             emailDetail.setConfirmedBy(confirmedBy != null ? confirmedBy.getFullName() : "Hệ thống");
 
             // Thêm thông tin về chính sách hủy booking
@@ -436,20 +433,17 @@ public class BookingService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
             emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
 
-            // Thêm biển số xe vào email hủy
-            emailDetail.setVehicleModel(
-                    (vehicle.getModel() != null ? vehicle.getModel() : "Xe") + 
-                    " - Biển số: " + vehicle.getPlateNumber()
-            );
+            // TÁCH RIÊNG: Model xe và Biển số xe
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : "Xe điện");
+            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // ✅ Biển số riêng
+            
             emailDetail.setBatteryType(
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
             );
             emailDetail.setStatus("HỦY");
-            // Confirmation code kèm biển số xe
-            emailDetail.setConfirmationCode(
-                    booking.getConfirmationCode() + " (Xe: " + vehicle.getPlateNumber() + ")"
-            );
+            // Mã xác nhận KHÔNG kèm biển số
+            emailDetail.setConfirmationCode(booking.getConfirmationCode());
 
             // Thêm thông tin chính sách hủy
             emailDetail.setCancellationPolicy("Lịch đặt của bạn đã được hủy thành công. Pin đã được giải phóng.");

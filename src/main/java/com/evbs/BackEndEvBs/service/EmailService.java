@@ -54,6 +54,7 @@ public class EmailService {
             context.setVariable("stationContact", emailDetail.getStationContact());
             context.setVariable("bookingTime", emailDetail.getBookingTime());
             context.setVariable("vehicleModel", emailDetail.getVehicleModel());
+            context.setVariable("vehiclePlateNumber", emailDetail.getVehiclePlateNumber());
             context.setVariable("batteryType", emailDetail.getBatteryType());
             context.setVariable("status", emailDetail.getStatus());
             context.setVariable("confirmationCode", emailDetail.getConfirmationCode());
@@ -89,6 +90,7 @@ public class EmailService {
             context.setVariable("stationContact", emailDetail.getStationContact());
             context.setVariable("bookingTime", emailDetail.getBookingTime());
             context.setVariable("vehicleModel", emailDetail.getVehicleModel());
+            context.setVariable("vehiclePlateNumber", emailDetail.getVehiclePlateNumber());
             context.setVariable("batteryType", emailDetail.getBatteryType());
             context.setVariable("status", emailDetail.getStatus());
             context.setVariable("cancellationPolicy", emailDetail.getCancellationPolicy());

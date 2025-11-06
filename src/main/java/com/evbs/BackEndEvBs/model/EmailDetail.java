@@ -15,6 +15,7 @@ public class EmailDetail {
     String stationContact;
     String bookingTime;
     String vehicleModel;
+    String vehiclePlateNumber;
     String batteryType;
     String status;
     String confirmationCode;

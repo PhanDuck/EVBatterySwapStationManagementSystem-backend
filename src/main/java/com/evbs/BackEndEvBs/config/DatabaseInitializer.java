@@ -122,15 +122,13 @@ public class DatabaseInitializer implements CommandLineRunner {
         stationInventoryRepository.saveAll(inventory);
         log.info("Created {} station inventory records", inventory.size());
 
-        // 10. KHÔNG tạo Bookings (đã xóa theo yêu cầu)
-        log.info("Skipped booking creation as requested");
+        // 10. KHÔNG tạo Bookings
+        log.info("Skipped booking creation");
 
-        // 11. Tạo Swap Transactions (lịch sử)
-        List<SwapTransaction> transactions = createSwapTransactions(users, vehicles, stations, batteries);
-        swapTransactionRepository.saveAll(transactions);
-        log.info("Created {} swap transactions", transactions.size());
+        // 11. KHÔNG tạo Swap Transactions
+        log.info("Skipped swap transaction creation");
 
-        // 12. Tạo Payments
+        // 12. Tạo Payments (CHỈ cho subscription - thanh toán mua gói)
         List<Payment> payments = createPayments(subscriptions);
         paymentRepository.saveAll(payments);
         log.info("Created {} payments", payments.size());
@@ -195,23 +193,23 @@ public class DatabaseInitializer implements CommandLineRunner {
         type48V.setDimensions("35x25x20 cm");
         type48V.setDescription("Pin tiêu chuẩn cho xe máy điện");
 
-        BatteryType type60V = new BatteryType();
-        type60V.setName("Premium 60V-30Ah");
-        type60V.setVoltage(60.0);
-        type60V.setCapacity(30.0);
-        type60V.setWeight(22.0);
-        type60V.setDimensions("40x30x25 cm");
-        type60V.setDescription("Pin cao cấp cho xe máy điện công suất lớn");
+        BatteryType type52V = new BatteryType();
+        type52V.setName("Premium 52V-22Ah");
+        type52V.setVoltage(52.0);
+        type52V.setCapacity(22.0);
+        type52V.setWeight(16.5);
+        type52V.setDimensions("36x26x21 cm");
+        type52V.setDescription("Pin cao cấp cho xe máy điện");
 
-        BatteryType type72V = new BatteryType();
-        type72V.setName("Heavy Duty 72V-40Ah");
-        type72V.setVoltage(72.0);
-        type72V.setCapacity(40.0);
-        type72V.setWeight(30.0);
-        type72V.setDimensions("45x35x30 cm");
-        type72V.setDescription("Pin công nghiệp cho xe tải điện");
+        BatteryType type54V = new BatteryType();
+        type54V.setName("Enhanced 54V-24Ah");
+        type54V.setVoltage(54.0);
+        type54V.setCapacity(24.0);
+        type54V.setWeight(17.5);
+        type54V.setDimensions("37x27x22 cm");
+        type54V.setDescription("Pin nâng cao cho xe máy điện");
 
-        return List.of(type48V, type60V, type72V);
+        return List.of(type48V, type52V, type54V);
     }
 
     private List<Station> createStations(List<BatteryType> batteryTypes) {
@@ -272,16 +270,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         // 1. PIN Ở TRẠM (currentStation != null, status = AVAILABLE/CHARGING/MAINTENANCE)
         // ==================================================
 
-        // Mỗi trạm có 10 pin
+        // Mỗi trạm có 15 pin
         for (int stationIndex = 0; stationIndex < stations.size(); stationIndex++) {
             Station station = stations.get(stationIndex);
             BatteryType batteryType = station.getBatteryType();
 
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 15; i++) {
                 Battery.Status status;
-                if (i < 2 && stationIndex % 3 == 0) {
+                if (i < 3 && stationIndex % 3 == 0) {
                     status = Battery.Status.MAINTENANCE; // Một số trạm có pin bảo trì
-                } else if (i < 8) {
+                } else if (i < 12) {
                     status = Battery.Status.AVAILABLE;
                 } else {
                     status = Battery.Status.CHARGING;
@@ -307,8 +305,8 @@ public class DatabaseInitializer implements CommandLineRunner {
         // 2. PIN TRONG KHO (currentStation = null, status = AVAILABLE/MAINTENANCE)
         // ==================================================
 
-        // 30 pin trong kho (10 mỗi loại)
-        for (int i = 0; i < 30; i++) {
+        // 60 pin trong kho (20 mỗi loại) - TĂNG TỪ 30 LÊN 60
+        for (int i = 0; i < 60; i++) {
             BatteryType batteryType = batteryTypes.get(i % 3);
             Battery.Status status = i % 5 == 0 ? Battery.Status.MAINTENANCE : Battery.Status.AVAILABLE;
             BigDecimal health = status == Battery.Status.MAINTENANCE ?
@@ -419,16 +417,16 @@ public class DatabaseInitializer implements CommandLineRunner {
 
     private String getVehicleModel(BatteryType batteryType, int index) {
         String[] models48V = {"VinFast Klara A1", "Yadea Xmen Neo", "Pega Angel", "Dibao M5"};
-        String[] models60V = {"VinFast Impes", "Yadea G5", "Pega NewTech", "Dibao X7"};
-        String[] models72V = {"VinFast Evo", "Yadea T5", "Pega Heavy", "Dibao Truck"};
+        String[] models52V = {"VinFast Impes", "Yadea G5", "Pega NewTech", "Dibao X7"};
+        String[] models54V = {"VinFast Evo", "Yadea T5", "Pega Heavy", "Dibao Truck"};
 
         double voltage = batteryType.getVoltage();
         if (voltage == 48.0) {
             return models48V[index % models48V.length];
-        } else if (voltage == 60.0) {
-            return models60V[index % models60V.length];
+        } else if (voltage == 52.0) {
+            return models52V[index % models52V.length];
         } else {
-            return models72V[index % models72V.length];
+            return models54V[index % models54V.length];
         }
     }
 
@@ -557,60 +555,6 @@ public class DatabaseInitializer implements CommandLineRunner {
         inventory.setStatus(status);
         inventory.setLastUpdate(LocalDateTime.now());
         return inventory;
-    }
-
-    private List<SwapTransaction> createSwapTransactions(List<User> users, List<Vehicle> vehicles, List<Station> stations, List<Battery> batteries) {
-        List<User> drivers = users.stream().filter(u -> u.getRole() == User.Role.DRIVER).toList();
-        List<User> staff = users.stream().filter(u -> u.getRole() == User.Role.STAFF).toList();
-        LocalDateTime now = LocalDateTime.now();
-
-        // Lấy các pin AVAILABLE từ trạm để làm pin mới
-        List<Battery> availableBatteries = batteries.stream()
-                .filter(b -> b.getStatus() == Battery.Status.AVAILABLE && b.getCurrentStation() != null)
-                .toList();
-
-        return List.of(
-                createSwapTransaction(drivers.get(0), vehicles.get(0), stations.get(0), staff.get(0),
-                        availableBatteries.get(0), vehicles.get(0).getCurrentBattery(),
-                        now.minusHours(24), now.minusHours(24).plusMinutes(3),
-                        BigDecimal.ZERO, SwapTransaction.Status.COMPLETED),
-
-                createSwapTransaction(drivers.get(1), vehicles.get(1), stations.get(1), staff.get(1),
-                        availableBatteries.get(1), vehicles.get(1).getCurrentBattery(),
-                        now.minusHours(48), now.minusHours(48).plusMinutes(2),
-                        BigDecimal.ZERO, SwapTransaction.Status.COMPLETED)
-        );
-    }
-
-    private SwapTransaction createSwapTransaction(User driver, Vehicle vehicle, Station station, User staff,
-                                                  Battery newBattery, Battery oldBattery, LocalDateTime start, LocalDateTime end,
-                                                  BigDecimal cost, SwapTransaction.Status status) {
-        SwapTransaction transaction = new SwapTransaction();
-        transaction.setDriver(driver);
-        transaction.setVehicle(vehicle);
-        transaction.setStation(station);
-        transaction.setStaff(staff);
-        transaction.setSwapOutBattery(newBattery);  // Pin mới từ trạm
-        transaction.setSwapInBattery(oldBattery);   // Pin cũ từ xe
-        transaction.setStartTime(start);
-        transaction.setEndTime(end);
-        transaction.setCost(cost);
-        transaction.setStatus(status);
-
-        // Save snapshot
-        if (newBattery != null) {
-            transaction.setSwapOutBatteryModel(newBattery.getModel());
-            transaction.setSwapOutBatteryChargeLevel(newBattery.getChargeLevel());
-            transaction.setSwapOutBatteryHealth(newBattery.getStateOfHealth());
-        }
-
-        if (oldBattery != null) {
-            transaction.setSwapInBatteryModel(oldBattery.getModel());
-            transaction.setSwapInBatteryChargeLevel(oldBattery.getChargeLevel());
-            transaction.setSwapInBatteryHealth(oldBattery.getStateOfHealth());
-        }
-
-        return transaction;
     }
 
     private List<Payment> createPayments(List<DriverSubscription> subscriptions) {

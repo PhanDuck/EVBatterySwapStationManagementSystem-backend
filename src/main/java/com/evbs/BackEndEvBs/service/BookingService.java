@@ -88,15 +88,8 @@ public class BookingService {
             );
         }
 
-        // Kiểm tra driver đã có booking đang hoạt động chưa
-        List<Booking> activeBookings = bookingRepository.findByDriverAndStatusNotIn(
-                currentUser,
-                List.of(Booking.Status.CANCELLED, Booking.Status.COMPLETED)
-        );
-
-        if (!activeBookings.isEmpty()) {
-            throw new AuthenticationException("Bạn đã có đặt chỗ đang hoạt động. Vui lòng Hoàn tất hoặc Hủy trước khi tạo đặt chỗ mới.");
-        }
+        // ❌ XÓA: Không check driver có booking active (cho phép driver có nhiều xe booking cùng lúc)
+        // Driver có 2 xe → được booking 2 lần cho 2 xe khác nhau
 
         // VALIDATION: Max 10 bookings per user per day
         LocalDate today = LocalDate.now();
@@ -114,6 +107,22 @@ public class BookingService {
 
         if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
             throw new AuthenticationException("Xe không thuộc sở hữu của người dùng hiện tại");
+        }
+
+        // KIỂM TRA: 1 xe chỉ được có 1 booking active tại 1 thời điểm
+        List<Booking> vehicleActiveBookings = bookingRepository.findByVehicleAndStatusNotIn(
+                vehicle,
+                List.of(Booking.Status.CANCELLED, Booking.Status.COMPLETED)
+        );
+
+        if (!vehicleActiveBookings.isEmpty()) {
+            Booking existingBooking = vehicleActiveBookings.get(0);
+            throw new AuthenticationException(
+                    String.format("Xe này đã có đặt chỗ đang hoạt động (ID: %d, Trạng thái: %s). " +
+                                    "Vui lòng hoàn tất hoặc hủy trước khi tạo đặt chỗ mới.",
+                            existingBooking.getId(),
+                            existingBooking.getStatus())
+            );
         }
 
         // Validate station
@@ -374,13 +383,17 @@ public class BookingService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
             emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
 
-            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : vehicle.getPlateNumber());
+            // TÁCH RIÊNG: Model xe và Biển số xe
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : "Xe điện");
+            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // ✅ Biển số riêng
+            
             emailDetail.setBatteryType(
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
             );
             emailDetail.setStatus(booking.getStatus().toString());
 
+            // Mã xác nhận KHÔNG kèm biển số nữa
             emailDetail.setConfirmationCode(booking.getConfirmationCode());
             emailDetail.setConfirmedBy(confirmedBy != null ? confirmedBy.getFullName() : "Hệ thống");
 
@@ -420,12 +433,16 @@ public class BookingService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
             emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
 
-            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : vehicle.getPlateNumber());
+            // TÁCH RIÊNG: Model xe và Biển số xe
+            emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : "Xe điện");
+            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // ✅ Biển số riêng
+            
             emailDetail.setBatteryType(
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
             );
             emailDetail.setStatus("HỦY");
+            // Mã xác nhận KHÔNG kèm biển số
             emailDetail.setConfirmationCode(booking.getConfirmationCode());
 
             // Thêm thông tin chính sách hủy

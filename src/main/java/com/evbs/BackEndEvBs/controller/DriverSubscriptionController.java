@@ -3,7 +3,6 @@ package com.evbs.BackEndEvBs.controller;
 import com.evbs.BackEndEvBs.entity.DriverSubscription;
 import com.evbs.BackEndEvBs.model.request.DriverSubscriptionRequest;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
-import com.evbs.BackEndEvBs.model.response.DowngradeCalculationResponse;
 import com.evbs.BackEndEvBs.model.response.RenewalCalculationResponse;
 import com.evbs.BackEndEvBs.service.DriverSubscriptionService;
 import com.evbs.BackEndEvBs.service.MoMoService;
@@ -63,10 +62,19 @@ public class DriverSubscriptionController {
     @GetMapping("/upgrade/calculate")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Calculate upgrade cost",
-            description = "Tính toán chi phí nâng cấp gói dịch vụ. " +
-                    "Công thức: Tổng tiền = Giá gói mới + Phí nâng cấp (7%) - Giá trị hoàn lại. " +
-                    "Driver cần truyền vào packageId của gói muốn nâng cấp."
+            summary = "Calculate upgrade cost (Telco Model)",
+            description = "Tính toán chi phí nâng cấp gói dịch vụ theo mô hình Telco (Viettel/Vinaphone). " +
+                    "\n\n**MÔ HÌNH TELCO:**" +
+                    "\n- Gói cũ: BỊ HỦY ngay (mất hết lượt và ngày còn lại)" +
+                    "\n- Gói mới: Kích hoạt FULL (100% swaps, 100% duration)" +
+                    "\n- Thanh toán: FULL PRICE gói mới (không hoàn tiền, không phí)" +
+                    "\n\n**VÍ DỤ:**" +
+                    "\n- Gói cũ: Basic (400k/20 lượt), còn 15 lượt, 20 ngày" +
+                    "\n- Nâng lên: Premium (800k/50 lượt)" +
+                    "\n- Bạn mất: 15 lượt + 20 ngày (~300k)" +
+                    "\n- Bạn trả: 800k (FULL)" +
+                    "\n- Bạn nhận: 50 lượt FULL + 30 ngày MỚI" +
+                    "\n\n**CẢNH BÁO:** Đọc kỹ phần 'warning' và 'recommendation' trước khi quyết định!"
     )
     public ResponseEntity<UpgradeCalculationResponse> calculateUpgradeCost(
             @RequestParam Long newPackageId
@@ -78,11 +86,15 @@ public class DriverSubscriptionController {
     @PostMapping("/upgrade/initiate")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(
-            summary = "Initiate package upgrade",
-            description = "Khởi tạo quy trình nâng cấp gói. " +
-                    "Sẽ tạo MoMo payment URL với số tiền đã tính toán theo công thức: " +
-                    "Tổng tiền = Giá gói mới + 7% phí - Giá trị hoàn lại. " +
-                    "Sau khi thanh toán thành công, gói cũ sẽ bị expire và gói mới được kích hoạt với FULL swaps."
+            summary = "Initiate package upgrade (Telco Model)",
+            description = "Khởi tạo quy trình nâng cấp gói theo mô hình Telco. " +
+                    "\n\n**QUY TRÌNH:**" +
+                    "\n1. Tạo MoMo payment URL với số tiền = FULL PRICE gói mới" +
+                    "\n2. Driver thanh toán qua MoMo" +
+                    "\n3. Sau khi thanh toán thành công:" +
+                    "\n   - Gói cũ: Status = CANCELLED (mất tất cả)" +
+                    "\n   - Gói mới: Status = ACTIVE, swaps = FULL, duration = FULL" +
+                    "\n\n**LƯU Ý:** Gọi /upgrade/calculate trước để xem cảnh báo chi tiết!"
     )
     public ResponseEntity<Map<String, String>> initiateUpgrade(
             @RequestParam Long newPackageId,
@@ -90,42 +102,6 @@ public class DriverSubscriptionController {
     ) {
         Map<String, String> paymentInfo = moMoService.createUpgradePaymentUrl(newPackageId, redirectUrl);
         return ResponseEntity.ok(paymentInfo);
-    }
-
-    // ========================================
-    // DOWNGRADE PACKAGE APIs
-    // ========================================
-
-    @GetMapping("/downgrade/calculate")
-    @PreAuthorize("hasRole('DRIVER')")
-    @Operation(
-            summary = "Calculate downgrade conditions",
-            description = "Tính toán điều kiện hạ cấp gói dịch vụ. " +
-                    "ĐIỀU KIỆN: Số lượt còn lại phải <= MaxSwaps của gói mới. " +
-                    "PENALTY: Trừ 10% số lượt còn lại. " +
-                    "KHÔNG HOÀN TIỀN (driver đã sử dụng gói cao cấp). " +
-                    "Thời hạn gói mới sẽ được kéo dài tương ứng với số lượt còn lại."
-    )
-    public ResponseEntity<DowngradeCalculationResponse> calculateDowngradeCost(
-            @RequestParam Long newPackageId
-    ) {
-        DowngradeCalculationResponse calculation = driverSubscriptionService.calculateDowngradeCost(newPackageId);
-        return ResponseEntity.ok(calculation);
-    }
-
-    @PostMapping("/downgrade/confirm")
-    @PreAuthorize("hasRole('DRIVER')")
-    @Operation(
-            summary = "Confirm package downgrade",
-            description = "Xác nhận hạ cấp gói (KHÔNG CẦN THANH TOÁN). " +
-                    "Gói cũ sẽ bị expire, gói mới được kích hoạt với số lượt đã trừ penalty. " +
-                    "KHÔNG HOÀN TIỀN! Hãy kiểm tra kỹ bằng /downgrade/calculate trước."
-    )
-    public ResponseEntity<DriverSubscription> confirmDowngrade(
-            @RequestParam Long newPackageId
-    ) {
-        DriverSubscription newSubscription = driverSubscriptionService.downgradeSubscription(newPackageId);
-        return ResponseEntity.ok(newSubscription);
     }
 
     // ========================================

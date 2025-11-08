@@ -1,6 +1,7 @@
 package com.evbs.BackEndEvBs.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -86,6 +87,9 @@ public class Vehicle {
     @Transient
     private Long deletedById;
 
+    @Transient
+    private Long swapCount;
+
     // Getters để serialize IDs
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
@@ -101,5 +105,14 @@ public class Vehicle {
 
     public Long getDeletedById() {
         return this.deletedBy != null ? this.deletedBy.getId() : null;
+    }
+
+    @JsonProperty("swapCount")
+    public Long getSwapCount() {
+        return this.swapCount == null ? 0L : this.swapCount;
+    }
+
+    public void setSwapCount(Long swapCount) {
+        this.swapCount = swapCount;
     }
 }

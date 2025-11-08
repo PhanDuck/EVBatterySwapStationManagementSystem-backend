@@ -120,7 +120,8 @@ public class BatteryService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Truy cập bị từ chối");
         }
-        return batteryRepository.findAll();
+        // Sử dụng JOIN FETCH để tránh N+1 query problem khi load stationName và batteryTypeName
+        return batteryRepository.findAllWithDetails();
     }
 
     /**
@@ -141,7 +142,8 @@ public class BatteryService {
      */
     @Transactional(readOnly = true)
     public List<Battery> getAvailableBatteries() {
-        return batteryRepository.findByStatus(Battery.Status.AVAILABLE);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem khi load stationName và batteryTypeName
+        return batteryRepository.findByStatusWithDetails(Battery.Status.AVAILABLE);
     }
 
     /**

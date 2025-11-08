@@ -9,6 +9,7 @@ import com.evbs.BackEndEvBs.model.request.VehicleRequest;
 import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.VehicleRepository;
+import com.evbs.BackEndEvBs.repository.SwapTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,9 @@ public class VehicleService {
 
     @Autowired
     private final VehicleRepository vehicleRepository;
+
+    @Autowired
+    private final SwapTransactionRepository swapTransactionRepository;
 
     @Autowired
     private final BatteryTypeRepository batteryTypeRepository;
@@ -78,7 +86,9 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<Vehicle> getMyVehicles() {
         User currentUser = authenticationService.getCurrentUser();
-        return vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE);
+        List<Vehicle> vehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE);
+        populateSwapCounts(vehicles);
+        return vehicles;
     }
 
     /**
@@ -90,7 +100,34 @@ public class VehicleService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
         }
-        return vehicleRepository.findAll();
+        List<Vehicle> vehicles = vehicleRepository.findAll();
+        populateSwapCounts(vehicles);
+        return vehicles;
+    }
+
+    // Populate swapCount for a list of vehicles using a single grouped query
+    private void populateSwapCounts(List<Vehicle> vehicles) {
+        if (vehicles == null || vehicles.isEmpty()) return;
+
+        List<Long> ids = vehicles.stream()
+                .map(Vehicle::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (ids.isEmpty()) {
+            vehicles.forEach(v -> v.setSwapCount(0L));
+            return;
+        }
+
+        List<Object[]> counts = swapTransactionRepository.countByVehicleIds(ids);
+        Map<Long, Long> countMap = new HashMap<>();
+        for (Object[] row : counts) {
+            Long vehicleId = (Long) row[0];
+            Long cnt = (Long) row[1];
+            countMap.put(vehicleId, cnt);
+        }
+
+        vehicles.forEach(v -> v.setSwapCount(countMap.getOrDefault(v.getId(), 0L)));
     }
 
     /**

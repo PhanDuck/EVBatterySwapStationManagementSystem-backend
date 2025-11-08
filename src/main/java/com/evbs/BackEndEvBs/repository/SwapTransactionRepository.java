@@ -25,8 +25,10 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.vehicle " +
            "LEFT JOIN FETCH st.station " +
            "LEFT JOIN FETCH st.staff " +
-           "LEFT JOIN FETCH st.swapOutBattery " +
-           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.swapOutBattery sob " +
+           "LEFT JOIN FETCH sob.batteryType " +
+           "LEFT JOIN FETCH st.swapInBattery sib " +
+           "LEFT JOIN FETCH sib.batteryType " +
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.driver = :driver")
     List<SwapTransaction> findByDriverWithDetails(@Param("driver") User driver);
@@ -40,8 +42,10 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.vehicle " +
            "LEFT JOIN FETCH st.station " +
            "LEFT JOIN FETCH st.staff " +
-           "LEFT JOIN FETCH st.swapOutBattery " +
-           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.swapOutBattery sob " +
+           "LEFT JOIN FETCH sob.batteryType " +
+           "LEFT JOIN FETCH st.swapInBattery sib " +
+           "LEFT JOIN FETCH sib.batteryType " +
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.id = :id AND st.driver = :driver")
     Optional<SwapTransaction> findByIdAndDriverWithDetails(@Param("id") Long id, @Param("driver") User driver);
@@ -58,8 +62,10 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.vehicle " +
            "LEFT JOIN FETCH st.station " +
            "LEFT JOIN FETCH st.staff " +
-           "LEFT JOIN FETCH st.swapOutBattery " +
-           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.swapOutBattery sob " +
+           "LEFT JOIN FETCH sob.batteryType " +
+           "LEFT JOIN FETCH st.swapInBattery sib " +
+           "LEFT JOIN FETCH sib.batteryType " +
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.vehicle = :vehicle " +
            "ORDER BY st.startTime DESC")
@@ -77,8 +83,10 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.vehicle " +
            "LEFT JOIN FETCH st.station " +
            "LEFT JOIN FETCH st.staff " +
-           "LEFT JOIN FETCH st.swapOutBattery " +
-           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.swapOutBattery sob " +
+           "LEFT JOIN FETCH sob.batteryType " +
+           "LEFT JOIN FETCH st.swapInBattery sib " +
+           "LEFT JOIN FETCH sib.batteryType " +
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.swapOutBattery = :battery " +
            "ORDER BY st.startTime DESC")
@@ -93,8 +101,10 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.vehicle " +
            "LEFT JOIN FETCH st.station " +
            "LEFT JOIN FETCH st.staff " +
-           "LEFT JOIN FETCH st.swapOutBattery " +
-           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.swapOutBattery sob " +
+           "LEFT JOIN FETCH sob.batteryType " +
+           "LEFT JOIN FETCH st.swapInBattery sib " +
+           "LEFT JOIN FETCH sib.batteryType " +
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.swapInBattery = :battery " +
            "ORDER BY st.startTime DESC")
@@ -106,13 +116,19 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.vehicle " +
            "LEFT JOIN FETCH st.station " +
            "LEFT JOIN FETCH st.staff " +
-           "LEFT JOIN FETCH st.swapOutBattery " +
-           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.swapOutBattery sob " +
+           "LEFT JOIN FETCH sob.batteryType " +
+           "LEFT JOIN FETCH st.swapInBattery sib " +
+           "LEFT JOIN FETCH sib.batteryType " +
            "LEFT JOIN FETCH st.booking")
     List<SwapTransaction> findAllWithDetails();
 
     // Dashboard queries - Đếm theo status
     Long countByStatus(SwapTransaction.Status status);
+
+       // Đếm số giao dịch theo danh sách vehicleId (trả về list of [vehicleId, count])
+       @Query("SELECT st.vehicle.id, COUNT(st) FROM SwapTransaction st WHERE st.vehicle.id IN :ids GROUP BY st.vehicle.id")
+       List<Object[]> countByVehicleIds(@Param("ids") List<Long> ids);
 
     // Đếm theo khoảng thời gian
     Long countByStartTimeBetween(LocalDateTime startDate, LocalDateTime endDate);

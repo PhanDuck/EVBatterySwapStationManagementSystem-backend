@@ -105,10 +105,22 @@ public class Battery {
         return currentStation != null ? currentStation.getId() : null;
     }
 
+    // Getter để serialize station name
+    @JsonProperty("stationName")
+    public String getStationName() {
+        return currentStation != null ? currentStation.getName() : null;
+    }
+
     // Getter để serialize batteryTypeId
     @JsonProperty("batteryTypeId")
     public Long getBatteryTypeId() {
         return batteryType != null ? batteryType.getId() : null;
+    }
+
+    // Getter để serialize battery type name
+    @JsonProperty("batteryTypeName")
+    public String getBatteryTypeName() {
+        return batteryType != null ? batteryType.getName() : null;
     }
 
     // Phương thức tăng số lần sử dụng

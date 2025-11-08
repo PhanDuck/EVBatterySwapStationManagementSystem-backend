@@ -14,6 +14,19 @@ import java.util.Optional;
 @Repository
 public interface BatteryRepository extends JpaRepository<Battery, Long> {
 
+    // Tìm TẤT CẢ batteries với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Battery b " +
+           "LEFT JOIN FETCH b.currentStation " +
+           "LEFT JOIN FETCH b.batteryType")
+    List<Battery> findAllWithDetails();
+
+    // Tìm batteries theo status với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Battery b " +
+           "LEFT JOIN FETCH b.currentStation " +
+           "LEFT JOIN FETCH b.batteryType " +
+           "WHERE b.status = :status")
+    List<Battery> findByStatusWithDetails(@Param("status") Battery.Status status);
+
     // Tìm batteries theo model
     List<Battery> findByModelContainingIgnoreCase(String model);
 

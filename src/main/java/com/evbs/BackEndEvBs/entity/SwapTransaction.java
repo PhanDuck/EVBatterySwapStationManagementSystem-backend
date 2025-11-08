@@ -58,6 +58,11 @@ public class SwapTransaction {
     }
 
     @Transient
+    public String getStationName() {
+        return station != null ? station.getName() : null;
+    }
+
+    @Transient
     public Long getStaffId() {
         return staff != null ? staff.getId() : null;
     }
@@ -101,8 +106,22 @@ public class SwapTransaction {
     }
 
     @Transient
+    public String getSwapOutBatteryTypeName() {
+        return swapOutBattery != null && swapOutBattery.getBatteryType() != null 
+            ? swapOutBattery.getBatteryType().getName() 
+            : null;
+    }
+
+    @Transient
     public Long getSwapInBatteryId() {
         return swapInBattery != null ? swapInBattery.getId() : null;
+    }
+
+    @Transient
+    public String getSwapInBatteryTypeName() {
+        return swapInBattery != null && swapInBattery.getBatteryType() != null 
+            ? swapInBattery.getBatteryType().getName() 
+            : null;
     }
 
     @OneToOne

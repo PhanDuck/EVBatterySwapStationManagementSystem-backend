@@ -51,7 +51,15 @@ public class AuthenticationService implements UserDetailsService {
     @Autowired
     EmailService emailService;
 
+    @Autowired
+    CaptchaService captchaService;
+
     public User register(RegisterRequest request){
+        // Xác thực CAPTCHA trước
+        if (!captchaService.verifyCaptcha(request.getCaptchaToken())) {
+            throw new AuthenticationException("Xác thực CAPTCHA không thành công!");
+        }
+
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AuthenticationException("Email đã tồn tại!");

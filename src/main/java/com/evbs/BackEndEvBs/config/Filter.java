@@ -38,6 +38,7 @@ public class Filter extends OncePerRequestFilter {
             "POST:/api/login",
             "POST:/api/reset-password",
 
+
             // SWAGGER & API DOCS
             "GET:/swagger-ui/**",
             "GET:/v3/api-docs/**",

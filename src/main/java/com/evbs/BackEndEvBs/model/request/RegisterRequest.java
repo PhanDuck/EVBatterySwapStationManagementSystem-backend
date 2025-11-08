@@ -25,4 +25,7 @@ public class RegisterRequest {
 
     @NotEmpty(message = "Mật khẩu không được để trống!")
     private String password;
+
+    @NotEmpty(message = "Captcha không được để trống!")
+    private String captchaToken;
 }

@@ -31,11 +31,11 @@ public class BatteryChargingService {
 
     private final BatteryRepository batteryRepository;
 
-    // ⚙️ Cấu hình thời gian sạc
+    // cấu hình thời gian sạc
     private static final long FULL_CHARGE_HOURS = 4;  // 4 giờ để sạc đầy từ 0% → 100%
     private static final BigDecimal CHARGE_RATE_PER_HOUR = BigDecimal.valueOf(100.0 / FULL_CHARGE_HOURS);  // 25% per hour
     
-    // ⚙️ Ngưỡng sức khỏe pin
+    // Ngưỡng sức khỏe pin
     private static final BigDecimal MIN_HEALTH_FOR_USE = BigDecimal.valueOf(70.0);  // < 70% phải bảo trì
 
     /**
@@ -183,64 +183,4 @@ public class BatteryChargingService {
         return true;
     }
 
-    /**
-     * Bắt đầu sạc pin (gọi khi pin được đưa vào trạm)
-     */
-    @Transactional
-    public void startCharging(Battery battery, BigDecimal initialChargeLevel) {
-        //  KIỂM TRA SỨC KHỎE: Nếu < 70% → MAINTENANCE ngay lập tức
-        BigDecimal health = battery.getStateOfHealth();
-        if (health != null && health.compareTo(MIN_HEALTH_FOR_USE) < 0) {
-            battery.setStatus(Battery.Status.MAINTENANCE);
-            battery.setChargeLevel(initialChargeLevel);
-            battery.setLastChargedTime(null);  // Không sạc, để bảo trì
-            batteryRepository.save(battery);
-            
-            log.warn(" [Pin {}] Không thể sạc - sức khỏe {:.1f}% < 70% → BẢO TRÌ",
-                     battery.getId(), health.doubleValue());
-            return;
-        }
-        
-        // Sức khỏe tốt → Cho phép sạc
-        battery.setStatus(Battery.Status.CHARGING);
-        battery.setChargeLevel(initialChargeLevel);
-        battery.setLastChargedTime(LocalDateTime.now());
-        batteryRepository.save(battery);
-        
-        log.info(" [Pin {}] Bắt đầu sạc từ {:.1f}% (mức độ khỏe: {:.1f}%)",
-                 battery.getId(), initialChargeLevel.doubleValue(), 
-                 health != null ? health.doubleValue() : 100.0);
-    }
-
-    /**
-     * Dừng sạc pin (manual stop)
-     */
-    @Transactional
-    public void stopCharging(Battery battery) {
-        battery.setStatus(Battery.Status.AVAILABLE);
-        battery.setLastChargedTime(null);
-        batteryRepository.save(battery);
-        
-        log.info(" [Pin {}] Đã dừng sạc. Mức hiện tại: {:.1f}%",
-                 battery.getId(), 
-                 battery.getChargeLevel() != null ? battery.getChargeLevel().doubleValue() : 0);
-    }
-
-    /**
-     * Tính thời gian còn lại để sạc đầy (phút)
-     */
-    public long getEstimatedTimeToFull(Battery battery) {
-        if (battery.getStatus() != Battery.Status.CHARGING) {
-            return 0;
-        }
-
-        BigDecimal currentCharge = battery.getChargeLevel() != null 
-                ? battery.getChargeLevel() 
-                : BigDecimal.ZERO;
-
-        BigDecimal remainingCharge = BigDecimal.valueOf(100).subtract(currentCharge);
-        double hoursRemaining = remainingCharge.doubleValue() / CHARGE_RATE_PER_HOUR.doubleValue();
-        
-        return Math.round(hoursRemaining * 60);  // Convert to minutes
-    }
 }

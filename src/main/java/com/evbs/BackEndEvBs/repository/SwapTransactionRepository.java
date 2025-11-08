@@ -19,8 +19,32 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
     // Tìm transactions theo driver
     List<SwapTransaction> findByDriver(User driver);
 
+    // Tìm transactions theo driver với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT st FROM SwapTransaction st " +
+           "LEFT JOIN FETCH st.driver " +
+           "LEFT JOIN FETCH st.vehicle " +
+           "LEFT JOIN FETCH st.station " +
+           "LEFT JOIN FETCH st.staff " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.booking " +
+           "WHERE st.driver = :driver")
+    List<SwapTransaction> findByDriverWithDetails(@Param("driver") User driver);
+
     // Tìm transaction của driver cụ thể
     Optional<SwapTransaction> findByIdAndDriver(Long id, User driver);
+
+    // Tìm transaction của driver cụ thể với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT st FROM SwapTransaction st " +
+           "LEFT JOIN FETCH st.driver " +
+           "LEFT JOIN FETCH st.vehicle " +
+           "LEFT JOIN FETCH st.station " +
+           "LEFT JOIN FETCH st.staff " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.booking " +
+           "WHERE st.id = :id AND st.driver = :driver")
+    Optional<SwapTransaction> findByIdAndDriverWithDetails(@Param("id") Long id, @Param("driver") User driver);
 
     // tìm swap transaction gần nhất của vehicle (để biết pin nào đang trên xe)
     Optional<SwapTransaction> findTopByVehicleOrderByStartTimeDesc(Vehicle vehicle);
@@ -28,14 +52,64 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
     //  Tìm tất cả swap transactions của vehicle (lịch sử đổi pin)
     List<SwapTransaction> findByVehicleOrderByStartTimeDesc(Vehicle vehicle);
 
+    //  Tìm tất cả swap transactions của vehicle với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT st FROM SwapTransaction st " +
+           "LEFT JOIN FETCH st.driver " +
+           "LEFT JOIN FETCH st.vehicle " +
+           "LEFT JOIN FETCH st.station " +
+           "LEFT JOIN FETCH st.staff " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.booking " +
+           "WHERE st.vehicle = :vehicle " +
+           "ORDER BY st.startTime DESC")
+    List<SwapTransaction> findByVehicleWithDetailsOrderByStartTimeDesc(@Param("vehicle") Vehicle vehicle);
+
     //  Tìm swap transaction theo booking (kiểm tra code đã dùng chưa)
     Optional<SwapTransaction> findByBooking(Booking booking);
 
     //  Tìm tất cả lần pin được lấy ra từ trạm (pin đã dùng cho xe nào)
     List<SwapTransaction> findBySwapOutBatteryOrderByStartTimeDesc(com.evbs.BackEndEvBs.entity.Battery battery);
 
+    //  Tìm tất cả lần pin được lấy ra từ trạm với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT st FROM SwapTransaction st " +
+           "LEFT JOIN FETCH st.driver " +
+           "LEFT JOIN FETCH st.vehicle " +
+           "LEFT JOIN FETCH st.station " +
+           "LEFT JOIN FETCH st.staff " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.booking " +
+           "WHERE st.swapOutBattery = :battery " +
+           "ORDER BY st.startTime DESC")
+    List<SwapTransaction> findBySwapOutBatteryWithDetailsOrderByStartTimeDesc(@Param("battery") com.evbs.BackEndEvBs.entity.Battery battery);
+
     //  Tìm tất cả lần pin được đem vào trạm (pin được trả lại)
     List<SwapTransaction> findBySwapInBatteryOrderByStartTimeDesc(com.evbs.BackEndEvBs.entity.Battery battery);
+
+    //  Tìm tất cả lần pin được đem vào trạm với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT st FROM SwapTransaction st " +
+           "LEFT JOIN FETCH st.driver " +
+           "LEFT JOIN FETCH st.vehicle " +
+           "LEFT JOIN FETCH st.station " +
+           "LEFT JOIN FETCH st.staff " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.booking " +
+           "WHERE st.swapInBattery = :battery " +
+           "ORDER BY st.startTime DESC")
+    List<SwapTransaction> findBySwapInBatteryWithDetailsOrderByStartTimeDesc(@Param("battery") com.evbs.BackEndEvBs.entity.Battery battery);
+
+    // Tìm TẤT CẢ transactions với JOIN FETCH để tránh N+1 query (cho getAllTransactions)
+    @Query("SELECT DISTINCT st FROM SwapTransaction st " +
+           "LEFT JOIN FETCH st.driver " +
+           "LEFT JOIN FETCH st.vehicle " +
+           "LEFT JOIN FETCH st.station " +
+           "LEFT JOIN FETCH st.staff " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "LEFT JOIN FETCH st.booking")
+    List<SwapTransaction> findAllWithDetails();
 
     // Dashboard queries - Đếm theo status
     Long countByStatus(SwapTransaction.Status status);

@@ -459,13 +459,15 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<Booking> getMyBookings() {
         User currentUser = authenticationService.getCurrentUser();
-        return bookingRepository.findByDriver(currentUser);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return bookingRepository.findByDriverWithDetails(currentUser);
     }
 
     @Transactional(readOnly = true)
     public Booking getMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
-        return bookingRepository.findByIdAndDriver(id, currentUser)
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return bookingRepository.findByIdAndDriverWithDetails(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Lịch đặt không tìm thấy"));
     }
 
@@ -487,7 +489,8 @@ public class BookingService {
         }
 
         if (currentUser.getRole() == User.Role.ADMIN) {
-            return bookingRepository.findAll();
+            // Sử dụng JOIN FETCH để tránh N+1 query problem
+            return bookingRepository.findAllWithDetails();
         }
 
         List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
@@ -495,7 +498,8 @@ public class BookingService {
             return List.of();
         }
 
-        return bookingRepository.findByStationIn(myStations);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return bookingRepository.findByStationInWithDetails(myStations);
     }
 
     @Transactional(readOnly = true)
@@ -507,7 +511,8 @@ public class BookingService {
         }
 
         if (currentUser.getRole() == User.Role.ADMIN) {
-            return bookingRepository.findAll();
+            // Sử dụng JOIN FETCH để tránh N+1 query problem
+            return bookingRepository.findAllWithDetails();
         }
 
         List<Station> myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
@@ -516,7 +521,8 @@ public class BookingService {
             throw new AuthenticationException("Bạn chưa được phân công vào trạm nào.");
         }
 
-        return bookingRepository.findByStationIn(myStations);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return bookingRepository.findByStationInWithDetails(myStations);
     }
 
     @Transactional(readOnly = true)
@@ -525,7 +531,8 @@ public class BookingService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Từ chối truy cập");
         }
-        return bookingRepository.findByStationId(stationId);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return bookingRepository.findByStationIdWithDetails(stationId);
     }
 
     @Transactional(readOnly = true)
@@ -534,7 +541,8 @@ public class BookingService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Từ chối truy cập");
         }
-        return bookingRepository.findByStatus(status);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return bookingRepository.findByStatusWithDetails(status);
     }
 
 

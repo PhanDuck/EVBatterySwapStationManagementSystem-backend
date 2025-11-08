@@ -252,7 +252,8 @@ public class SwapTransactionService {
     @Transactional(readOnly = true)
     public List<SwapTransaction> getMyTransactions() {
         User currentUser = authenticationService.getCurrentUser();
-        return swapTransactionRepository.findByDriver(currentUser);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return swapTransactionRepository.findByDriverWithDetails(currentUser);
     }
 
     /**
@@ -261,7 +262,8 @@ public class SwapTransactionService {
     @Transactional(readOnly = true)
     public SwapTransaction getMyTransaction(Long id) {
         User currentUser = authenticationService.getCurrentUser();
-        return swapTransactionRepository.findByIdAndDriver(id, currentUser)
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return swapTransactionRepository.findByIdAndDriverWithDetails(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy giao dịch"));
     }
 
@@ -276,7 +278,8 @@ public class SwapTransactionService {
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Truy cập bị từ chối");
         }
-        return swapTransactionRepository.findAll();
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        return swapTransactionRepository.findAllWithDetails();
     }
 
     /**
@@ -300,7 +303,8 @@ public class SwapTransactionService {
         }
 
         // Lấy tất cả swap transactions của xe, sắp xếp mới nhất trước
-        List<SwapTransaction> history = swapTransactionRepository.findByVehicleOrderByStartTimeDesc(vehicle);
+        // Sử dụng JOIN FETCH để tránh N+1 query problem
+        List<SwapTransaction> history = swapTransactionRepository.findByVehicleWithDetailsOrderByStartTimeDesc(vehicle);
 
         log.info("Đã lấy {} giao dịch swap cho xe {}", history.size(), vehicleId);
 
@@ -323,11 +327,11 @@ public class SwapTransactionService {
         Battery battery = batteryRepository.findById(batteryId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy pin với ID: " + batteryId));
 
-        // Lấy tất cả lần pin được SWAP OUT (lấy ra từ trạm)
-        List<SwapTransaction> swapOutHistory = swapTransactionRepository.findBySwapOutBatteryOrderByStartTimeDesc(battery);
+        // Lấy tất cả lần pin được SWAP OUT (lấy ra từ trạm) với JOIN FETCH
+        List<SwapTransaction> swapOutHistory = swapTransactionRepository.findBySwapOutBatteryWithDetailsOrderByStartTimeDesc(battery);
 
-        // Lấy tất cả lần pin được SWAP IN (đem vào trạm)
-        List<SwapTransaction> swapInHistory = swapTransactionRepository.findBySwapInBatteryOrderByStartTimeDesc(battery);
+        // Lấy tất cả lần pin được SWAP IN (đem vào trạm) với JOIN FETCH
+        List<SwapTransaction> swapInHistory = swapTransactionRepository.findBySwapInBatteryWithDetailsOrderByStartTimeDesc(battery);
 
         // Gộp 2 danh sách và sắp xếp theo thời gian
         List<SwapTransaction> allHistory = new java.util.ArrayList<>();

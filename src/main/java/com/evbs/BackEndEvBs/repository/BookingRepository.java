@@ -17,18 +17,94 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Tìm bookings theo driver
     List<Booking> findByDriver(User driver);
 
+    // Tìm bookings theo driver với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Booking b " +
+           "LEFT JOIN FETCH b.driver " +
+           "LEFT JOIN FETCH b.vehicle " +
+           "LEFT JOIN FETCH b.station " +
+           "LEFT JOIN FETCH b.reservedBattery " +
+           "LEFT JOIN FETCH b.confirmedBy " +
+           "LEFT JOIN FETCH b.swapTransaction st " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "WHERE b.driver = :driver")
+    List<Booking> findByDriverWithDetails(@Param("driver") User driver);
+
+    // Tìm TẤT CẢ bookings với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Booking b " +
+           "LEFT JOIN FETCH b.driver " +
+           "LEFT JOIN FETCH b.vehicle " +
+           "LEFT JOIN FETCH b.station " +
+           "LEFT JOIN FETCH b.reservedBattery " +
+           "LEFT JOIN FETCH b.confirmedBy " +
+           "LEFT JOIN FETCH b.swapTransaction st " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery")
+    List<Booking> findAllWithDetails();
+
     // Tìm bookings theo station
     @Query("SELECT b FROM Booking b WHERE b.station.id = :stationId")
     List<Booking> findByStationId(@Param("stationId") Long stationId);
 
+    // Tìm bookings theo station với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Booking b " +
+           "LEFT JOIN FETCH b.driver " +
+           "LEFT JOIN FETCH b.vehicle " +
+           "LEFT JOIN FETCH b.station " +
+           "LEFT JOIN FETCH b.reservedBattery " +
+           "LEFT JOIN FETCH b.confirmedBy " +
+           "LEFT JOIN FETCH b.swapTransaction st " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "WHERE b.station.id = :stationId")
+    List<Booking> findByStationIdWithDetails(@Param("stationId") Long stationId);
+
     // Tim bookings cua nhieu tram (cho Staff xem bookings cua cac tram minh quan ly)
+    @Query("SELECT DISTINCT b FROM Booking b " +
+           "LEFT JOIN FETCH b.driver " +
+           "LEFT JOIN FETCH b.vehicle " +
+           "LEFT JOIN FETCH b.station " +
+           "LEFT JOIN FETCH b.reservedBattery " +
+           "LEFT JOIN FETCH b.confirmedBy " +
+           "LEFT JOIN FETCH b.swapTransaction st " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "WHERE b.station IN :stations")
+    List<Booking> findByStationInWithDetails(@Param("stations") List<Station> stations);
+
     List<Booking> findByStationIn(List<Station> stations);
 
     // Tìm bookings theo status
     List<Booking> findByStatus(Booking.Status status);
 
+    // Tìm bookings theo status với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Booking b " +
+           "LEFT JOIN FETCH b.driver " +
+           "LEFT JOIN FETCH b.vehicle " +
+           "LEFT JOIN FETCH b.station " +
+           "LEFT JOIN FETCH b.reservedBattery " +
+           "LEFT JOIN FETCH b.confirmedBy " +
+           "LEFT JOIN FETCH b.swapTransaction st " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "WHERE b.status = :status")
+    List<Booking> findByStatusWithDetails(@Param("status") Booking.Status status);
+
     // Tìm booking của driver cụ thể
     Optional<Booking> findByIdAndDriver(Long id, User driver);
+
+    // Tìm booking của driver cụ thể với JOIN FETCH để tránh N+1 query
+    @Query("SELECT DISTINCT b FROM Booking b " +
+           "LEFT JOIN FETCH b.driver " +
+           "LEFT JOIN FETCH b.vehicle " +
+           "LEFT JOIN FETCH b.station " +
+           "LEFT JOIN FETCH b.reservedBattery " +
+           "LEFT JOIN FETCH b.confirmedBy " +
+           "LEFT JOIN FETCH b.swapTransaction st " +
+           "LEFT JOIN FETCH st.swapOutBattery " +
+           "LEFT JOIN FETCH st.swapInBattery " +
+           "WHERE b.id = :id AND b.driver = :driver")
+    Optional<Booking> findByIdAndDriverWithDetails(@Param("id") Long id, @Param("driver") User driver);
 
     //  Tìm booking bằng confirmationCode (cho staff xác nhận)
     Optional<Booking> findByConfirmationCode(String confirmationCode);

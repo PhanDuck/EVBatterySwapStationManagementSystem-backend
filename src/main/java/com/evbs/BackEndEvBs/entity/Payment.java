@@ -45,4 +45,18 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", length = 50)
     private Status status = Status.COMPLETED;
+
+    @Transient
+    private String customerName;
+
+    public String getCustomerName() {
+        if (this.subscription != null && this.subscription.getDriver() != null) {
+            return this.subscription.getDriver().getFullName();
+        }
+        if (this.transaction != null && this.transaction.getDriver() != null) {
+            return this.transaction.getDriver().getFullName();
+        }
+        return null;
+    }
+    
 }

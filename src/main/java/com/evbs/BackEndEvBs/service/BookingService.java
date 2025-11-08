@@ -93,7 +93,7 @@ public class BookingService {
 
         // VALIDATION: Max 10 bookings per user per day
         LocalDate today = LocalDate.now();
-        long bookingsToday = bookingRepository.findByDriver(currentUser)
+        long bookingsToday = bookingRepository.findByDriverWithDetails(currentUser)
                 .stream()
                 .filter(b -> b.getBookingTime() != null && b.getBookingTime().toLocalDate().isEqual(today))
                 .count();
@@ -224,7 +224,7 @@ public class BookingService {
     @Transactional
     public Booking cancelMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
-        Booking booking = bookingRepository.findByIdAndDriver(id, currentUser)
+        Booking booking = bookingRepository.findByIdAndDriverWithDetails(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy đặt chỗ"));
 
         LocalDateTime now = LocalDateTime.now();
@@ -523,26 +523,6 @@ public class BookingService {
 
         // Sử dụng JOIN FETCH để tránh N+1 query problem
         return bookingRepository.findByStationInWithDetails(myStations);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Booking> getBookingsByStation(Long stationId) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Từ chối truy cập");
-        }
-        // Sử dụng JOIN FETCH để tránh N+1 query problem
-        return bookingRepository.findByStationIdWithDetails(stationId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Booking> getBookingsByStatus(Booking.Status status) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Từ chối truy cập");
-        }
-        // Sử dụng JOIN FETCH để tránh N+1 query problem
-        return bookingRepository.findByStatusWithDetails(status);
     }
 
 

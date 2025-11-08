@@ -106,34 +106,6 @@ public class BookingController {
     }
 
     /**
-     * GET /api/booking/station/{stationId} : Get bookings by station (Admin/Staff only)
-     * Staff chỉ xem được bookings của stations mình quản lý
-     */
-    @GetMapping("/station/{stationId}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get bookings by station",
-            description = "Get all bookings for a specific station. Staff can only view bookings for their assigned stations.")
-    public ResponseEntity<List<Booking>> getBookingsByStation(@PathVariable Long stationId) {
-        // Validate station access for staff
-        staffStationAssignmentService.validateStationAccess(stationId);
-
-        List<Booking> bookings = bookingService.getBookingsByStation(stationId);
-        return ResponseEntity.ok(bookings);
-    }
-
-    /**
-     * GET /api/booking/status/{status} : Get bookings by status (Admin/Staff only)
-     */
-    @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get bookings by status",
-            description = "Get all bookings with specific status (Admin/Staff only)")
-    public ResponseEntity<List<Booking>> getBookingsByStatus(@PathVariable Booking.Status status) {
-        List<Booking> bookings = bookingService.getBookingsByStatus(status);
-        return ResponseEntity.ok(bookings);
-    }
-
-    /**
      * GET /api/booking/my-stations : Get bookings cua cac tram Staff quan ly (Staff only)
      *
      * Staff chi xem duoc bookings cua cac tram minh duoc assign

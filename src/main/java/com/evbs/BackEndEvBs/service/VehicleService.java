@@ -88,6 +88,7 @@ public class VehicleService {
         User currentUser = authenticationService.getCurrentUser();
         List<Vehicle> vehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE);
         populateSwapCounts(vehicles);
+        populateBatteryTypeNames(vehicles);
         return vehicles;
     }
 
@@ -102,6 +103,7 @@ public class VehicleService {
         }
         List<Vehicle> vehicles = vehicleRepository.findAll();
         populateSwapCounts(vehicles);
+        populateBatteryTypeNames(vehicles);
         return vehicles;
     }
 
@@ -128,6 +130,17 @@ public class VehicleService {
         }
 
         vehicles.forEach(v -> v.setSwapCount(countMap.getOrDefault(v.getId(), 0L)));
+    }
+
+    // Populate batteryTypeName for a list of vehicles
+    private void populateBatteryTypeNames(List<Vehicle> vehicles) {
+        if (vehicles == null || vehicles.isEmpty()) return;
+        
+        vehicles.forEach(v -> {
+            if (v.getBatteryType() != null) {
+                v.setBatteryTypeName(v.getBatteryType().getName());
+            }
+        });
     }
 
     /**

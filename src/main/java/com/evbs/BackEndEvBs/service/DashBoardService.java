@@ -44,7 +44,7 @@ public class DashBoardService {
     /**
      * Tổng quan chung
      */
-    public DashboardResponse.OverviewStats getOverviewStats() {
+    private DashboardResponse.OverviewStats getOverviewStats() {
         LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime yesterdayStart = todayStart.minusDays(1);
 
@@ -99,7 +99,7 @@ public class DashBoardService {
     /**
      * Thống kê doanh thu
      */
-    public DashboardResponse.RevenueStats getRevenueStats() {
+    private DashboardResponse.RevenueStats getRevenueStats() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime weekStart = todayStart.minusDays(6);
@@ -142,7 +142,7 @@ public class DashBoardService {
     /**
      * Thống kê giao dịch
      */
-    public DashboardResponse.TransactionStats getTransactionStats() {
+    private DashboardResponse.TransactionStats getTransactionStats() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime weekStart = todayStart.minusDays(6);
@@ -180,7 +180,7 @@ public class DashBoardService {
     /**
      * Thống kê người dùng
      */
-    public DashboardResponse.UserStats getUserStats() {
+    private DashboardResponse.UserStats getUserStats() {
         Long totalUsers = userRepository.count();
         Long totalDrivers = userRepository.countByRole(User.Role.DRIVER);
         Long totalStaff = userRepository.countByRole(User.Role.STAFF);
@@ -209,7 +209,7 @@ public class DashBoardService {
     /**
      * Thống kê trạm
      */
-    public DashboardResponse.StationStats getStationStats() {
+    private DashboardResponse.StationStats getStationStats() {
         Long totalStations = stationRepository.count();
         Long activeStations = stationRepository.countByStatus(Station.Status.ACTIVE);
         Long inactiveStations = totalStations - activeStations;
@@ -247,7 +247,7 @@ public class DashBoardService {
     /**
      * Thống kê pin
      */
-    public DashboardResponse.BatteryStats getBatteryStats() {
+    private DashboardResponse.BatteryStats getBatteryStats() {
         Long totalBatteries = batteryRepository.count();
         Long availableBatteries = batteryRepository.countByStatus(Battery.Status.AVAILABLE);
         Long chargingBatteries = batteryRepository.countByStatus(Battery.Status.CHARGING);

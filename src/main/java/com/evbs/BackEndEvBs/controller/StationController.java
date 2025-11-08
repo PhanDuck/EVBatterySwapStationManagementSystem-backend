@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
+import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.service.BatteryHealthService;
 import com.evbs.BackEndEvBs.service.BatteryService;
 import com.evbs.BackEndEvBs.service.StaffStationAssignmentService;
@@ -31,6 +32,9 @@ public class StationController {
     private StationService stationService;
 
     @Autowired
+    private StationRepository stationRepository;
+
+    @Autowired
     private StaffStationAssignmentService staffStationAssignmentService;
 
     @Autowired
@@ -49,16 +53,6 @@ public class StationController {
     public ResponseEntity<List<Station>> getAllStations() {
         List<Station> stations = stationService.getAllStations();
         return ResponseEntity.ok(stations);
-    }
-
-    /**
-     * GET /api/station/{id} : Get station by ID (Public)
-     */
-    @GetMapping("/{id}")
-    @Operation(summary = "Get station by ID")
-    public ResponseEntity<Station> getStationById(@PathVariable Long id) {
-        Station station = stationService.getStationById(id);
-        return ResponseEntity.ok(station);
     }
 
     /**
@@ -111,20 +105,6 @@ public class StationController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * PATCH /api/station/{id}/status : Update station status (Admin/Staff only)
-     */
-    @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @SecurityRequirement(name = "api")
-    @Operation(summary = "Update station status")
-    public ResponseEntity<Station> updateStationStatus(
-            @PathVariable Long id,
-            @RequestParam Station.Status status) {
-        Station station = stationService.updateStationStatus(id, status);
-        return ResponseEntity.ok(station);
-    }
-
     // ==================== BATTERY MAINTENANCE AT STATION ====================
 
     /**
@@ -139,45 +119,7 @@ public class StationController {
     @Operation(summary = "Get batteries needing maintenance AT THIS STATION (SOH < 70%)",
                description = "Lấy danh sách pin cần bảo trì đang nằm tại trạm này. Staff chỉ xem được pins của stations mình quản lý.")
     public ResponseEntity<Map<String, Object>> getBatteriesNeedingMaintenanceAtStation(@PathVariable Long id) {
-        // Validate station access for staff
-        staffStationAssignmentService.validateStationAccess(id);
-        
-        // Verify station exists
-        Station station = stationService.getStationById(id);
-        
-        // Lấy tất cả pin có SOH < 70%
-        List<Battery> allBatteriesNeedMaintenance = batteryHealthService.getBatteriesNeedingMaintenance();
-        
-        // Filter chỉ lấy pin Ở TRẠM NÀY (currentStation = id)
-        List<Battery> batteriesAtStation = allBatteriesNeedMaintenance.stream()
-                .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(id))
-                .collect(java.util.stream.Collectors.toList());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("stationId", id);
-        response.put("stationName", station.getName());
-        response.put("location", "AT_STATION");
-        response.put("total", batteriesAtStation.size());
-        response.put("batteries", batteriesAtStation);
-        response.put("message", batteriesAtStation.isEmpty() 
-            ? "Trạm này không có pin nào cần bảo trì" 
-            : "Trạm này có " + batteriesAtStation.size() + " pin cần bảo trì");
-        
-        return ResponseEntity.ok(response);
-    }
-    /**
-     * GET /api/station/batteries/needs-maintenance : Lấy TẤT CẢ pin cần bảo trì ở các trạm
-     *
-     * Admin: Xem tất cả pins needs-maintenance của tất cả trạm
-     * Staff: Chỉ xem pins needs-maintenance của trạm mình quản lý
-     */
-    @GetMapping("/batteries/needs-maintenance")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @SecurityRequirement(name = "api")
-    @Operation(summary = "Get all batteries needing maintenance at stations",
-            description = "Admin xem tất cả, Staff chỉ xem trạm mình quản lý. Pin có SOH < 70%")
-    public ResponseEntity<Map<String, Object>> getAllBatteriesNeedingMaintenanceAtStations() {
-        Map<String, Object> response = stationService.getAllBatteriesNeedingMaintenanceAtStations();
+        Map<String, Object> response = stationService.getBatteriesNeedingMaintenanceAtStation(id);
         return ResponseEntity.ok(response);
     }
 }

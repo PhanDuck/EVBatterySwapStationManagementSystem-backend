@@ -90,6 +90,9 @@ public class Vehicle {
     @Transient
     private Long swapCount;
 
+    @Transient
+    private String batteryTypeName;
+
     // Getters để serialize IDs
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
@@ -114,5 +117,15 @@ public class Vehicle {
 
     public void setSwapCount(Long swapCount) {
         this.swapCount = swapCount;
+    }
+
+    @JsonProperty("batteryTypeName")
+    public String getBatteryTypeName() {
+        return this.batteryTypeName != null ? this.batteryTypeName : 
+               (this.batteryType != null ? this.batteryType.getName() : null);
+    }
+
+    public void setBatteryTypeName(String batteryTypeName) {
+        this.batteryTypeName = batteryTypeName;
     }
 }

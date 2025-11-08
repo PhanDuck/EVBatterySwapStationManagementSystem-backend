@@ -51,17 +51,6 @@ public class BatteryController {
     }
 
     /**
-     * GET /api/battery/{id} : Get battery by ID (Admin/Staff only)
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get battery by ID")
-    public ResponseEntity<Battery> getBatteryById(@PathVariable Long id) {
-        Battery battery = batteryService.getBatteryById(id);
-        return ResponseEntity.ok(battery);
-    }
-
-    /**
      * PUT /api/battery/{id} : Update battery (Admin/Staff only)
      */
     @PutMapping("/{id}")
@@ -83,18 +72,6 @@ public class BatteryController {
     public ResponseEntity<Void> deleteBattery(@PathVariable Long id) {
         batteryService.deleteBattery(id);
         return ResponseEntity.noContent().build();
-    }
-
-    // ==================== PUBLIC ENDPOINTS ====================
-
-    /**
-     * GET /api/battery/available : Get available batteries (Public)
-     */
-    @GetMapping("/available")
-    @Operation(summary = "Get available batteries")
-    public ResponseEntity<List<Battery>> getAvailableBatteries() {
-        List<Battery> batteries = batteryService.getAvailableBatteries();
-        return ResponseEntity.ok(batteries);
     }
 
 }

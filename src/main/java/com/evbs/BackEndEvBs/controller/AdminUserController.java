@@ -40,19 +40,6 @@ public class AdminUserController {
         return ResponseEntity.ok(users);
     }
 
-
-     //Lấy thông tin user theo ID (Admin only)
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get user by ID", description = "Get user details by ID (Admin only)")
-    public ResponseEntity<UserResponse> getUserById(
-            @Parameter(description = "User ID") @PathVariable Long id) {
-        UserResponse user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
-    }
-
-
     // Tạo user mới (Admin only)
 
     @PostMapping

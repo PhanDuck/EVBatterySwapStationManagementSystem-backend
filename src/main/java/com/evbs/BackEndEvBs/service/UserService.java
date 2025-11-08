@@ -57,15 +57,6 @@ public class UserService {
     }
 
     /**
-     * Lấy thông tin user theo ID
-     */
-    public UserResponse getUserById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng với id: " + id));
-        return modelMapper.map(user, UserResponse.class);
-    }
-
-    /**
      * Cập nhật thông tin user
      */
     public UserResponse updateUser(Long id, UpdateUserRequest request) {

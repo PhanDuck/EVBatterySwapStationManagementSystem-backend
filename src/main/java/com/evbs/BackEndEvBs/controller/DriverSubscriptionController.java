@@ -31,28 +31,12 @@ public class DriverSubscriptionController {
     @Autowired
     private MoMoService moMoService;
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get all subscriptions", description = "Get all subscriptions (Admin only)")
-    public ResponseEntity<List<DriverSubscription>> getAllSubscriptions() {
-        List<DriverSubscription> subscriptions = driverSubscriptionService.getAllSubscriptions();
-        return ResponseEntity.ok(subscriptions);
-    }
-
     @GetMapping("/my-subscriptions")
     @PreAuthorize("hasRole('DRIVER')")
     @Operation(summary = "Get my subscriptions", description = "Get subscriptions for current driver")
     public ResponseEntity<List<DriverSubscription>> getMySubscriptions() {
         List<DriverSubscription> subscriptions = driverSubscriptionService.getMySubscriptions();
         return ResponseEntity.ok(subscriptions);
-    }
-
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete subscription", description = "Delete subscription (Admin only)")
-    public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {
-        driverSubscriptionService.deleteSubscription(id);
-        return ResponseEntity.noContent().build();
     }
 
     // ========================================

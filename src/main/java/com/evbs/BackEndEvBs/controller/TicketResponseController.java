@@ -38,28 +38,6 @@ public class TicketResponseController {
     }
 
     /**
-     * GET /api/ticket-response : Get all responses (Admin/Staff only)
-     */
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get all responses")
-    public ResponseEntity<List<TicketResponse>> getAllResponses() {
-        List<TicketResponse> responses = ticketResponseService.getAllResponses();
-        return ResponseEntity.ok(responses);
-    }
-
-    /**
-     * GET /api/ticket-response/my-responses : Get my responses (Staff/Admin only)
-     */
-    @GetMapping("/my-responses")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Get my responses")
-    public ResponseEntity<List<TicketResponse>> getMyResponses() {
-        List<TicketResponse> responses = ticketResponseService.getMyResponses();
-        return ResponseEntity.ok(responses);
-    }
-
-    /**
      * GET /api/ticket-response/ticket/{ticketId} : Get responses by ticket (Admin/Staff only)
      */
     @GetMapping("/ticket/{ticketId}")
@@ -68,30 +46,6 @@ public class TicketResponseController {
     public ResponseEntity<List<TicketResponse>> getResponsesByTicket(@PathVariable Long ticketId) {
         List<TicketResponse> responses = ticketResponseService.getResponsesByTicket(ticketId);
         return ResponseEntity.ok(responses);
-    }
-
-    /**
-     * PUT /api/ticket-response/{id} : Update response (Staff/Admin only)
-     */
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Update response")
-    public ResponseEntity<TicketResponse> updateResponse(
-            @PathVariable Long id,
-            @Valid @RequestBody TicketResponseRequest request) {
-        TicketResponse response = ticketResponseService.updateResponse(id, request);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * DELETE /api/ticket-response/{id} : Delete response (Admin only)
-     */
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Delete response")
-    public ResponseEntity<Void> deleteResponse(@PathVariable Long id) {
-        ticketResponseService.deleteResponse(id);
-        return ResponseEntity.noContent().build();
     }
 
     // ==================== DRIVER ENDPOINTS ====================

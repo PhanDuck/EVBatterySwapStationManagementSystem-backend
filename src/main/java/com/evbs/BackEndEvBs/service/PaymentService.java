@@ -21,25 +21,14 @@
         @Autowired
         private final PaymentRepository paymentRepository;
 
-        @Autowired
-        private final AuthenticationService authenticationService;
+    @Autowired
+    private final AuthenticationService authenticationService;
 
-        @Transactional(readOnly = true)
-        public List<Payment> getAllPayments() {
-            User currentUser = authenticationService.getCurrentUser();
-            if (currentUser.getRole() != User.Role.ADMIN) {
-                throw new AuthenticationException("Từ chối truy cập. Chỉ quản trị viên mới được phép thực hiện thao tác này.");
-            }
-            return paymentRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<Payment> getMyPayments() {
+        User currentUser = authenticationService.getCurrentUser();
+        if (currentUser.getRole() != User.Role.DRIVER) {
+            throw new AuthenticationException("Chỉ tài xế mới có thể xem lịch sử thanh toán của họ.");
         }
-
-        @Transactional(readOnly = true)
-        public List<Payment> getMyPayments() {
-            User currentUser = authenticationService.getCurrentUser();
-            if (currentUser.getRole() != User.Role.DRIVER) {
-                throw new AuthenticationException("Chỉ tài xế mới có thể xem lịch sử thanh toán của họ.");
-            }
-            return paymentRepository.findByDriverId(currentUser.getId());
-        }
-
-    }
+        return paymentRepository.findByDriverId(currentUser.getId());
+    }    }

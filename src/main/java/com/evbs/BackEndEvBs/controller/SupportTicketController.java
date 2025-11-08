@@ -55,28 +55,6 @@ public class SupportTicketController {
     }
 
     /**
-     * PUT /api/support-ticket/my-tickets/{id} : Update my ticket (Driver)
-     */
-    @PutMapping("/my-tickets/{id}")
-    @Operation(summary = "Update my ticket")
-    public ResponseEntity<SupportTicket> updateMyTicket(
-            @PathVariable Long id,
-            @Valid @RequestBody SupportTicketRequest request) {
-        SupportTicket ticket = supportTicketService.updateMyTicket(id, request);
-        return ResponseEntity.ok(ticket);
-    }
-
-    /**
-     * DELETE /api/support-ticket/my-tickets/{id} : Delete my ticket (Driver)
-     */
-    @DeleteMapping("/my-tickets/{id}")
-    @Operation(summary = "Delete my ticket")
-    public ResponseEntity<Void> deleteMyTicket(@PathVariable Long id) {
-        supportTicketService.deleteMyTicket(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
      * GET /api/support-ticket : Get all tickets (Admin/Staff only)
      * - Admin: Lấy TẤT CẢ tickets
      * - Staff: Lấy tickets của các stations họ quản lý

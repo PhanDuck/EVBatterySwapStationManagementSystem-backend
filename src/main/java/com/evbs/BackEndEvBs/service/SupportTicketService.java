@@ -138,61 +138,6 @@ public class SupportTicketService {
     }
 
     /**
-     * UPDATE - Cập nhật ticket của driver
-     */
-    @Transactional
-    public SupportTicket updateMyTicket(Long id, SupportTicketRequest request) {
-        User currentUser = authenticationService.getCurrentUser();
-        SupportTicket ticket = supportTicketRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket"));
-
-        // Chỉ cho phép update khi ticket chưa được trả lời
-        if (!SupportTicket.Status.OPEN.equals(ticket.getStatus())) {
-            throw new AuthenticationException("Không thể cập nhật ticket đang được xử lý");
-        }
-
-        // Update các field
-        if (request.getSubject() != null) {
-            ticket.setSubject(request.getSubject());
-        }
-
-        if (request.getDescription() != null) {
-            ticket.setDescription(request.getDescription());
-        }
-
-        // Update station nếu có
-        if (request.getStationId() != null) {
-            Station station = stationRepository.findById(request.getStationId())
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
-            ticket.setStation(station);
-        }
-
-        return supportTicketRepository.save(ticket);
-    }
-
-    /**
-     * DELETE - Xóa ticket của driver
-     */
-    @Transactional
-    public void deleteMyTicket(Long id) {
-        User currentUser = authenticationService.getCurrentUser();
-        SupportTicket ticket = supportTicketRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy ticket"));
-
-        // Kiểm tra xem ticket có responses hay không
-        if (!ticket.getResponses().isEmpty()) {
-            throw new AuthenticationException("Không thể xóa ticket đã có phản hồi từ nhân viên");
-        }
-
-        // Chỉ cho phép xóa ticket có status OPEN
-        if (!SupportTicket.Status.OPEN.equals(ticket.getStatus())) {
-            throw new AuthenticationException("Chỉ có thể xóa các ticket có trạng thái OPEN");
-        }
-
-        supportTicketRepository.delete(ticket);
-    }
-
-    /**
      * READ - Lấy tất cả tickets (Admin/Staff only)
      * - Admin: Lấy TẤT CẢ tickets
      * - Staff: Chỉ lấy tickets của các stations họ quản lý

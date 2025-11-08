@@ -41,13 +41,13 @@ public class StaffStationAssignmentController {
     }
 
     /**
-     * DELETE /api/staff-station-assignment/staff/{staffId}/station/{stationId} : Unassign staff from station (Admin only)
+     * DELETE /api/staff-station-assignment : Unassign staff from station (Admin only)
      */
-    @DeleteMapping("/staff/{staffId}/station/{stationId}")
+    @DeleteMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Unassign staff from station",
             description = "Admin removes a staff member's access to manage a station")
-    public ResponseEntity<Void> unassignStaffFromStation(@PathVariable Long staffId, @PathVariable Long stationId) {
+    public ResponseEntity<Void> unassignStaffFromStation(@RequestParam Long staffId, @RequestParam Long stationId) {
         assignmentService.unassignStaffFromStation(staffId, stationId);
         return ResponseEntity.noContent().build();
     }
@@ -61,42 +61,6 @@ public class StaffStationAssignmentController {
             description = "Admin views all staff-station assignments in the system")
     public ResponseEntity<List<StaffStationAssignment>> getAllAssignments() {
         List<StaffStationAssignment> assignments = assignmentService.getAllAssignments();
-        return ResponseEntity.ok(assignments);
-    }
-
-    /**
-     * GET /api/staff-station-assignment/staff/{staffId}/stations : Get stations by staff (Admin only)
-     */
-    @GetMapping("/staff/{staffId}/stations")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get stations assigned to a staff",
-            description = "Admin views all stations managed by a specific staff member")
-    public ResponseEntity<List<Station>> getStationsByStaff(@PathVariable Long staffId) {
-        List<Station> stations = assignmentService.getStationsByStaff(staffId);
-        return ResponseEntity.ok(stations);
-    }
-
-    /**
-     * GET /api/staff-station-assignment/station/{stationId}/staff : Get staff by station (Admin only)
-     */
-    @GetMapping("/station/{stationId}/staff")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get staff assigned to a station",
-            description = "Admin views all staff members managing a specific station")
-    public ResponseEntity<List<User>> getStaffByStation(@PathVariable Long stationId) {
-        List<User> staff = assignmentService.getStaffByStation(stationId);
-        return ResponseEntity.ok(staff);
-    }
-
-    /**
-     * GET /api/staff-station-assignment/staff/{staffId}/assignments : Get assignments by staff (Admin only)
-     */
-    @GetMapping("/staff/{staffId}/assignments")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Get all assignments of a staff",
-            description = "Admin views detailed assignment records for a specific staff member")
-    public ResponseEntity<List<StaffStationAssignment>> getAssignmentsByStaff(@PathVariable Long staffId) {
-        List<StaffStationAssignment> assignments = assignmentService.getAssignmentsByStaff(staffId);
         return ResponseEntity.ok(assignments);
     }
 

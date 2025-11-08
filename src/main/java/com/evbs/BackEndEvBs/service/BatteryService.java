@@ -125,28 +125,6 @@ public class BatteryService {
     }
 
     /**
-     * READ - Lấy battery theo ID (Admin/Staff only)
-     */
-    @Transactional(readOnly = true)
-    public Battery getBatteryById(Long id) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Truy cập bị từ chối");
-        }
-        return batteryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
-    }
-
-    /**
-     * READ - Lấy available batteries (Public)
-     */
-    @Transactional(readOnly = true)
-    public List<Battery> getAvailableBatteries() {
-        // Sử dụng JOIN FETCH để tránh N+1 query problem khi load stationName và batteryTypeName
-        return batteryRepository.findByStatusWithDetails(Battery.Status.AVAILABLE);
-    }
-
-    /**
      * READ - Lấy tất cả batteries trong station (Public)
      */
     @Transactional(readOnly = true)

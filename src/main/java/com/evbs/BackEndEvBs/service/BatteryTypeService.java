@@ -52,12 +52,6 @@ public class BatteryTypeService {
         return batteryTypeRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
-    public BatteryType getBatteryTypeById(Long id) {
-        return batteryTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
-    }
-
     @Transactional
     public BatteryType updateBatteryType(Long id, BatteryTypeUpdateRequest request) {
         User currentUser = authenticationService.getCurrentUser();

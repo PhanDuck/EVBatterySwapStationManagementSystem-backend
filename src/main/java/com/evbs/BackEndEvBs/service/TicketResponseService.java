@@ -89,32 +89,6 @@ public class TicketResponseService {
     }
 
     /**
-     * READ - Lấy tất cả responses (Admin/Staff only)
-     * - Admin: Lấy TẤT CẢ responses
-     * - Staff: Chỉ lấy responses của tickets thuộc stations họ quản lý
-     */
-    @Transactional(readOnly = true)
-    public List<TicketResponse> getAllResponses() {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Truy cập bị từ chối");
-        }
-
-        // Admin có thể xem tất cả responses
-        if (currentUser.getRole() == User.Role.ADMIN) {
-            return ticketResponseRepository.findAll();
-        }
-
-        // Staff chỉ xem responses của tickets thuộc stations họ quản lý
-        var myStations = staffStationAssignmentRepository.findStationsByStaff(currentUser);
-        if (myStations.isEmpty()) {
-            throw new AuthenticationException("Nhân viên chưa được phân công vào trạm nào");
-        }
-
-        return ticketResponseRepository.findByTicketStationIn(myStations);
-    }
-
-    /**
      * READ - Lấy responses theo ticket (Admin/Staff only)
      * - Admin: Lấy responses của bất kỳ ticket nào
      * - Staff: Chỉ lấy responses nếu ticket thuộc stations họ quản lý
@@ -152,18 +126,6 @@ public class TicketResponseService {
     }
 
     /**
-     * READ - Lấy responses của staff hiện tại (Staff/Admin only)
-     */
-    @Transactional(readOnly = true)
-    public List<TicketResponse> getMyResponses() {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Truy cập bị từ chối");
-        }
-        return ticketResponseRepository.findByStaff_Id(currentUser.getId());
-    }
-
-    /**
      * READ - Lấy responses cho ticket của driver (Driver only)
      */
     @Transactional(readOnly = true)
@@ -179,46 +141,6 @@ public class TicketResponseService {
         }
 
         return ticketResponseRepository.findByTicketId(ticketId);
-    }
-
-    /**
-     * UPDATE - Cập nhật response (Staff/Admin only)
-     */
-    @Transactional
-    public TicketResponse updateResponse(Long id, TicketResponseRequest request) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Truy cập bị từ chối");
-        }
-
-        TicketResponse response = ticketResponseRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy response"));
-
-        // Chỉ cho phép staff tạo response được sửa
-        if (!response.getStaff().getId().equals(currentUser.getId())) {
-            throw new AuthenticationException("Chỉ có thể cập nhật responses của chính bạn");
-        }
-
-        if (request.getMessage() != null) {
-            response.setMessage(request.getMessage());
-        }
-
-        return ticketResponseRepository.save(response);
-    }
-
-    /**
-     * DELETE - Xóa response (Admin only)
-     */
-    @Transactional
-    public void deleteResponse(Long id) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Truy cập bị từ chối");
-        }
-
-        TicketResponse response = ticketResponseRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy response"));
-        ticketResponseRepository.delete(response);
     }
 
     // ==================== HELPER METHODS ====================

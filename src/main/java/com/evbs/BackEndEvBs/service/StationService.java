@@ -35,6 +35,9 @@ public class StationService {
     @Autowired
     private final AuthenticationService authenticationService;
 
+    @Autowired
+    private final BatteryHealthService batteryHealthService;
+
     /**
      * CREATE - Tạo station mới (Admin/Staff only)
      */
@@ -80,10 +83,10 @@ public class StationService {
     }
 
     /**
-     * READ - Lấy station theo ID (Public)
+     * INTERNAL - Lấy station theo ID (dùng nội bộ)
      */
     @Transactional(readOnly = true)
-    public Station getStationById(Long id) {
+    Station getStationById(Long id) {
         return stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
     }
@@ -195,63 +198,44 @@ public class StationService {
     }
 
     /**
-     * UPDATE - Cập nhật status station (Admin/Staff only)
-     */
-    @Transactional
-    public Station updateStationStatus(Long id, Station.Status status) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Truy cập bị từ chối");
-        }
-
-        Station station = stationRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
-
-        //  Staff chỉ update được stations được assign
-        if (currentUser.getRole() == User.Role.STAFF) {
-            if (!staffStationAssignmentRepository.existsByStaffAndStation(currentUser, station)) {
-                throw new AuthenticationException("Bạn không được phân công quản lý trạm này");
-            }
-        }
-
-        station.setStatus(status);
-        return stationRepository.save(station);
-    }
-    /**
-     * Lấy tất cả pin cần bảo trì tại các trạm
-     * Admin: Xem tất cả pins needs-maintenance của tất cả trạm
-     * Staff: Chỉ xem pins needs-maintenance của trạm mình quản lý
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> getAllBatteriesNeedingMaintenanceAtStations() {
-        // Logic này sẽ được implement trong BatteryHealthService
-        // Tạm thời trả về empty result
-        Map<String, Object> response = new HashMap<>();
-        response.put("location", "AT_STATIONS");
-        response.put("total", 0);
-        response.put("batteries", List.of());
-        response.put("message", "Không có pin nào cần bảo trì tại các trạm");
-        return response;
-    }
-
-    /**
      * Lấy pin cần bảo trì tại trạm cụ thể
      * Staff chỉ xem được pins của stations mình quản lý
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getBatteriesNeedingMaintenanceAtStation(Long stationId) {
-        // Validate station exists
-        Station station = getStationById(stationId);
+        User currentUser = authenticationService.getCurrentUser();
+        
+        // Validate station exists first
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
+        
+        // Validate station access for staff
+        if ("STAFF".equals(currentUser.getRole())) {
+            boolean hasAccess = staffStationAssignmentRepository
+                    .existsByStaffAndStation(currentUser, station);
+            if (!hasAccess) {
+                throw new AuthenticationException("Bạn không có quyền truy cập trạm này");
+            }
+        }
 
-        // Logic này sẽ được implement trong BatteryHealthService
-        // Tạm thời trả về empty result
+        // Lấy tất cả pin có SOH < 70% (từ BatteryHealthService)
+        List<com.evbs.BackEndEvBs.entity.Battery> allBatteriesNeedMaintenance = batteryHealthService.getBatteriesNeedingMaintenance();
+        
+        // Filter chỉ lấy pin Ở TRẠM NÀY (currentStation = stationId)
+        List<com.evbs.BackEndEvBs.entity.Battery> batteriesAtStation = allBatteriesNeedMaintenance.stream()
+                .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(stationId))
+                .collect(java.util.stream.Collectors.toList());
+        
         Map<String, Object> response = new HashMap<>();
         response.put("stationId", stationId);
         response.put("stationName", station.getName());
         response.put("location", "AT_STATION");
-        response.put("total", 0);
-        response.put("batteries", List.of());
-        response.put("message", "Trạm này không có pin nào cần bảo trì");
+        response.put("total", batteriesAtStation.size());
+        response.put("batteries", batteriesAtStation);
+        response.put("message", batteriesAtStation.isEmpty() 
+            ? "Trạm này không có pin nào cần bảo trì" 
+            : "Trạm này có " + batteriesAtStation.size() + " pin cần bảo trì");
+        
         return response;
     }
 

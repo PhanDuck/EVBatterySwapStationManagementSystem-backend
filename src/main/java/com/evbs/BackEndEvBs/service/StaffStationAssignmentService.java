@@ -130,22 +130,6 @@ public class StaffStationAssignmentService {
     }
 
     /**
-     * READ - Lấy tất cả nhân viên của một trạm (chỉ Admin)
-     */
-    @Transactional(readOnly = true)
-    public List<User> getStaffByStation(Long stationId) {
-        User currentUser = authenticationService.getCurrentUser();
-        if (currentUser.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Từ chối truy cập.");
-        }
-
-        Station station = stationRepository.findById(stationId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm."));
-
-        return assignmentRepository.findStaffByStation(station);
-    }
-
-    /**
      * READ - Lấy tất cả phân công (chỉ Admin)
      */
     @Transactional(readOnly = true)
@@ -170,17 +154,6 @@ public class StaffStationAssignmentService {
         }
 
         return assignmentRepository.findStationsByStaff(currentStaff);
-    }
-
-    /**
-     * READ - Lấy tất cả phân công của một nhân viên
-     */
-    @Transactional(readOnly = true)
-    public List<StaffStationAssignment> getAssignmentsByStaff(Long staffId) {
-        User staff = userRepository.findById(staffId)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy nhân viên."));
-
-        return assignmentRepository.findByStaff(staff);
     }
 
     /**

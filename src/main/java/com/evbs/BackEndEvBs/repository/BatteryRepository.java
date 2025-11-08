@@ -27,17 +27,11 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
            "WHERE b.status = :status")
     List<Battery> findByStatusWithDetails(@Param("status") Battery.Status status);
 
-    // Tìm batteries theo model
-    List<Battery> findByModelContainingIgnoreCase(String model);
-
     // Tìm batteries theo status
     List<Battery> findByStatus(Battery.Status status);
 
     // Tìm batteries theo station
     List<Battery> findByCurrentStation_Id(Long stationId);
-
-    // Tìm batteries theo battery type
-    List<Battery> findByBatteryType_Id(Long batteryTypeId);
 
     // Find AVAILABLE batteries in warehouse by type (currentStation = NULL)
     List<Battery> findByBatteryType_IdAndStatusAndCurrentStationIsNull(Long batteryTypeId, Battery.Status status);

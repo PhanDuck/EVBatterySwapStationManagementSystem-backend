@@ -41,14 +41,6 @@ public class ServicePackageController {
         return ResponseEntity.ok(packages);
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get service package by ID", description = "Get service package details by ID (Public)")
-    public ResponseEntity<ServicePackage> getServicePackageById(
-            @Parameter(description = "Service Package ID") @PathVariable Long id) {
-        ServicePackage servicePackage = servicePackageService.getServicePackageById(id);
-        return ResponseEntity.ok(servicePackage);
-    }
-
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "api")

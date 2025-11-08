@@ -40,13 +40,6 @@ public class BatteryTypeController {
         return ResponseEntity.ok(batteryTypes);
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get battery type by ID")
-    public ResponseEntity<BatteryType> getBatteryTypeById(@PathVariable Long id) {
-        BatteryType batteryType = batteryTypeService.getBatteryTypeById(id);
-        return ResponseEntity.ok(batteryType);
-    }
-
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update battery type")

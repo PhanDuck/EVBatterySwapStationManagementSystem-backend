@@ -27,6 +27,13 @@ public class StationInventoryController {
         return ResponseEntity.ok(stationInventoryService.getAllBatteriesInWarehouseWithDetails());
     }
 
+    @GetMapping("/available-by-type/{batteryTypeId}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Get available batteries in warehouse by battery type")
+    public ResponseEntity<Map<String, Object>> getAvailableBatteriesByType(@PathVariable Long batteryTypeId) {
+        return ResponseEntity.ok(stationInventoryService.getAvailableBatteriesByType(batteryTypeId));
+    }
+
     @PostMapping("/move-to-station")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Move battery from warehouse to station")

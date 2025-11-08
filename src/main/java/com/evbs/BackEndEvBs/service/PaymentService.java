@@ -25,6 +25,15 @@
     private final AuthenticationService authenticationService;
 
     @Transactional(readOnly = true)
+    public List<Payment> getAllPayments() {
+        User currentUser = authenticationService.getCurrentUser();
+        if (currentUser.getRole() != User.Role.ADMIN && currentUser.getRole() != User.Role.STAFF) {
+            throw new AuthenticationException("Từ chối truy cập. Chỉ Admin/Staff mới được phép thực hiện thao tác này.");
+        }
+        return paymentRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
     public List<Payment> getMyPayments() {
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getRole() != User.Role.DRIVER) {

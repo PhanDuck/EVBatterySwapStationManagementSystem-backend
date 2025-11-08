@@ -41,13 +41,13 @@ public class StaffStationAssignmentController {
     }
 
     /**
-     * DELETE /api/staff-station-assignment : Unassign staff from station (Admin only)
+     * DELETE /api/staff-station-assignment/staff/{staffId}/station/{stationId} : Unassign staff from station (Admin only)
      */
-    @DeleteMapping
+    @DeleteMapping("/staff/{staffId}/station/{stationId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Unassign staff from station",
             description = "Admin removes a staff member's access to manage a station")
-    public ResponseEntity<Void> unassignStaffFromStation(@RequestParam Long staffId, @RequestParam Long stationId) {
+    public ResponseEntity<Void> unassignStaffFromStation(@PathVariable Long staffId, @PathVariable Long stationId) {
         assignmentService.unassignStaffFromStation(staffId, stationId);
         return ResponseEntity.noContent().build();
     }
@@ -62,6 +62,20 @@ public class StaffStationAssignmentController {
     public ResponseEntity<List<StaffStationAssignment>> getAllAssignments() {
         List<StaffStationAssignment> assignments = assignmentService.getAllAssignments();
         return ResponseEntity.ok(assignments);
+    }
+
+    /**
+     * GET /api/staff-station-assignment/staff/{staffId}/station/{stationId} : Get specific assignment
+     */
+    @GetMapping("/staff/{staffId}/station/{stationId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get specific staff-station assignment",
+            description = "Admin views a specific assignment by staff ID and station ID")
+    public ResponseEntity<StaffStationAssignment> getAssignment(
+            @PathVariable Long staffId,
+            @PathVariable Long stationId) {
+        StaffStationAssignment assignment = assignmentService.getAssignment(staffId, stationId);
+        return ResponseEntity.ok(assignment);
     }
 
     // ==================== STAFF ENDPOINTS ====================

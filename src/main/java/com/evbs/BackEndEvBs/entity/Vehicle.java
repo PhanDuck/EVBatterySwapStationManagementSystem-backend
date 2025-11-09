@@ -30,6 +30,9 @@ public class Vehicle {
     @Column(name = "Model", length = 100)
     private String model;
 
+    @Column(name = "RegistrationImage", length = 500)
+    private String registrationImage;
+
     @ManyToOne
     @JoinColumn(name = "DriverID", nullable = false)
     @JsonIgnore
@@ -70,8 +73,9 @@ public class Vehicle {
 
     // Enum for vehicle status
     public enum VehicleStatus {
-        ACTIVE,
-        INACTIVE
+        PENDING,   // Chờ admin duyệt
+        ACTIVE,    // Đã được duyệt
+        INACTIVE   // Đã bị từ chối hoặc xóa
     }
 
     // Transient fields để serialize IDs

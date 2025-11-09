@@ -1,27 +1,29 @@
 package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.BatteryType;
+import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.Vehicle;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
+import com.evbs.BackEndEvBs.model.request.VehicleRejectRequest;
 import com.evbs.BackEndEvBs.model.request.VehicleRequest;
+import com.evbs.BackEndEvBs.model.request.VehicleApproveRequest;
 import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
-import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
-import com.evbs.BackEndEvBs.repository.VehicleRepository;
-import com.evbs.BackEndEvBs.repository.SwapTransactionRepository;
+import com.evbs.BackEndEvBs.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.HashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -37,16 +39,29 @@ public class VehicleService {
     private final BatteryTypeRepository batteryTypeRepository;
 
     @Autowired
+    private final BatteryRepository batteryRepository;
+
+    @Autowired
     private final AuthenticationService authenticationService;
 
     @Autowired
     private final ModelMapper modelMapper;
 
+    @Autowired
+    private final UserRepository userRepository;
+
+    @Autowired
+    private final EmailService emailService;
+
+    @Autowired
+    private final FileStorageService fileStorageService;
+
     /**
-     * Creates a new Vehicle
+     * Creates a new Vehicle (status = PENDING, chờ admin duyệt)
+     * Upload ảnh giấy đăng ký xe
      */
     @Transactional
-    public Vehicle createVehicle(VehicleRequest vehicleRequest) {
+    public Vehicle createVehicle(VehicleRequest vehicleRequest, MultipartFile registrationImageFile) {
         // Validate VIN unique
         if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
             throw new AuthenticationException("VIN đã tồn tại!");
@@ -61,14 +76,19 @@ public class VehicleService {
         BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
+        // Upload file ảnh giấy đăng ký
+        String registrationImagePath = fileStorageService.uploadFile(registrationImageFile);
+
         // Create vehicle manually to avoid ModelMapper conflicts
         Vehicle vehicle = new Vehicle();
         vehicle.setVin(vehicleRequest.getVin());
         vehicle.setPlateNumber(vehicleRequest.getPlateNumber());
         vehicle.setModel(vehicleRequest.getModel());
+        vehicle.setRegistrationImage(registrationImagePath);
+
         User currentUser = authenticationService.getCurrentUser();
 
-        // Enforce max 2 ACTIVE vehicles per user (không đếm xe đã xóa)
+        // Enforce max 2 ACTIVE vehicles per user (không đếm xe PENDING hoặc INACTIVE)
         long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
         if (activeVehicles >= 2) {
             throw new AuthenticationException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
@@ -77,7 +97,23 @@ public class VehicleService {
         vehicle.setDriver(currentUser);
         vehicle.setBatteryType(batteryType);
 
-        return vehicleRepository.save(vehicle);
+        // Set status = PENDING - chờ admin duyệt
+        vehicle.setStatus(Vehicle.VehicleStatus.PENDING);
+
+        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+
+        // Gửi email thông báo cho admin
+        try {
+            List<User> adminList = userRepository.findByRole(User.Role.ADMIN);
+            if (!adminList.isEmpty()) {
+                emailService.sendVehicleRequestToAdmin(adminList, savedVehicle);
+            }
+        } catch (Exception e) {
+            // Log error nhưng không throw exception để không ảnh hưởng đến việc tạo vehicle
+            System.err.println("Lỗi khi gửi email thông báo cho admin: " + e.getMessage());
+        }
+
+        return savedVehicle;
     }
 
     /**
@@ -135,7 +171,7 @@ public class VehicleService {
     // Populate batteryTypeName for a list of vehicles
     private void populateBatteryTypeNames(List<Vehicle> vehicles) {
         if (vehicles == null || vehicles.isEmpty()) return;
-        
+
         vehicles.forEach(v -> {
             if (v.getBatteryType() != null) {
                 v.setBatteryTypeName(v.getBatteryType().getName());
@@ -249,5 +285,105 @@ public class VehicleService {
      */
     private boolean isAdminOrStaff(User user) {
         return user.getRole() == User.Role.ADMIN || user.getRole() == User.Role.STAFF;
+    }
+
+    /**
+     * APPROVE - Admin phê duyệt xe (chuyển từ PENDING sang ACTIVE) và gắn pin ban đầu
+     */
+    @Transactional
+    public Vehicle approveVehicle(Long id, VehicleApproveRequest request) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
+        }
+
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với id: " + id));
+
+        // Kiểm tra xe có đang ở trạng thái PENDING không
+        if (vehicle.getStatus() != Vehicle.VehicleStatus.PENDING) {
+            throw new AuthenticationException("Chỉ có thể phê duyệt xe đang ở trạng thái PENDING");
+        }
+
+        // Kiểm tra driver có quá 2 xe ACTIVE chưa
+        long activeVehicles = vehicleRepository.findByDriverAndStatus(vehicle.getDriver(), Vehicle.VehicleStatus.ACTIVE).size();
+        if (activeVehicles >= 2) {
+            throw new AuthenticationException("Tài xế đã có 2 xe đang hoạt động. Không thể phê duyệt thêm.");
+        }
+
+        // Lấy pin từ kho
+        Battery battery = batteryRepository.findById(request.getBatteryId())
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin với id: " + request.getBatteryId()));
+
+        // Kiểm tra pin có sẵn sàng không
+        if (battery.getStatus() != Battery.Status.AVAILABLE) {
+            throw new AuthenticationException("Pin không ở trạng thái AVAILABLE. Trạng thái hiện tại: " + battery.getStatus());
+        }
+
+        // Kiểm tra loại pin có khớp với xe không
+        if (!battery.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
+            throw new AuthenticationException("Loại pin không khớp với xe. Xe yêu cầu loại pin: " + vehicle.getBatteryType().getName());
+        }
+
+        // Gắn pin vào xe
+        vehicle.setCurrentBattery(battery);
+
+        // Cập nhật trạng thái pin
+        battery.setStatus(Battery.Status.IN_USE);
+        batteryRepository.save(battery);
+
+        // Chuyển status xe sang ACTIVE
+        vehicle.setStatus(Vehicle.VehicleStatus.ACTIVE);
+
+        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+
+        // Gửi email thông báo cho tài xế
+        try {
+            emailService.sendVehicleApprovedToDriver(savedVehicle);
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không ảnh hưởng đến luồng chính
+            System.err.println("Lỗi khi gửi email thông báo xe được phê duyệt: " + e.getMessage());
+        }
+
+        return savedVehicle;
+    }
+
+    /**
+     * REJECT - Admin từ chối xe (chuyển từ PENDING sang INACTIVE)
+     */
+    @Transactional
+    public Vehicle rejectVehicle(Long id, VehicleRejectRequest request) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
+        }
+
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với id: " + id));
+
+        // Kiểm tra xe có đang ở trạng thái PENDING không
+        if (vehicle.getStatus() != Vehicle.VehicleStatus.PENDING) {
+            throw new AuthenticationException("Chỉ có thể từ chối xe đang ở trạng thái PENDING");
+        }
+
+        // Chuyển status sang INACTIVE
+        vehicle.setStatus(Vehicle.VehicleStatus.INACTIVE);
+        vehicle.setDeletedAt(LocalDateTime.now());
+        vehicle.setDeletedBy(currentUser);
+
+        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+
+        // Gửi email thông báo cho tài xế
+        try {
+            String rejectionReason = (request != null && request.getRejectionReason() != null)
+                    ? request.getRejectionReason()
+                    : "Không có lý do cụ thể được cung cấp.";
+            emailService.sendVehicleRejectedToDriver(savedVehicle, rejectionReason);
+        } catch (Exception e) {
+            // Log lỗi nhưng không throw exception để không ảnh hưởng đến luồng chính
+            System.err.println("Lỗi khi gửi email thông báo xe bị từ chối: " + e.getMessage());
+        }
+
+        return savedVehicle;
     }
 }

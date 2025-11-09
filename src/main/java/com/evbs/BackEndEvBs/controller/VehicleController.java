@@ -1,14 +1,14 @@
 package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.Vehicle;
-import com.evbs.BackEndEvBs.model.request.VehicleRequest;
-import com.evbs.BackEndEvBs.model.request.VehicleUpdateRequest;
+import com.evbs.BackEndEvBs.model.request.*;
 import com.evbs.BackEndEvBs.service.VehicleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -25,11 +25,20 @@ public class VehicleController {
 
     /**
      * POST /api/vehicle : Creates a new vehicle (Driver)
+     * Nhận form-data với file upload
      */
-    @PostMapping
-    @Operation(summary = "Create a new vehicle (Driver)")
-    public ResponseEntity<Vehicle> createVehicle(@Valid @RequestBody VehicleRequest vehicleRequest) {
-        Vehicle newVehicle = vehicleService.createVehicle(vehicleRequest);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create a new vehicle with registration image upload (Driver)")
+    public ResponseEntity<Vehicle> createVehicle(@Valid @ModelAttribute VehicleCreateRequest request) {
+
+        // Tạo VehicleRequest từ VehicleCreateRequest
+        VehicleRequest vehicleRequest = new VehicleRequest();
+        vehicleRequest.setVin(request.getVin());
+        vehicleRequest.setPlateNumber(request.getPlateNumber());
+        vehicleRequest.setModel(request.getModel());
+        vehicleRequest.setBatteryTypeId(request.getBatteryTypeId());
+
+        Vehicle newVehicle = vehicleService.createVehicle(vehicleRequest, request.getRegistrationImage());
         return new ResponseEntity<>(newVehicle, HttpStatus.CREATED);
     }
 
@@ -85,5 +94,31 @@ public class VehicleController {
     public ResponseEntity<Void> deleteVehicle(@PathVariable Long id) {
         vehicleService.deleteVehicle(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * PUT /api/vehicle/{id}/approve : Approve vehicle with battery assignment (Admin/Staff only)
+     */
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Approve vehicle and assign battery (Admin/Staff only)")
+    public ResponseEntity<Vehicle> approveVehicle(
+            @PathVariable Long id,
+            @RequestBody VehicleApproveRequest request) {
+        Vehicle approvedVehicle = vehicleService.approveVehicle(id, request);
+        return ResponseEntity.ok(approvedVehicle);
+    }
+
+    /**
+     * PUT /api/vehicle/{id}/reject : Reject vehicle (Admin/Staff only)
+     */
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Reject vehicle with optional reason (Admin/Staff only)")
+    public ResponseEntity<Vehicle> rejectVehicle(
+            @PathVariable Long id,
+            @RequestBody(required = false) VehicleRejectRequest request) {
+        Vehicle rejectedVehicle = vehicleService.rejectVehicle(id, request);
+        return ResponseEntity.ok(rejectedVehicle);
     }
 }

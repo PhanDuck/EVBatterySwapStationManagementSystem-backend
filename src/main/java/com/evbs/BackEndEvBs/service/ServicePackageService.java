@@ -33,7 +33,7 @@ public class ServicePackageService {
 
         long currentPackageCount = servicePackageRepository.count();
         if (currentPackageCount >= 12) {
-            throw new IllegalArgumentException("Maximum limit of 12 service packages reached. Cannot create more.");
+            throw new IllegalArgumentException("Tối đa là 12 gói dịch vụ. Không thể tạo thêm gói dịch vụ mới.");
         }
 
         if (servicePackageRepository.existsByName(request.getName())) {

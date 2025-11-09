@@ -73,6 +73,10 @@ public class VehicleService {
         if (activeVehicles >= 2) {
             throw new AuthenticationException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
         }
+        long pendingVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.PENDING).size();
+        if (pendingVehicles >= 1) {
+            throw new AuthenticationException("Bạn đang có xe đã đăng kí vui lòng chờ.");
+        }
 
         vehicle.setDriver(currentUser);
         vehicle.setBatteryType(batteryType);

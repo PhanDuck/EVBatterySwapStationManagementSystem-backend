@@ -71,7 +71,8 @@ public class Vehicle {
     // Enum for vehicle status
     public enum VehicleStatus {
         ACTIVE,
-        INACTIVE
+        INACTIVE,
+        PENDING
     }
 
     // Transient fields để serialize IDs

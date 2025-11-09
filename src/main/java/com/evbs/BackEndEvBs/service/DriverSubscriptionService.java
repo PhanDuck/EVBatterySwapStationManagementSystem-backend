@@ -172,19 +172,6 @@ public class DriverSubscriptionService {
      * 2. KÍCH HOẠT gói mới FULL 100%
      * 3. THANH TOÁN = Giá FULL gói mới
      *
-     * VÍ DỤ:
-     * - Gói cũ: Basic (20 lượt = 400,000đ, còn 15 lượt, 20 ngày)
-     * - Gói mới: Premium (50 lượt = 800,000đ, 60 ngày)
-     *
-     * KẾT QUẢ:
-     * - GÓI CŨ: Bị HỦY ngay → MẤT 15 lượt + 20 ngày
-     * - GÓI MỚI: FULL 50 lượt + 60 ngày MỚI
-     * - THANH TOÁN: 800,000đ (FULL giá gói mới)
-     *
-     * → GIỐNG MÔ HÌNH VIETTEL/VINAPHONE ĐỔI GÓI DATA
-     * → KHÔNG hoàn tiền, KHÔNG bonus, KHÔNG phí phạt
-     * → CỰC KỲ ĐƠN GIẢN, NGĂN 100% LẠM DỤNG
-     *
      * @param newPackageId ID của gói mới muốn nâng cấp
      * @return UpgradeCalculationResponse chứa chi tiết tính toán
      */
@@ -248,22 +235,10 @@ public class DriverSubscriptionService {
         // 7. Cảnh báo QUAN TRỌNG
         String warning = String.format(
                 "CẢNH BÁO QUAN TRỌNG - VUI LÒNG ĐỌC KỸ:\n\n" +
-                        "KHI NÂNG CẤP, BẠN SẼ:\n" +
-                        "MẤT NGAY: %d lượt đổi pin còn lại\n" +
-                        "MẤT NGAY: %d ngày thời hạn còn lại  \n" +
-                        "GÓI CŨ: Bị HỦY hoàn toàn (CANCELLED)\n\n" +
-                        "SAU NÂNG CẤP, BẠN NHẬN:\n" +
-                        "GÓI MỚI: %d lượt FULL (không bonus)\n" +
-                        "THỜI HẠN: %d ngày MỚI (bắt đầu từ hôm nay)\n\n" +
-                        "THANH TOÁN:\n" +
-                        "• Giá: %,d VNĐ (FULL giá gói mới)\n" +
-                        "• Không hoàn lại phần gói cũ\n\n" +
-                        "LƯU Ý: Nếu gói cũ còn nhiều, hãy sử dụng thêm trước khi nâng cấp!",
-                remainingSwaps,
-                daysRemaining,
-                newPackage.getMaxSwaps(),
-                newPackage.getDuration(),
-                newPackage.getPrice().intValue()
+                        "KHI NÂNG CẤP:\n" +
+                        "GÓI CŨ sẽ bị HỦY hoàn toàn\n\n" +
+                        "Và chuyển sang sử dụng GÓI MỚI\n\n" +
+                        "LƯU Ý: Hãy suy nghĩ thật kỹ trước khi nâng cấp!"
         );
 
         // 8. Phân tích
@@ -307,7 +282,7 @@ public class DriverSubscriptionService {
 
                 // Thông báo
                 .canUpgrade(true)
-                .message("Bạn có thể nâng cấp. Gói cũ sẽ BỊ HỦY, gói mới kích hoạt FULL.")
+                .message("Bạn có thể nâng cấp. Gói cũ sẽ BỊ HỦY, gói mới sẽ kích hoạt ngay lập tức.")
                 .warning(warning)
                 .recommendation(analysis)
                 .build();
@@ -331,65 +306,12 @@ public class DriverSubscriptionService {
 
         // 1. Thông tin mất mát
         analysis.append(String.format(
-                "BẠN SẼ MẤT:\n" +
-                        "   • %d lượt đổi pin\n" +
-                        "   • %d ngày thời hạn\n" +
-                        "   • Giá trị ước tính: ~%,d VNĐ\n" +
-                        "   • GÓI CŨ: Bị hủy hoàn toàn\n\n",
-                remainingSwaps,
-                daysRemaining,
-                estimatedLostValue.intValue()
+                "CẢNH BÁO QUAN TRỌNG - VUI LÒNG ĐỌC KỸ:\n\n" +
+                        "KHI NÂNG CẤP:\n" +
+                        "GÓI CŨ sẽ bị HỦY hoàn toàn\n\n" +
+                        "Và chuyển sang sử dụng GÓI MỚI\n\n" +
+                        "LƯU Ý: Hãy suy nghĩ thật kỹ trước khi nâng cấp!"
         ));
-
-        // 2. Thông tin nhận được
-        analysis.append(String.format(
-                "BẠN SẼ NHẬN:\n" +
-                        "   • %d lượt đổi FULL (100%%, không bonus)\n" +
-                        "   • %d ngày MỚI (bắt đầu từ hôm nay)\n" +
-                        "   • Giá trị: %,d VNĐ\n\n",
-                newPackage.getMaxSwaps(),
-                newPackage.getDuration(),
-                newPackage.getPrice().intValue()
-        ));
-
-        // 3. Thanh toán
-        analysis.append(String.format(
-                "THANH TOÁN:\n" +
-                        "   • TỔNG: %,d VNĐ (FULL giá gói mới)\n" +
-                        "   • Không hoàn lại: 0 VNĐ\n" +
-                        "   • Không phí phạt: 0 VNĐ\n\n",
-                paymentRequired.intValue()
-        ));
-
-        // 4. Gợi ý
-        double remainPercent = totalDays > 0 ? (daysRemaining * 100.0) / totalDays : 0;
-
-        if (remainPercent > 70) {
-            analysis.append(
-                    "CẢNH BÁO:\n" +
-                            String.format("   • Gói cũ còn %.0f%% (%d/%d ngày)\n",
-                                    remainPercent, daysRemaining, totalDays) +
-                            String.format("   • Bạn sẽ MẤT TRẮNG ~%,d VNĐ\n", estimatedLostValue.intValue()) +
-                            "   • GỢI Ý: Hãy dùng thêm gói cũ trước!\n\n"
-            );
-        } else if (remainPercent > 30) {
-            analysis.append(
-                    "CÂN NHẮC:\n" +
-                            String.format("   • Gói cũ còn %.0f%%\n", remainPercent) +
-                            String.format("   • Mất ~%,d VNĐ nếu nâng ngay\n\n", estimatedLostValue.intValue())
-            );
-        } else {
-            analysis.append("THỜI ĐIỂM TỐT: Gói cũ sắp hết!\n\n");
-        }
-
-        // 5. So sánh Telco
-        analysis.append(
-                "📱 TƯƠNG TỰ VIETTEL/VINA:\n" +
-                        "   • Gói cũ → MẤT NGAY\n" +
-                        "   • Gói mới → FULL 100%\n" +
-                        "   • Trả → FULL giá mới\n"
-        );
-
         return analysis.toString();
     }
 
@@ -397,17 +319,8 @@ public class DriverSubscriptionService {
      * XỬ LÝ NÂNG CẤP GÓI SAU KHI THANH TOÁN THÀNH CÔNG (TELCO MODEL)
      *
      * MÔ HÌNH TELCO - PHƯƠNG ÁN A (ĐƠN GIẢN NHẤT):
-     * 1. HỦY gói cũ ngay lập tức (Status = EXPIRED, mất hết lượt và ngày còn lại)
+     * 1. HỦY gói cũ ngay lập tức (mất hết lượt và ngày còn lại)
      * 2. KÍCH HOẠT gói mới với FULL capacity:
-     *    - Swaps = 100% (newPackage.getMaxSwaps())
-     *    - Duration = 100% (newPackage.getDuration())
-     *    - StartDate = TODAY
-     * 3. KHÔNG có bonus, KHÔNG có refund
-     *
-     * Giống như Viettel/Vinaphone đổi gói data:
-     * - Data cũ: MẤT HẾT
-     * - Data mới: FULL 100%
-     * - Thanh toán: GIÁ ĐẦY ĐỦ
      *
      * @param newPackageId ID gói mới
      * @param driverId ID driver
@@ -597,7 +510,7 @@ public class DriverSubscriptionService {
                     "KHÔNG THỂ GIA HẠN! Bạn chỉ được phép gia hạn cùng gói hiện tại. " +
                             "Gói hiện tại: \"" + currentPackage.getName() + "\" (ID: " + currentPackage.getId() + "). " +
                             "Gói bạn chọn: \"" + renewalPackage.getName() + "\" (ID: " + renewalPackageId + "). " +
-                            "Nếu muốn đổi gói khác, vui lòng sử dụng chức năng NÂNG CẤP hoặc HẠ CẤP."
+                            "Nếu muốn đổi gói khác, vui lòng sử dụng chức năng NÂNG CẤP gói."
             );
         }
 
@@ -755,7 +668,7 @@ public class DriverSubscriptionService {
                         "KHÔNG THỂ GIA HẠN! Bạn chỉ được gia hạn cùng gói hiện tại. " +
                                 "Gói hiện tại: \"" + oldPackage.getName() + "\" (ID: " + oldPackage.getId() + "). " +
                                 "Gói bạn chọn: \"" + renewalPackage.getName() + "\" (ID: " + renewalPackageId + "). " +
-                                "Nếu muốn đổi gói khác, vui lòng sử dụng chức năng NÂNG CẤP hoặc HẠ CẤP gói."
+                                "Nếu muốn đổi gói khác, vui lòng sử dụng chức năng NÂNG CẤP gói."
                 );
             }
         }

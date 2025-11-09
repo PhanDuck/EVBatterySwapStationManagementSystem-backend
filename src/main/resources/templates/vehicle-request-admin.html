@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yêu cầu đăng ký xe mới</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .alert-badge {
+            background-color: #fff;
+            color: #28a745;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .vehicle-info {
+            background-color: #f0f9ff;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .vehicle-id {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .info-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #28a745;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 5px;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            flex: 0 0 40%;
+        }
+
+        .info-value {
+            color: #333;
+            flex: 1;
+            text-align: right;
+        }
+
+        .driver-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .registration-image {
+            text-align: center;
+            margin: 25px 0;
+        }
+
+        .registration-image img {
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .timestamp {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #856404;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 5px 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .footer-links {
+            margin-top: 15px;
+        }
+
+        .footer-links a {
+            color: #28a745;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 0;
+                box-shadow: none;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .btn {
+                display: block;
+                margin: 10px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <!-- Header -->
+    <div class="header">
+        <h1>🚗 YÊU CẦU ĐĂNG KÝ XE MỚI</h1>
+        <div class="alert-badge">CẦN DUYỆT</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- Timestamp -->
+        <div class="timestamp">
+            📅 Thời gian gửi yêu cầu: <span th:text="${requestTime}">06/11/2024 14:30:25</span>
+        </div>
+
+        <!-- Vehicle Information -->
+        <div class="vehicle-info">
+            <div class="vehicle-id">Xe #<span th:text="${vehicleId}">12345</span></div>
+
+            <div class="info-item">
+                <span class="info-label">Biển số xe:</span>
+                <span class="info-value" style="font-weight: bold; color: #28a745;" th:text="${plateNumber}">29X1-12345</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">VIN:</span>
+                <span class="info-value" th:text="${vin}">1HGBH41JXMN109186</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Model xe:</span>
+                <span class="info-value" th:text="${model}">VinFast Klara S</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Loại pin:</span>
+                <span class="info-value" th:text="${batteryType}">Lithium 48V 20Ah</span>
+            </div>
+        </div>
+
+        <!-- Driver Information -->
+        <div class="info-section">
+            <div class="section-title">👤 Thông tin người đăng ký</div>
+            <div class="driver-info">
+                <div class="info-item">
+                    <span class="info-label">Họ tên:</span>
+                    <span class="info-value" th:text="${driverName}">Nguyễn Văn A</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value" th:text="${driverEmail}">nguyenvana@email.com</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Số điện thoại:</span>
+                    <span class="info-value" th:text="${driverPhone}">0123456789</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Registration Image -->
+        <div class="info-section">
+            <div class="section-title">📄 Ảnh giấy đăng ký xe (Cà vẹt)</div>
+            <div class="registration-image">
+                <img th:src="${registrationImageUrl}" alt="Giấy đăng ký xe" />
+                <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                    Click vào ảnh để xem kích thước đầy đủ
+                </p>
+            </div>
+        </div>
+
+        <div style="background-color: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px;">
+            <strong>📌 Lưu ý:</strong> Vui lòng kiểm tra kỹ thông tin giấy đăng ký xe và thông tin driver trước khi phê duyệt.
+            Sau khi phê duyệt, xe sẽ được kích hoạt và driver có thể sử dụng dịch vụ.
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div>
+            <strong>EV Battery Swap Station</strong><br>
+            Hệ thống quản lý trạm đổi pin xe điện
+        </div>
+        <div class="footer-links">
+            <a href="mailto:sp.evswapstation@gmail.com">sp.evswapstation@gmail.com</a>
+        </div>
+        <div style="margin-top: 10px; font-size: 11px; color: #999;">
+            Email này được gửi tự động từ hệ thống. Vui lòng không trả lời trực tiếp email này.
+        </div>
+    </div>
+</div>
+</body>
+</html>

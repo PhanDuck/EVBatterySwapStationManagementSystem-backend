@@ -86,15 +86,4 @@ public class BatteryController {
         return ResponseEntity.ok(batteries);
     }
 
-    /**
-     * PUT /api/battery/{id}/recall-to-warehouse : Recall battery from station to warehouse (Admin/Staff only)
-     */
-    @PutMapping("/{id}/recall-to-warehouse")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
-    @Operation(summary = "Recall battery to warehouse")
-    public ResponseEntity<Battery> recallBatteryToWarehouse(@PathVariable Long id) {
-        Battery battery = batteryService.recallBatteryToWarehouse(id);
-        return ResponseEntity.ok(battery);
-    }
-
 }

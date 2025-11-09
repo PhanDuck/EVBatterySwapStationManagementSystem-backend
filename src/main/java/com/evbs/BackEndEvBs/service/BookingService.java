@@ -109,6 +109,14 @@ public class BookingService {
             throw new AuthenticationException("Xe không thuộc sở hữu của người dùng hiện tại");
         }
 
+        // VALIDATION: Xe phải ở trạng thái ACTIVE mới được booking
+        if (vehicle.getStatus() != Vehicle.VehicleStatus.ACTIVE) {
+            throw new AuthenticationException(
+                    String.format("Xe đang ở trạng thái %s. Chỉ xe đã được phê duyệt (ACTIVE) mới có thể đặt chỗ.",
+                            vehicle.getStatus())
+            );
+        }
+
         // KIỂM TRA: 1 xe chỉ được có 1 booking active tại 1 thời điểm
         List<Booking> vehicleActiveBookings = bookingRepository.findByVehicleAndStatusNotIn(
                 vehicle,

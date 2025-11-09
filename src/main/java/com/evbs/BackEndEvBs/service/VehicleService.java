@@ -454,13 +454,20 @@ public class VehicleService {
         Battery battery = batteryRepository.findById(request.getBatteryId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy pin với id: " + request.getBatteryId()));
 
-        // Kiểm tra pin phải ĐANG Ở TRONG KHO (currentStation != null và status = AVAILABLE)
+        // Kiểm tra pin phải ĐANG Ở TRONG KHO (currentStation = NULL và có trong StationInventory)
         if (battery.getStatus() != Battery.Status.AVAILABLE) {
             throw new AuthenticationException("Pin không ở trạng thái AVAILABLE. Trạng thái hiện tại: " + battery.getStatus());
         }
         
-        if (battery.getCurrentStation() == null) {
-            throw new AuthenticationException("Pin không thuộc station nào (không có trong kho). Pin phải được gán vào station trước khi phê duyệt xe.");
+        // Pin trong KHO phải có currentStation = NULL (không thuộc trạm nào)
+        if (battery.getCurrentStation() != null) {
+            throw new AuthenticationException("Pin đang ở trạm (currentStation = " + battery.getCurrentStation().getId() + "). Chỉ được dùng pin từ kho (currentStation = NULL).");
+        }
+        
+        // Kiểm tra pin có trong StationInventory không (đảm bảo thực sự ở kho)
+        boolean isInWarehouse = stationInventoryRepository.findByBattery(battery).isPresent();
+        if (!isInWarehouse) {
+            throw new AuthenticationException("Pin không có trong kho (không có record trong StationInventory). Pin phải ở trong kho mới được gắn lên xe.");
         }
 
         // Kiểm tra loại pin có khớp với xe không

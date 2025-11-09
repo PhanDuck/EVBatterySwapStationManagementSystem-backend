@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" style="margin:0; padding:0">
+<head>
+    <meta charset="utf-8">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Yêu cầu đăng ký xe bị từ chối - EV Battery Swap Station</title>
+    <style>
+        .hover-underline:hover{ text-decoration: underline !important; }
+        @media (prefers-color-scheme: dark) {
+            .bg-body { background:#0e1114 !important; }
+            .card { background:#1b232c !important; border-color:#2b3642 !important; }
+            .text-muted { color:#9fb0c0 !important; }
+            .text { color:#e6eef7 !important; }
+            .hero { color:#e6eef7 !important; }
+            .btn { background:#dc3545 !important; border-color:#dc3545 !important; }
+            .info-box { background:#1f2937 !important; border-color:#374151 !important; }
+        }
+        a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+    </style>
+</head>
+<body class="bg-body" style="margin:0; padding:0; width:100% !important; background:#f6f6f6;">
+<!-- Preheader -->
+<div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">
+    Yêu cầu đăng ký xe [[${vehiclePlateNumber}]] của bạn đã bị từ chối
+</div>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-spacing:0; border-collapse:collapse; width:100%; background:#f6f6f6;">
+    <tr>
+        <td align="center" style="padding:24px 8px;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" class="card" style="border:1px solid #e9e9e9; border-radius:8px; background:#ffffff; width:100%; max-width:600px;">
+
+                <!-- Header -->
+                <tr>
+                    <td align="center" style="background:linear-gradient(135deg, #dc3545 0%, #c82333 100%); color:#ffffff; border-radius:8px 8px 0 0; padding:32px 16px;">
+                        <div style="font-size:48px; margin-bottom:12px;">
+                            ❌
+                        </div>
+                        <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:32px; font-weight:700; color:#ffffff; margin-bottom:8px;">
+                            Yêu cầu bị từ chối
+                        </div>
+                        <div class="hero" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:18px; color:#ffffff; opacity:.95;">
+                            Xe của bạn không được phê duyệt
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:32px 24px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+
+                            <!-- Greeting -->
+                            <tr>
+                                <td class="text" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; color:#333333; padding:0 0 20px 0;">
+                                    Xin chào <strong th:text="${driverName}">Tài xế</strong>,
+                                </td>
+                            </tr>
+
+                            <!-- Rejection Message -->
+                            <tr>
+                                <td class="text" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; color:#333333; padding:0 0 24px 0; line-height:1.6;">
+                                    Chúng tôi rất tiếc phải thông báo rằng yêu cầu đăng ký xe của bạn <strong style="color:#dc3545;">đã bị từ chối</strong>.
+                                    Vui lòng xem chi tiết bên dưới và liên hệ với bộ phận hỗ trợ nếu bạn có bất kỳ thắc mắc nào.
+                                </td>
+                            </tr>
+
+                            <!-- Vehicle Details Box -->
+                            <tr>
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #e9e9e9; border-radius:8px; background:#f8f9fa;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:18px; font-weight:700; color:#dc3545; margin-bottom:16px;">
+                                                    🚗 Thông tin xe bị từ chối
+                                                </div>
+
+                                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0; width:40%;">
+                                                            <strong>Biển số xe:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span style="background:#dc3545; color:#ffffff; padding:4px 12px; border-radius:4px; font-weight:700; display:inline-block; letter-spacing:1px;" th:text="${vehiclePlateNumber}">29A-12345</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Số VIN:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span th:text="${vehicleVin}">XXXXXXXXXXXXXXXXX</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Model xe:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span th:text="${vehicleModel}">VinFast VF8</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Loại pin:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span th:text="${batteryTypeName}">Lithium-ion 75kWh</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Trạng thái:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; padding:8px 0;">
+                                                            <span style="background:#dc3545; color:#ffffff; padding:4px 12px; border-radius:4px; font-weight:600; display:inline-block;">INACTIVE</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Rejection Reason Box (if provided) -->
+                            <tr th:if="${rejectionReason != null and rejectionReason != ''}">
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #f8d7da; border-radius:8px; background:#f8d7da;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; color:#721c24; margin-bottom:12px;">
+                                                    📝 Lý do từ chối
+                                                </div>
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#721c24; line-height:1.6;" th:text="${rejectionReason}">
+                                                    Giấy đăng ký xe không rõ ràng hoặc thông tin không khớp.
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Next Steps -->
+                            <tr>
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #fff3cd; border-radius:8px; background:#fff3cd;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; color:#856404; margin-bottom:12px;">
+                                                    📌 Bước tiếp theo
+                                                </div>
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; line-height:1.8;">
+                                                    ✓ Kiểm tra lại thông tin và giấy tờ xe<br>
+                                                    ✓ Đảm bảo ảnh giấy đăng ký xe rõ ràng<br>
+                                                    ✓ Đảm bảo thông tin khớp với giấy tờ<br>
+                                                    ✓ Gửi lại yêu cầu đăng ký xe mới<br>
+                                                    ✓ Liên hệ bộ phận hỗ trợ nếu cần giúp đỡ
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Helper text -->
+                            <tr>
+                                <td class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:13px; color:#777777; line-height:1.6; border-top:1px solid #e9e9e9; padding-top:20px;">
+                                    Nếu bạn cho rằng có sai sót hoặc cần giải thích thêm, vui lòng liên hệ với chúng tôi qua email này hoặc gọi đến hotline: <strong>1900-xxxx</strong>.
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="padding:20px 12px 24px; background:#f8f9fa; border-radius:0 0 8px 8px;">
+                        <div class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; color:#999999;">
+                            Cảm ơn bạn đã tin tưởng và sử dụng dịch vụ của chúng tôi.
+                        </div>
+                        <div class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; color:#999999; padding-top:8px;">
+                            <a href="#" style="color:#999999; text-decoration:underline;">Chính sách bảo mật</a> •
+                            <a href="#" style="color:#999999; text-decoration:underline;">Điều khoản sử dụng</a>
+                        </div>
+                        <div class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; color:#999999; padding-top:8px;">
+                            © 2025 EV Battery Swap Station Management System
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+</body>
+</html>

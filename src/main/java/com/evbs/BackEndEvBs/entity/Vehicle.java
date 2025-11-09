@@ -30,6 +30,9 @@ public class Vehicle {
     @Column(name = "Model", length = 100)
     private String model;
 
+    @Column(name = "RegistrationImage", length = 500)
+    private String registrationImage;
+
     @ManyToOne
     @JoinColumn(name = "DriverID", nullable = false)
     @JsonIgnore
@@ -94,6 +97,9 @@ public class Vehicle {
     @Transient
     private String batteryTypeName;
 
+    @Transient
+    private String driverName;
+
     // Getters để serialize IDs
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
@@ -128,5 +134,15 @@ public class Vehicle {
 
     public void setBatteryTypeName(String batteryTypeName) {
         this.batteryTypeName = batteryTypeName;
+    }
+
+    @JsonProperty("driverName")
+    public String getDriverName() {
+        return this.driverName != null ? this.driverName :
+               (this.driver != null ? this.driver.getFullName() : null);
+    }
+
+    public void setDriverName(String driverName) {
+        this.driverName = driverName;
     }
 }

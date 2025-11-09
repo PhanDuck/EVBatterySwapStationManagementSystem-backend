@@ -12,6 +12,7 @@ import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
 import com.evbs.BackEndEvBs.repository.StationInventoryRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
+import com.evbs.BackEndEvBs.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,9 @@ public class BatteryService {
 
     @Autowired
     private final StationInventoryRepository stationInventoryRepository;
+
+    @Autowired
+    private final VehicleRepository vehicleRepository;
 
     @Autowired
     private final AuthenticationService authenticationService;
@@ -149,6 +153,9 @@ public class BatteryService {
         Battery battery = batteryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
+        // Lưu trạng thái cũ để xử lý StationInventory
+        com.evbs.BackEndEvBs.entity.Station oldStation = battery.getCurrentStation();
+
         // Chỉ update những field không null
         if (request.getModel() != null && !request.getModel().trim().isEmpty()) {
             battery.setModel(request.getModel());
@@ -173,10 +180,39 @@ public class BatteryService {
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
             battery.setBatteryType(batteryType);
         }
+        
+        // XỬ LÝ CHUYỂN ĐỔI VỊ TRÍ PIN (KHO ↔ TRẠM)
         if (request.getCurrentStationId() != null) {
-            // Tìm station và set
-            battery.setCurrentStation(stationRepository.findById(request.getCurrentStationId())
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm")));
+            com.evbs.BackEndEvBs.entity.Station newStation = stationRepository.findById(request.getCurrentStationId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
+            
+            // Trường hợp 1: KHO → TRẠM (oldStation = null → newStation != null)
+            if (oldStation == null) {
+                // XÓA khỏi StationInventory
+                stationInventoryRepository.findByBattery(battery).ifPresent(inventory -> {
+                    stationInventoryRepository.delete(inventory);
+                });
+            }
+            
+            // Gán pin vào trạm mới
+            battery.setCurrentStation(newStation);
+            
+        } else if (request.getCurrentStationId() == null && oldStation != null) {
+            // Trường hợp 2: TRẠM → KHO (oldStation != null → newStation = null)
+            // Chỉ xử lý nếu request EXPLICITLY set currentStationId = null
+            // (Để tránh trường hợp không update station)
+            
+            // Set currentStation = null
+            battery.setCurrentStation(null);
+            
+            // THÊM vào StationInventory
+            StationInventory inventory = new StationInventory();
+            inventory.setBattery(battery);
+            inventory.setStatus(battery.getStatus() == Battery.Status.MAINTENANCE 
+                ? StationInventory.Status.MAINTENANCE 
+                : StationInventory.Status.AVAILABLE);
+            inventory.setLastUpdate(LocalDateTime.now());
+            stationInventoryRepository.save(inventory);
         }
 
         return batteryRepository.save(battery);
@@ -197,6 +233,30 @@ public class BatteryService {
 
         battery.setStatus(Battery.Status.RETIRED);
         batteryRepository.save(battery);
+    }
+
+    /**
+     * READ - Lấy pin ở kho theo vehicle (Admin/Staff only)
+     * Lấy pin khớp với loại pin của xe
+     */
+    @Transactional(readOnly = true)
+    public List<Battery> getWarehouseBatteriesByVehicleId(Long vehicleId) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Truy cập bị từ chối");
+        }
+
+        // Tìm xe và lấy battery type
+        com.evbs.BackEndEvBs.entity.Vehicle vehicle = vehicleRepository.findById(vehicleId)
+            .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
+
+        Long batteryTypeId = vehicle.getBatteryType().getId();
+
+        // Lấy pin AVAILABLE và có currentStation (trong kho) theo loại pin của xe
+        return batteryRepository.findByBatteryType_IdAndStatusAndCurrentStationIsNotNull(
+            batteryTypeId, 
+            Battery.Status.AVAILABLE
+        );
     }
 
 

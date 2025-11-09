@@ -52,6 +52,9 @@ public class SwapTransactionService {
     private final BatteryHealthService batteryHealthService;
 
     @Autowired
+    private final StationInventoryRepository stationInventoryRepository;
+
+    @Autowired
     private final EmailService emailService;
 
     // ==================== PUBLIC METHODS ====================
@@ -511,6 +514,12 @@ public class SwapTransactionService {
             }
 
             batteryRepository.save(swapInBattery);
+
+            // XÓA khỏi StationInventory nếu có (vì pin đã về trạm, không còn ở kho)
+            stationInventoryRepository.findByBattery(swapInBattery).ifPresent(inventory -> {
+                stationInventoryRepository.delete(inventory);
+                log.info("Đã xóa pin {} khỏi StationInventory (pin đã về trạm)", swapInBattery.getId());
+            });
 
             log.info("Đã xử lý SWAP_IN cho pin {}", swapInBattery.getId());
         }

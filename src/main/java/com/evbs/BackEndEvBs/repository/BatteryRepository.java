@@ -36,6 +36,9 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
     // Find AVAILABLE batteries in warehouse by type (currentStation = NULL)
     List<Battery> findByBatteryType_IdAndStatusAndCurrentStationIsNull(Long batteryTypeId, Battery.Status status);
 
+    // Find AVAILABLE batteries in warehouse by type (currentStation != NULL)
+    List<Battery> findByBatteryType_IdAndStatusAndCurrentStationIsNotNull(Long batteryTypeId, Battery.Status status);
+
     // Find reserved (PENDING) battery for a specific booking
     Optional<Battery> findByStatusAndReservedForBooking(Battery.Status status, Booking booking);
 

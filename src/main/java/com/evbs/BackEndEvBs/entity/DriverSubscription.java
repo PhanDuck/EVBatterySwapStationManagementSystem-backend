@@ -55,13 +55,27 @@ public class DriverSubscription {
     private Long driverId;
 
     @Transient
+    private String driverName;
+
+    @Transient
     private Long packageId;
+
+    @Transient
+    private String packageName;
 
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
     }
 
+    public String getDriverName() {
+        return this.driverName != null ? this.driverName : (this.driver != null ? this.driver.getFullName() : null);
+    }
+
     public Long getPackageId() {
         return this.servicePackage != null ? this.servicePackage.getId() : null;
+    }
+
+    public String getPackageName() {
+        return this.packageName != null ? this.packageName : (this.servicePackage != null ? this.servicePackage.getName() : null);
     }
 }

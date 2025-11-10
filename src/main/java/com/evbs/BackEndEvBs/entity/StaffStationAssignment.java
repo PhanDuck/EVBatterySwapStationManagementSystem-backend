@@ -33,6 +33,9 @@ public class StaffStationAssignment {
     @Transient
     private Long staffId;
 
+    @Transient
+    private String staffName;
+
     @ManyToOne
     @JoinColumn(name = "StationID", nullable = false)
     @JsonIgnore
@@ -40,6 +43,9 @@ public class StaffStationAssignment {
 
     @Transient
     private Long stationId;
+
+    @Transient
+    private String stationName;
 
     @Column(name = "AssignedAt", nullable = false)
     private LocalDateTime assignedAt = LocalDateTime.now();
@@ -49,7 +55,15 @@ public class StaffStationAssignment {
         return staff != null ? staff.getId() : null;
     }
 
+    public String getStaffName() {
+        return staffName != null ? staffName : (staff != null ? staff.getFullName() : null);
+    }
+
     public Long getStationId() {
         return station != null ? station.getId() : null;
+    }
+
+    public String getStationName() {
+        return stationName != null ? stationName : (station != null ? station.getName() : null);
     }
 }

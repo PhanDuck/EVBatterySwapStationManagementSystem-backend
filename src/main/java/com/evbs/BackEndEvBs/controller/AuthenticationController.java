@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.request.RegisterRequest;
 import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
+import com.evbs.BackEndEvBs.model.request.ChangePasswordRequest;
 import com.evbs.BackEndEvBs.model.request.UpdateProfileRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.service.AuthenticationService;
@@ -53,6 +54,12 @@ public class AuthenticationController {
     @PutMapping("/api/profile")
     public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         UserResponse user = userService.updateProfile(request);
+        return ResponseEntity.ok(user);
+    }
+
+    @PostMapping("/api/change-password")
+    public ResponseEntity<UserResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        UserResponse user = authenticationService.changePassword(request);
         return ResponseEntity.ok(user);
     }
 }

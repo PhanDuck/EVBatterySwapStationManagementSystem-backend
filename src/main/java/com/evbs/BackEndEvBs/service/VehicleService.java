@@ -312,52 +312,29 @@ public class VehicleService {
                 throw new AuthenticationException("User này không phải là tài xế (DRIVER)");
             }
             
-            // Kiểm tra driver mới không được có quá 2 xe ACTIVE (trừ xe hiện tại đang update)
-            // CHỈ kiểm tra nếu xe hiện tại đang ACTIVE hoặc sẽ chuyển sang ACTIVEgit
+            // Kiểm tra driver mới không được có quá 2 xe (ACTIVE + PENDING)
+            // CHỈ kiểm tra nếu xe hiện tại đang ACTIVE hoặc PENDING
             if (existingVehicle.getStatus() == Vehicle.VehicleStatus.ACTIVE 
-                || (vehicleRequest.getStatus() != null && "ACTIVE".equalsIgnoreCase(vehicleRequest.getStatus()))) {
+                || existingVehicle.getStatus() == Vehicle.VehicleStatus.PENDING) {
                 
-                long newDriverActiveVehicles = vehicleRepository.findByDriverAndStatus(newDriver, Vehicle.VehicleStatus.ACTIVE).stream()
-                        .filter(v -> !v.getId().equals(existingVehicle.getId())) // Loại trừ xe hiện tại
-                        .count();
+                long newDriverActiveVehicles = vehicleRepository.findByDriverAndStatus(newDriver, Vehicle.VehicleStatus.ACTIVE).size();
+                long newDriverPendingVehicles = vehicleRepository.findByDriverAndStatus(newDriver, Vehicle.VehicleStatus.PENDING).size();
+                long totalVehicles = newDriverActiveVehicles + newDriverPendingVehicles;
                 
-                if (newDriverActiveVehicles >= 2) {
+                // Loại trừ xe hiện tại nếu cùng driver
+                if (existingVehicle.getDriver().getId().equals(newDriver.getId())) {
+                    totalVehicles--;
+                }
+                
+                if (totalVehicles >= 2) {
                     throw new AuthenticationException(
-                        "Tài xế " + newDriver.getFullName() + " đã có 2 xe ACTIVE. Không thể gán thêm xe."
+                        "Tài xế " + newDriver.getFullName() + " đã có " + totalVehicles + 
+                        " xe (ACTIVE + PENDING). Không thể gán thêm xe."
                     );
                 }
             }
             
             existingVehicle.setDriver(newDriver);
-        }
-
-        // Update status nếu có (chỉ admin/staff)
-        // CHỈ CHO PHÉP đổi từ INACTIVE → ACTIVE (khôi phục xe đã xóa)
-        if (vehicleRequest.getStatus() != null) {
-            try {
-                Vehicle.VehicleStatus newStatus = Vehicle.VehicleStatus.valueOf(vehicleRequest.getStatus().toUpperCase());
-                
-                // Kiểm tra logic: chỉ cho phép INACTIVE → ACTIVE
-                if (existingVehicle.getStatus() == Vehicle.VehicleStatus.INACTIVE 
-                    && newStatus == Vehicle.VehicleStatus.ACTIVE) {
-                    
-                    // Khôi phục xe: đổi về ACTIVE và xóa thông tin soft delete
-                    existingVehicle.setStatus(Vehicle.VehicleStatus.ACTIVE);
-                    existingVehicle.setDeletedAt(null);
-                    existingVehicle.setDeletedBy(null);
-                    
-                } else if (existingVehicle.getStatus() == newStatus) {
-                    // Nếu status giống nhau thì không làm gì
-                    // Không throw exception, chỉ skip
-                } else {
-                    throw new AuthenticationException(
-                        "Không thể thay đổi status. Chỉ cho phép khôi phục xe đã xóa (INACTIVE → ACTIVE). " +
-                        "Trạng thái hiện tại: " + existingVehicle.getStatus() + ", Trạng thái yêu cầu: " + newStatus
-                    );
-                }
-            } catch (IllegalArgumentException e) {
-                throw new AuthenticationException("Trạng thái không hợp lệ. Chỉ chấp nhận: ACTIVE, INACTIVE, PENDING");
-            }
         }
 
         return vehicleRepository.save(existingVehicle);

@@ -98,6 +98,9 @@ public class DriverSubscriptionService {
                 servicePackage.getMaxSwaps(),
                 servicePackage.getPrice());
 
+        // Populate names
+        populateSubscriptionNames(savedSubscription);
+
         return savedSubscription;
     }
 
@@ -107,7 +110,9 @@ public class DriverSubscriptionService {
         if (currentUser.getRole() != User.Role.ADMIN) {
             throw new AuthenticationException("Quyền truy cập bị từ chối. Yêu cầu vai trò quản trị viên.");
         }
-        return driverSubscriptionRepository.findAll();
+        List<DriverSubscription> subscriptions = driverSubscriptionRepository.findAll();
+        populateSubscriptionsNames(subscriptions);
+        return subscriptions;
     }
 
     @Transactional(readOnly = true)
@@ -116,7 +121,9 @@ public class DriverSubscriptionService {
         if (currentUser.getRole() != User.Role.DRIVER) {
             throw new AuthenticationException("Chỉ có tài xế mới có thể xem đăng ký của họ");
         }
-        return driverSubscriptionRepository.findByDriver_Id(currentUser.getId());
+        List<DriverSubscription> subscriptions = driverSubscriptionRepository.findByDriver_Id(currentUser.getId());
+        populateSubscriptionsNames(subscriptions);
+        return subscriptions;
     }
 
     @Transactional
@@ -477,6 +484,9 @@ public class DriverSubscriptionService {
         );
         log.info("================================================");
 
+        // Populate names
+        populateSubscriptionNames(savedSubscription);
+
         return savedSubscription;
     }
 
@@ -819,6 +829,9 @@ public class DriverSubscriptionService {
                 savedSubscription.getEndDate()
         );
 
+        // Populate names
+        populateSubscriptionNames(savedSubscription);
+
         return savedSubscription;
     }
 
@@ -855,5 +868,30 @@ public class DriverSubscriptionService {
         rec.append("Gia hạn gói đang dùng - Lựa chọn thông minh! ");
 
         return rec.toString();
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    /**
+     * Populate driverName và packageName cho một subscription
+     */
+    private void populateSubscriptionNames(DriverSubscription subscription) {
+        if (subscription == null) return;
+        
+        if (subscription.getDriver() != null) {
+            subscription.setDriverName(subscription.getDriver().getFullName());
+        }
+        if (subscription.getServicePackage() != null) {
+            subscription.setPackageName(subscription.getServicePackage().getName());
+        }
+    }
+
+    /**
+     * Populate driverName và packageName cho danh sách subscriptions
+     */
+    private void populateSubscriptionsNames(List<DriverSubscription> subscriptions) {
+        if (subscriptions == null || subscriptions.isEmpty()) return;
+        
+        subscriptions.forEach(this::populateSubscriptionNames);
     }
 }

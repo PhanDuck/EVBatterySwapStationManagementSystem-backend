@@ -91,7 +91,13 @@ public class StaffStationAssignmentService {
         assignment.setStation(station);
         // AssignedAt sẽ tự động = thời gian hiện tại trong entity
 
-        return assignmentRepository.save(assignment);
+        StaffStationAssignment savedAssignment = assignmentRepository.save(assignment);
+        
+        // Populate staffName và stationName
+        savedAssignment.setStaffName(staff.getFullName());
+        savedAssignment.setStationName(station.getName());
+        
+        return savedAssignment;
     }
 
     /**
@@ -139,7 +145,19 @@ public class StaffStationAssignmentService {
             throw new AuthenticationException("Từ chối truy cập.");
         }
 
-        return assignmentRepository.findAll();
+        List<StaffStationAssignment> assignments = assignmentRepository.findAll();
+        
+        // Populate staffName và stationName cho tất cả assignments
+        assignments.forEach(assignment -> {
+            if (assignment.getStaff() != null) {
+                assignment.setStaffName(assignment.getStaff().getFullName());
+            }
+            if (assignment.getStation() != null) {
+                assignment.setStationName(assignment.getStation().getName());
+            }
+        });
+        
+        return assignments;
     }
 
     /**
@@ -158,8 +176,14 @@ public class StaffStationAssignmentService {
         Station station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm."));
 
-        return assignmentRepository.findByStaffAndStation(staff, station)
+        StaffStationAssignment assignment = assignmentRepository.findByStaffAndStation(staff, station)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy phân công. Nhân viên này chưa được gán vào trạm."));
+        
+        // Populate staffName và stationName
+        assignment.setStaffName(staff.getFullName());
+        assignment.setStationName(station.getName());
+        
+        return assignment;
     }
 
     /**

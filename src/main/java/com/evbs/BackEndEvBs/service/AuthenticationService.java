@@ -8,6 +8,7 @@ import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.request.RegisterRequest;
 import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
+import com.evbs.BackEndEvBs.model.request.ChangePasswordRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.AuthenticationRepository;
 import com.evbs.BackEndEvBs.repository.UserRepository;
@@ -143,5 +144,33 @@ public class AuthenticationService implements UserDetailsService {
         User user = getCurrentUser();
         user.setPasswordHash(passwordEncoder.encode(updatePasswordRequest.getPassword()));
         return modelMapper.map(authenticationRepository.save(user), UserResponse.class);
+    }
+
+    /**
+     * ĐỔI MẬT KHẨU - Yêu cầu xác thực mật khẩu cũ
+     */
+    public UserResponse changePassword(ChangePasswordRequest request) {
+        User currentUser = getCurrentUser();
+
+        // 1. Kiểm tra mật khẩu cũ có đúng không
+        if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPasswordHash())) {
+            throw new AuthenticationException("Mật khẩu cũ không chính xác!");
+        }
+
+        // 2. Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp không
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AuthenticationException("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+        }
+
+        // 3. Kiểm tra mật khẩu mới không được trùng mật khẩu cũ
+        if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
+            throw new AuthenticationException("Mật khẩu mới không được trùng với mật khẩu cũ!");
+        }
+
+        // 4. Cập nhật mật khẩu mới
+        currentUser.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        User updatedUser = authenticationRepository.save(currentUser);
+
+        return modelMapper.map(updatedUser, UserResponse.class);
     }
 }

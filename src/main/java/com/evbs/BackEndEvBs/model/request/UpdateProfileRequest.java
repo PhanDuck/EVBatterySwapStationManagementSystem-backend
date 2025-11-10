@@ -11,5 +11,5 @@ public class UpdateProfileRequest {
     @Email(message = "Email không hợp lệ!")
     private String email;
     
-    private String phoneNumber;
+
 }

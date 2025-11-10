@@ -3,6 +3,7 @@ package com.evbs.BackEndEvBs.service;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.model.request.CreateUserRequest;
+import com.evbs.BackEndEvBs.model.request.UpdateProfileRequest;
 import com.evbs.BackEndEvBs.model.request.UpdateUserRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.repository.UserRepository;
@@ -132,10 +133,10 @@ public class UserService {
     /**
      * Cập nhật profile của chính user hiện tại
      */
-    public UserResponse updateProfile(com.evbs.BackEndEvBs.model.request.UpdateProfileRequest request) {
+    public UserResponse updateProfile(UpdateProfileRequest request) {
         // Lấy thông tin user hiện tại
         User currentUser = authenticationService.getCurrentUser();
-        
+
         // Cập nhật các field nếu có giá trị mới
         if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
             currentUser.setFullName(request.getFullName());
@@ -147,14 +148,6 @@ public class UserService {
                 throw new AuthenticationException("Email đã tồn tại!");
             }
             currentUser.setEmail(request.getEmail());
-        }
-
-        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
-            // Kiểm tra phone number mới có trùng với user khác không
-            if (!currentUser.getPhoneNumber().equals(request.getPhoneNumber()) && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-                throw new AuthenticationException("Số điện thoại đã tồn tại!");
-            }
-            currentUser.setPhoneNumber(request.getPhoneNumber());
         }
 
         User updatedUser = userRepository.save(currentUser);

@@ -21,10 +21,10 @@ public class Vehicle {
     @Column(name = "VehicleID")
     private Long id;
 
-    @Column(name = "VIN", nullable = false, unique = true, length = 100)
+    @Column(name = "VIN", nullable = false, length = 100)
     private String vin;
 
-    @Column(name = "PlateNumber", nullable = false, unique = true, length = 50)
+    @Column(name = "PlateNumber", nullable = false, length = 50)
     private String plateNumber;
 
     @Column(name = "Model", length = 100)

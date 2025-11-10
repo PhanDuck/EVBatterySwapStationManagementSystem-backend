@@ -283,8 +283,9 @@ public class BookingService {
             booking.setReservationExpiry(null);
         }
 
-        // Hủy booking
+        // Hủy booking và xóa confirmation code để giải phóng mã
         booking.setStatus(Booking.Status.CANCELLED);
+        booking.setConfirmationCode(null); // Xóa mã code để giải phóng
         Booking savedBooking = bookingRepository.save(booking);
 
         // Gửi email thông báo hủy booking
@@ -353,6 +354,7 @@ public class BookingService {
 
         // Hủy booking
         booking.setStatus(Booking.Status.CANCELLED);
+        booking.setConfirmationCode(null); // Xóa mã code để giải phóng
 
         System.out.println(String.format(
                 "Nhân viên đã hủy đơn đặt chỗ. Mã đơn: %d, Mã tài xế: %d, Mã nhân viên: %d, Lý do: %s",

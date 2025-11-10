@@ -638,7 +638,7 @@ public class EmailService {
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(driver.getEmail());
             mimeMessageHelper.setText(htmlContent, true);
-            mimeMessageHelper.setSubject("✅ Xe của bạn đã được phê duyệt - EV Battery Swap Station");
+            mimeMessageHelper.setSubject("Xe của bạn đã được phê duyệt - EV Battery Swap Station");
 
             mailSender.send(mimeMessage);
 

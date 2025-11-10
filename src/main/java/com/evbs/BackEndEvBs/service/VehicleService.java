@@ -74,15 +74,16 @@ public class VehicleService {
         if (currentUser.getRole() != User.Role.DRIVER) {
             throw new AuthenticationException("Chỉ tài xế (DRIVER) mới có thể đăng ký xe!");
         }
-        
-        // Validate VIN unique
-        if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
-            throw new AuthenticationException("VIN đã tồn tại!");
+
+        // Validate VIN unique - CHỈ kiểm tra xe ACTIVE hoặc PENDING (bỏ qua INACTIVE)
+        List<Vehicle.VehicleStatus> activeStatuses = List.of(Vehicle.VehicleStatus.ACTIVE, Vehicle.VehicleStatus.PENDING);
+        if (vehicleRepository.existsByVinAndStatusIn(vehicleRequest.getVin(), activeStatuses)) {
+            throw new AuthenticationException("VIN đã tồn tại trong hệ thống!");
         }
 
-        // Validate PlateNumber unique
-        if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
-            throw new AuthenticationException("Biển số xe đã tồn tại!");
+        // Validate PlateNumber unique - CHỈ kiểm tra xe ACTIVE hoặc PENDING (bỏ qua INACTIVE)
+        if (vehicleRepository.existsByPlateNumberAndStatusIn(vehicleRequest.getPlateNumber(), activeStatuses)) {
+            throw new AuthenticationException("Biển số xe đã tồn tại trong hệ thống!");
         }
 
         // Validate battery type exists

@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.entity.BatteryType;
 import com.evbs.BackEndEvBs.entity.Battery;
+import com.evbs.BackEndEvBs.entity.Booking;
 import com.evbs.BackEndEvBs.entity.StationInventory;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.Vehicle;
@@ -47,6 +48,9 @@ public class VehicleService {
     private final StationInventoryRepository stationInventoryRepository;
 
     @Autowired
+    private final BookingRepository bookingRepository;
+
+    @Autowired
     private final AuthenticationService authenticationService;
 
     @Autowired
@@ -89,6 +93,15 @@ public class VehicleService {
         BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
+        // Enforce max 2 ACTIVE vehicles per user (không đếm xe PENDING hoặc INACTIVE)
+        long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
+        if (activeVehicles >= 2) {
+            throw new AuthenticationException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
+        }
+        long pendingVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.PENDING).size();
+        if (pendingVehicles >= 1) {
+            throw new AuthenticationException("Bạn đang có xe đợi đăng kí vui lòng chờ.");
+        }
         
         // Upload file ảnh giấy đăng ký
         String registrationImagePath = fileStorageService.uploadFile(registrationImageFile);
@@ -99,17 +112,6 @@ public class VehicleService {
         vehicle.setPlateNumber(vehicleRequest.getPlateNumber());
         vehicle.setModel(vehicleRequest.getModel());
         vehicle.setRegistrationImage(registrationImagePath);
-
-        // Enforce max 2 ACTIVE vehicles per user (không đếm xe PENDING hoặc INACTIVE)
-        long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
-        if (activeVehicles >= 2) {
-            throw new AuthenticationException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
-        }
-        long pendingVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.PENDING).size();
-        if (pendingVehicles >= 1) {
-            throw new AuthenticationException("Bạn đang có xe đợi đăng kí vui lòng chờ.");
-        }
-
         vehicle.setDriver(currentUser);
         vehicle.setBatteryType(batteryType);
 
@@ -310,7 +312,7 @@ public class VehicleService {
             }
             
             // Kiểm tra driver mới không được có quá 2 xe ACTIVE (trừ xe hiện tại đang update)
-            // CHỈ kiểm tra nếu xe hiện tại đang ACTIVE hoặc sẽ chuyển sang ACTIVE
+            // CHỈ kiểm tra nếu xe hiện tại đang ACTIVE hoặc sẽ chuyển sang ACTIVEgit
             if (existingVehicle.getStatus() == Vehicle.VehicleStatus.ACTIVE 
                 || (vehicleRequest.getStatus() != null && "ACTIVE".equalsIgnoreCase(vehicleRequest.getStatus()))) {
                 
@@ -378,6 +380,23 @@ public class VehicleService {
         // Kiểm tra nếu vehicle đã bị xóa rồi
         if (vehicle.getStatus() == Vehicle.VehicleStatus.INACTIVE) {
             throw new AuthenticationException("Xe đã bị xóa trước đó");
+        }
+
+        // KIỂM TRA: Xe đang có booking CONFIRMED (đang chờ đổi pin) thì không được xóa
+        List<Booking> confirmedBookings = bookingRepository.findByVehicleAndStatusNotIn(
+                vehicle,
+                List.of(Booking.Status.CANCELLED, Booking.Status.COMPLETED)
+        );
+
+        if (!confirmedBookings.isEmpty()) {
+            Booking activeBooking = confirmedBookings.get(0);
+            throw new IllegalStateException(
+                    String.format("Không thể xóa xe đang có lịch đặt chỗ hoạt động (ID: %d, Trạng thái: %s, Thời gian: %s). " +
+                                    "Vui lòng hoàn tất hoặc hủy lịch đặt chỗ trước khi xóa xe.",
+                            activeBooking.getId(),
+                            activeBooking.getStatus(),
+                            activeBooking.getBookingTime())
+            );
         }
 
         // Xử lý pin hiện tại khi xóa xe

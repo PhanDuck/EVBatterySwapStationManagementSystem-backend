@@ -128,4 +128,36 @@ public class UserService {
                 .map(user -> modelMapper.map(user, UserResponse.class))
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Cập nhật profile của chính user hiện tại
+     */
+    public UserResponse updateProfile(com.evbs.BackEndEvBs.model.request.UpdateProfileRequest request) {
+        // Lấy thông tin user hiện tại
+        User currentUser = authenticationService.getCurrentUser();
+        
+        // Cập nhật các field nếu có giá trị mới
+        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
+            currentUser.setFullName(request.getFullName());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            // Kiểm tra email mới có trùng với user khác không
+            if (!currentUser.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
+                throw new AuthenticationException("Email đã tồn tại!");
+            }
+            currentUser.setEmail(request.getEmail());
+        }
+
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+            // Kiểm tra phone number mới có trùng với user khác không
+            if (!currentUser.getPhoneNumber().equals(request.getPhoneNumber()) && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+                throw new AuthenticationException("Số điện thoại đã tồn tại!");
+            }
+            currentUser.setPhoneNumber(request.getPhoneNumber());
+        }
+
+        User updatedUser = userRepository.save(currentUser);
+        return modelMapper.map(updatedUser, UserResponse.class);
+    }
 }

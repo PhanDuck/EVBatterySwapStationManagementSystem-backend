@@ -4,8 +4,10 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.request.RegisterRequest;
 import com.evbs.BackEndEvBs.model.request.UpdatePasswordRequest;
+import com.evbs.BackEndEvBs.model.request.UpdateProfileRequest;
 import com.evbs.BackEndEvBs.model.response.UserResponse;
 import com.evbs.BackEndEvBs.service.AuthenticationService;
+import com.evbs.BackEndEvBs.service.UserService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,9 @@ public class AuthenticationController {
 
     @Autowired
     private AuthenticationService authenticationService;
+
+    @Autowired
+    private UserService userService;
 
     @PostMapping("/api/register")
     public ResponseEntity<User> register(@Valid @RequestBody RegisterRequest request) {
@@ -42,6 +47,12 @@ public class AuthenticationController {
     @PostMapping("/api/update-password")
     public ResponseEntity updatePassword(@RequestBody UpdatePasswordRequest updatePasswordRequest) {
         UserResponse user = authenticationService.updatePassword(updatePasswordRequest);
+        return ResponseEntity.ok(user);
+    }
+
+    @PutMapping("/api/profile")
+    public ResponseEntity<UserResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        UserResponse user = userService.updateProfile(request);
         return ResponseEntity.ok(user);
     }
 }

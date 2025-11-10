@@ -116,7 +116,9 @@ public class AuthenticationService implements UserDetailsService {
     public boolean resetPassword(String email) {
         User user = authenticationRepository.findUserByEmail(email);
 
-        if (user == null) return true;
+        if (user == null) {
+            throw new AuthenticationException("Email không tồn tại trong hệ thống");
+        }
 
         // Tạo token cho reset password được 15 thôi ehhehe
         String token = tokenService.generatePasswordResetToken(user);

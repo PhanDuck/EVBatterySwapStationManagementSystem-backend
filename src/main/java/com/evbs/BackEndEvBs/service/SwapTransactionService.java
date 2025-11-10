@@ -437,11 +437,14 @@ public class SwapTransactionService {
         subscription.setRemainingSwaps(currentRemaining - 1);
         driverSubscriptionRepository.save(subscription);
 
-        // 3. booking nếu có
+        // 3. Cập nhật booking: set status COMPLETED và XÓA confirmationCode để tái sử dụng
         if (booking != null && booking.getStatus() == Booking.Status.CONFIRMED) {
             booking.setStatus(Booking.Status.COMPLETED);
+            booking.setConfirmationCode(null); // Xóa mã để có thể random mã mới dễ dàng hơn
             bookingRepository.save(booking);
+            log.info("Đã xóa confirmationCode cho booking ID {} sau khi swap thành công", booking.getId());
         }
+
 
         // 4. Kiểm tra nếu hết lượt swap → set subscription status = EXPIRED
         if (subscription.getRemainingSwaps() <= 0) {

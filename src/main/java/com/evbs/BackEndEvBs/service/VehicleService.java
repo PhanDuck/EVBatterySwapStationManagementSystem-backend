@@ -82,12 +82,12 @@ public class VehicleService {
         // Validate VIN unique - CHỈ kiểm tra xe ACTIVE hoặc PENDING (bỏ qua INACTIVE)
         List<Vehicle.VehicleStatus> activeStatuses = List.of(Vehicle.VehicleStatus.ACTIVE, Vehicle.VehicleStatus.PENDING);
         if (vehicleRepository.existsByVinAndStatusIn(vehicleRequest.getVin(), activeStatuses)) {
-            throw new AuthenticationException("VIN đã tồn tại trong hệ thống!");
+            throw new IllegalArgumentException("VIN đã tồn tại trong hệ thống!");
         }
 
         // Validate PlateNumber unique - CHỈ kiểm tra xe ACTIVE hoặc PENDING (bỏ qua INACTIVE)
         if (vehicleRepository.existsByPlateNumberAndStatusIn(vehicleRequest.getPlateNumber(), activeStatuses)) {
-            throw new AuthenticationException("Biển số xe đã tồn tại trong hệ thống!");
+            throw new IllegalArgumentException("Biển số xe đã tồn tại trong hệ thống!");
         }
 
         // Validate battery type exists
@@ -97,11 +97,11 @@ public class VehicleService {
         // Enforce max 2 ACTIVE vehicles per user (không đếm xe PENDING hoặc INACTIVE)
         long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
         if (activeVehicles >= 2) {
-            throw new AuthenticationException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
+            throw new IllegalStateException("Bạn chỉ có thể đăng ký tối đa 2 xe đang hoạt động.");
         }
         long pendingVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.PENDING).size();
         if (pendingVehicles >= 1) {
-            throw new AuthenticationException("Bạn đang có xe đợi đăng kí vui lòng chờ.");
+            throw new IllegalStateException("Bạn đang có xe đợi đăng kí vui lòng chờ.");
         }
         
         // Upload file ảnh giấy đăng ký
@@ -266,12 +266,12 @@ public class VehicleService {
             
             // Validate độ dài VIN
             if (vehicleRequest.getVin().length() != 17) {
-                throw new AuthenticationException("VIN phải có chính xác 17 ký tự!");
+                throw new IllegalArgumentException("VIN phải có chính xác 17 ký tự!");
             }
             
             // Check duplicate
             if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
-                throw new AuthenticationException("VIN đã tồn tại!");
+                throw new IllegalArgumentException("VIN đã tồn tại!");
             }
             existingVehicle.setVin(vehicleRequest.getVin());
         }
@@ -283,14 +283,14 @@ public class VehicleService {
             // Validate format biển số (optional - có thể bỏ nếu không cần strict)
             String plateNumberPattern = "^[0-9]{2}[a-zA-Z]{1,2}[0-9]{5,6}(\\.[a-zA-Z]{1,2})?$";
             if (!vehicleRequest.getPlateNumber().matches(plateNumberPattern)) {
-                throw new AuthenticationException(
+                throw new IllegalArgumentException(
                     "Định dạng biển số xe máy Việt Nam không hợp lệ! Ví dụ hợp lệ: 29X112345, 51F11234, 30H112350"
                 );
             }
             
             // Check duplicate
             if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
-                throw new AuthenticationException("Biển số xe đã tồn tại!");
+                throw new IllegalArgumentException("Biển số xe đã tồn tại!");
             }
             existingVehicle.setPlateNumber(vehicleRequest.getPlateNumber());
         }
@@ -309,7 +309,7 @@ public class VehicleService {
             
             // Kiểm tra user có vai trò DRIVER không
             if (newDriver.getRole() != User.Role.DRIVER) {
-                throw new AuthenticationException("User này không phải là tài xế (DRIVER)");
+                throw new IllegalArgumentException("User này không phải là tài xế (DRIVER)");
             }
             
             // Kiểm tra driver mới không được có quá 2 xe (ACTIVE + PENDING)
@@ -327,7 +327,7 @@ public class VehicleService {
                 }
                 
                 if (totalVehicles >= 2) {
-                    throw new AuthenticationException(
+                    throw new IllegalStateException(
                         "Tài xế " + newDriver.getFullName() + " đã có " + totalVehicles + 
                         " xe (ACTIVE + PENDING). Không thể gán thêm xe."
                     );
@@ -357,7 +357,7 @@ public class VehicleService {
 
         // Kiểm tra nếu vehicle đã bị xóa rồi
         if (vehicle.getStatus() == Vehicle.VehicleStatus.INACTIVE) {
-            throw new AuthenticationException("Xe đã bị xóa trước đó");
+            throw new IllegalStateException("Xe đã bị xóa trước đó");
         }
 
         // KIỂM TRA: Xe đang có booking CONFIRMED (đang chờ đổi pin) thì không được xóa
@@ -438,13 +438,13 @@ public class VehicleService {
 
         // Kiểm tra xe có đang ở trạng thái PENDING không
         if (vehicle.getStatus() != Vehicle.VehicleStatus.PENDING) {
-            throw new AuthenticationException("Chỉ có thể phê duyệt xe đang ở trạng thái PENDING");
+            throw new IllegalStateException("Chỉ có thể phê duyệt xe đang ở trạng thái PENDING");
         }
 
         // Kiểm tra driver có quá 2 xe ACTIVE chưa
         long activeVehicles = vehicleRepository.findByDriverAndStatus(vehicle.getDriver(), Vehicle.VehicleStatus.ACTIVE).size();
         if (activeVehicles >= 2) {
-            throw new AuthenticationException("Tài xế đã có 2 xe đang hoạt động. Không thể phê duyệt thêm.");
+            throw new IllegalStateException("Tài xế đã có 2 xe đang hoạt động. Không thể phê duyệt thêm.");
         }
 
         // Lấy pin từ kho
@@ -453,23 +453,23 @@ public class VehicleService {
 
         // Kiểm tra pin phải ĐANG Ở TRONG KHO (currentStation = NULL và có trong StationInventory)
         if (battery.getStatus() != Battery.Status.AVAILABLE) {
-            throw new AuthenticationException("Pin không ở trạng thái AVAILABLE. Trạng thái hiện tại: " + battery.getStatus());
+            throw new IllegalStateException("Pin không ở trạng thái AVAILABLE. Trạng thái hiện tại: " + battery.getStatus());
         }
         
         // Pin trong KHO phải có currentStation = NULL (không thuộc trạm nào)
         if (battery.getCurrentStation() != null) {
-            throw new AuthenticationException("Pin đang ở trạm (currentStation = " + battery.getCurrentStation().getId() + "). Chỉ được dùng pin từ kho (currentStation = NULL).");
+            throw new IllegalStateException("Pin đang ở trạm (currentStation = " + battery.getCurrentStation().getId() + "). Chỉ được dùng pin từ kho (currentStation = NULL).");
         }
         
         // Kiểm tra pin có trong StationInventory không (đảm bảo thực sự ở kho)
         boolean isInWarehouse = stationInventoryRepository.findByBattery(battery).isPresent();
         if (!isInWarehouse) {
-            throw new AuthenticationException("Pin không có trong kho (không có record trong StationInventory). Pin phải ở trong kho mới được gắn lên xe.");
+            throw new IllegalStateException("Pin không có trong kho (không có record trong StationInventory). Pin phải ở trong kho mới được gắn lên xe.");
         }
 
         // Kiểm tra loại pin có khớp với xe không
         if (!battery.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
-            throw new AuthenticationException("Loại pin không khớp với xe. Xe yêu cầu loại pin: " + vehicle.getBatteryType().getName());
+            throw new IllegalArgumentException("Loại pin không khớp với xe. Xe yêu cầu loại pin: " + vehicle.getBatteryType().getName());
         }
 
         // Gắn pin vào xe
@@ -517,7 +517,7 @@ public class VehicleService {
 
         // Kiểm tra xe có đang ở trạng thái PENDING không
         if (vehicle.getStatus() != Vehicle.VehicleStatus.PENDING) {
-            throw new AuthenticationException("Chỉ có thể từ chối xe đang ở trạng thái PENDING");
+            throw new IllegalStateException("Chỉ có thể từ chối xe đang ở trạng thái PENDING");
         }
 
         // Chuyển status sang INACTIVE

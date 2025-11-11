@@ -36,12 +36,12 @@ public class UserService {
     public UserResponse createUser(CreateUserRequest request) {
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AuthenticationException("Email đã tồn tại!");
+            throw new IllegalArgumentException("Email đã tồn tại!");
         }
 
         // Kiểm tra phone number đã tồn tại
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new AuthenticationException("Số điện thoại đã tồn tại!");
+            throw new IllegalArgumentException("Số điện thoại đã tồn tại!");
         }
 
         // Tạo user mới
@@ -78,7 +78,7 @@ public class UserService {
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             // Kiểm tra email mới có trùng với user khác không
             if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-                throw new AuthenticationException("Email đã tồn tại!");
+                throw new IllegalArgumentException("Email đã tồn tại!");
             }
             user.setEmail(request.getEmail());
         }
@@ -86,7 +86,7 @@ public class UserService {
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
             // Kiểm tra phone number mới có trùng với user khác không
             if (!user.getPhoneNumber().equals(request.getPhoneNumber()) && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-                throw new AuthenticationException("Số điện thoại đã tồn tại!");
+                throw new IllegalArgumentException("Số điện thoại đã tồn tại!");
             }
             user.setPhoneNumber(request.getPhoneNumber());
         }
@@ -145,7 +145,7 @@ public class UserService {
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             // Kiểm tra email mới có trùng với user khác không
             if (!currentUser.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-                throw new AuthenticationException("Email đã tồn tại!");
+                throw new IllegalArgumentException("Email đã tồn tại!");
             }
             currentUser.setEmail(request.getEmail());
         }

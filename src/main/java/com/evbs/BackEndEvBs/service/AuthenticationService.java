@@ -63,12 +63,12 @@ public class AuthenticationService implements UserDetailsService {
 
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AuthenticationException("Email đã tồn tại!");
+            throw new IllegalArgumentException("Email đã tồn tại!");
         }
 
         // Kiểm tra phone number đã tồn tại
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new AuthenticationException("Số điện thoại đã tồn tại!");
+            throw new IllegalArgumentException("Số điện thoại đã tồn tại!");
         }
 
         // Tạo user mới
@@ -118,7 +118,7 @@ public class AuthenticationService implements UserDetailsService {
         User user = authenticationRepository.findUserByEmail(email);
 
         if (user == null) {
-            throw new AuthenticationException("Email không tồn tại trong hệ thống");
+            throw new com.evbs.BackEndEvBs.exception.exceptions.NotFoundException("Email không tồn tại trong hệ thống");
         }
 
         // Tạo token cho reset password được 15 thôi ehhehe
@@ -159,12 +159,12 @@ public class AuthenticationService implements UserDetailsService {
 
         // 2. Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp không
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new AuthenticationException("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+            throw new IllegalArgumentException("Mật khẩu mới và xác nhận mật khẩu không khớp!");
         }
 
         // 3. Kiểm tra mật khẩu mới không được trùng mật khẩu cũ
         if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
-            throw new AuthenticationException("Mật khẩu mới không được trùng với mật khẩu cũ!");
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu cũ!");
         }
 
         // 4. Cập nhật mật khẩu mới

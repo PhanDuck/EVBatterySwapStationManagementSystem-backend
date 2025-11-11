@@ -32,7 +32,7 @@ public class ConfirmationCodeGenerator {
                 return code;
             }
         }
-        throw new RuntimeException("Không thể generate unique confirmation code sau " + maxAttempts + " lần thử");
+        throw new IllegalStateException("Không thể tạo mã xác nhận duy nhất sau " + maxAttempts + " lần thử");
     }
 
     @FunctionalInterface

@@ -55,7 +55,7 @@ public class StaffStationAssignmentService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy nhân viên."));
 
         if (staff.getRole() != User.Role.STAFF) {
-            throw new AuthenticationException("Người dùng này không phải là nhân viên. Chỉ tài khoản có vai trò STAFF mới được gán vào trạm.");
+            throw new IllegalArgumentException("Người dùng này không phải là nhân viên. Chỉ tài khoản có vai trò STAFF mới được gán vào trạm.");
         }
 
         // Kiểm tra trạm có tồn tại không
@@ -64,13 +64,13 @@ public class StaffStationAssignmentService {
 
         // Kiểm tra xem nhân viên đã được gán vào trạm này chưa
         if (assignmentRepository.existsByStaffAndStation(staff, station)) {
-            throw new AuthenticationException("Nhân viên này đã được gán vào trạm này rồi.");
+            throw new IllegalStateException("Nhân viên này đã được gán vào trạm này rồi.");
         }
 
         // Kiểm tra số lượng trạm mà nhân viên đang quản lý (tối đa 5)
         long currentCount = assignmentRepository.countByStaff(staff);
         if (currentCount >= MAX_STATIONS_PER_STAFF) {
-            throw new AuthenticationException(
+            throw new IllegalStateException(
                     String.format("Nhân viên không thể quản lý quá %d trạm. Hiện tại: %d",
                             MAX_STATIONS_PER_STAFF, currentCount)
             );
@@ -79,7 +79,7 @@ public class StaffStationAssignmentService {
         // Kiểm tra số lượng nhân viên tại trạm (tối đa 3)
         long staffCountAtStation = assignmentRepository.countByStation(station);
         if (staffCountAtStation >= MAX_STAFF_PER_STATION) {
-            throw new AuthenticationException(
+            throw new IllegalStateException(
                     String.format("Trạm không thể có hơn %d nhân viên. Hiện tại: %d",
                             MAX_STAFF_PER_STATION, staffCountAtStation)
             );

@@ -20,7 +20,7 @@ public class MoMoUtil {
             byte[] hash = sha256HMAC.doFinal(data.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new RuntimeException("Error generating HMAC SHA256", e);
+            throw new IllegalStateException("Lỗi tạo HMAC SHA256 cho MoMo payment", e);
         }
     }
 

@@ -178,6 +178,10 @@ public class BookingExpirationScheduler {
                             "Một lượt swap đã bị trừ khỏi gói dịch vụ của bạn vì không đến thực hiện swap."
             );
 
+            // Thêm loại hủy và lý do
+            emailDetail.setCancellationType("AUTO");
+            emailDetail.setCancellationReason("Hết thời gian giữ chỗ (3 giờ)");
+
             emailService.sendBookingCancellationEmail(emailDetail);
 
             logger.info("Da gui email thong bao huy tu dong cho driver. BookingID: {}, Driver: {}",

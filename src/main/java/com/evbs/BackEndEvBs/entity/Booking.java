@@ -85,6 +85,9 @@ public class Booking {
     @Transient
     private Long swapTransactionId;
 
+    @Column(name = "CancellationReason", length = 500)
+    private String cancellationReason;  // Lý do hủy booking (nếu có)
+
     // Expose IDs
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;

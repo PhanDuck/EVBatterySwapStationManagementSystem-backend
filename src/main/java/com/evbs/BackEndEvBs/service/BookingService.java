@@ -289,7 +289,7 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
 
         // Gửi email thông báo hủy booking
-        sendBookingCancellationEmail(savedBooking);
+        sendBookingCancellationEmail(savedBooking, "DRIVER", null);
 
         // Detach entity to prevent lazy loading
         savedBooking.setReservedBattery(null);
@@ -355,6 +355,7 @@ public class BookingService {
         // Hủy booking
         booking.setStatus(Booking.Status.CANCELLED);
         booking.setConfirmationCode(null); // Xóa mã code để giải phóng
+        booking.setCancellationReason(reason); // Lưu lý do hủy
 
         System.out.println(String.format(
                 "Nhân viên đã hủy đơn đặt chỗ. Mã đơn: %d, Mã tài xế: %d, Mã nhân viên: %d, Lý do: %s",
@@ -363,7 +364,7 @@ public class BookingService {
         ));
 
         // Gửi email thông báo hủy booking
-        sendBookingCancellationEmail(booking);
+        sendBookingCancellationEmail(booking, "STAFF", reason);
 
         return bookingRepository.save(booking);
     }
@@ -395,8 +396,8 @@ public class BookingService {
 
             // TÁCH RIÊNG: Model xe và Biển số xe
             emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : "Xe điện");
-            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // ✅ Biển số riêng
-            
+            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); //Biển số riêng
+
             emailDetail.setBatteryType(
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
@@ -421,7 +422,7 @@ public class BookingService {
     /**
      * Gửi email thông báo hủy booking
      */
-    private void sendBookingCancellationEmail(Booking booking) {
+    private void sendBookingCancellationEmail(Booking booking, String cancellationType, String cancellationReason) {
         try {
             User driver = booking.getDriver();
             Vehicle vehicle = booking.getVehicle();
@@ -429,7 +430,7 @@ public class BookingService {
 
             EmailDetail emailDetail = new EmailDetail();
             emailDetail.setRecipient(driver.getEmail());
-            emailDetail.setSubject("THÔNG BÁO HỦY ĐẶT LỊCH - " + booking.getConfirmationCode());
+            emailDetail.setSubject("THÔNG BÁO HỦY ĐẶT LỊCH");
             emailDetail.setFullName(driver.getFullName());
 
             emailDetail.setBookingId(booking.getId());
@@ -445,8 +446,8 @@ public class BookingService {
 
             // TÁCH RIÊNG: Model xe và Biển số xe
             emailDetail.setVehicleModel(vehicle.getModel() != null ? vehicle.getModel() : "Xe điện");
-            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // ✅ Biển số riêng
-            
+            emailDetail.setVehiclePlateNumber(vehicle.getPlateNumber()); // Biển số riêng
+
             emailDetail.setBatteryType(
                     station.getBatteryType().getName() +
                             (station.getBatteryType().getCapacity() != null ? " - " + station.getBatteryType().getCapacity() + "kWh" : "")
@@ -457,6 +458,10 @@ public class BookingService {
 
             // Thêm thông tin chính sách hủy
             emailDetail.setCancellationPolicy("Lịch đặt của bạn đã được hủy thành công. Pin đã được giải phóng.");
+
+            // Thêm loại hủy và lý do hủy
+            emailDetail.setCancellationType(cancellationType);
+            emailDetail.setCancellationReason(cancellationReason);
 
             emailService.sendBookingCancellationEmail(emailDetail);
         } catch (Exception e) {

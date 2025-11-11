@@ -29,6 +29,10 @@ public class User implements UserDetails {
         ACTIVE, INACTIVE, SUSPENDED
     }
 
+    public enum Gender {
+        MALE, FEMALE, OTHER
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "UserID")
@@ -37,6 +41,13 @@ public class User implements UserDetails {
     @NotEmpty(message = "FullName không được để trống!")
     @Column(name = "FullName", nullable = false, length = 150, columnDefinition = "NVARCHAR(150)")
     private String fullName;
+
+    @Column(name = "DateOfBirth")
+    private java.time.LocalDate dateOfBirth;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "Gender", length = 20)
+    private Gender gender;
 
     @Email(message = "Email không hợp lệ!")
     @NotEmpty(message = "Email không được để trống!")

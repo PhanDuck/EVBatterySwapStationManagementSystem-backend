@@ -150,6 +150,16 @@ public class UserService {
             currentUser.setEmail(request.getEmail());
         }
 
+        // Cập nhật ngày sinh nếu có
+        if (request.getDateOfBirth() != null) {
+            currentUser.setDateOfBirth(request.getDateOfBirth());
+        }
+
+        // Cập nhật giới tính nếu có
+        if (request.getGender() != null) {
+            currentUser.setGender(request.getGender());
+        }
+
         User updatedUser = userRepository.save(currentUser);
         return modelMapper.map(updatedUser, UserResponse.class);
     }

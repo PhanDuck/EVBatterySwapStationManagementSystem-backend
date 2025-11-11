@@ -3,7 +3,7 @@ package com.evbs.BackEndEvBs.model.response;
 
 import com.evbs.BackEndEvBs.entity.User;
 
-
+import java.time.LocalDate;
 
 import lombok.Data;
 
@@ -13,6 +13,8 @@ public class UserResponse {
     private String fullName;
     private String email;
     private String phoneNumber;
+    private LocalDate dateOfBirth;
+    private User.Gender gender;
     private User.Role role;
     private User.Status status;
     

@@ -367,14 +367,7 @@ public class VehicleService {
         );
 
         if (!confirmedBookings.isEmpty()) {
-            Booking activeBooking = confirmedBookings.get(0);
-            throw new IllegalStateException(
-                    String.format("Không thể xóa xe đang có lịch đặt chỗ hoạt động (ID: %d, Trạng thái: %s, Thời gian: %s). " +
-                                    "Vui lòng hoàn tất hoặc hủy lịch đặt chỗ trước khi xóa xe.",
-                            activeBooking.getId(),
-                            activeBooking.getStatus(),
-                            activeBooking.getBookingTime())
-            );
+            throw new IllegalStateException("Không thể xóa xe đang có lịch đặt chỗ hoạt động. Vui lòng hoàn tất hoặc hủy lịch đặt trước.");
         }
 
         // Xử lý pin hiện tại khi xóa xe

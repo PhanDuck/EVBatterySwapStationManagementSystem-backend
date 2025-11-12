@@ -7,7 +7,9 @@ import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.StationRequest;
 import com.evbs.BackEndEvBs.model.request.StationUpdateRequest;
+import com.evbs.BackEndEvBs.repository.BatteryRepository;
 import com.evbs.BackEndEvBs.repository.BatteryTypeRepository;
+import com.evbs.BackEndEvBs.repository.BookingRepository;
 import com.evbs.BackEndEvBs.repository.StationRepository;
 import com.evbs.BackEndEvBs.repository.StaffStationAssignmentRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,12 @@ public class StationService {
 
     @Autowired
     private final BatteryTypeRepository batteryTypeRepository;
+    
+    @Autowired
+    private final BatteryRepository batteryRepository;
+    
+    @Autowired
+    private final BookingRepository bookingRepository;
 
     @Autowired
     private final StaffStationAssignmentRepository staffStationAssignmentRepository;
@@ -161,6 +169,12 @@ public class StationService {
             station.setLongitude(request.getLongitude());
         }
         if (request.getBatteryTypeId() != null) {
+            // KHÔNG ĐỔI LOẠI PIN KHI TRẠM CÓ PIN
+            long batteryCount = batteryRepository.countByCurrentStation_Id(id);
+            if (batteryCount > 0) {
+                throw new IllegalStateException("Trạm đang có " + batteryCount + " pin, không thể đổi loại pin!");
+            }
+            
             BatteryType batteryType = batteryTypeRepository.findById(request.getBatteryTypeId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
             station.setBatteryType(batteryType);
@@ -182,6 +196,7 @@ public class StationService {
 
     /**
      * DELETE - Xóa station (Admin only)
+     * KIỂM TRA: Không xóa trạm có pin AVAILABLE hoặc booking CONFIRMED
      */
     @Transactional
     public void deleteStation(Long id) {
@@ -192,9 +207,32 @@ public class StationService {
 
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
+        
+        // KIỂM TRA: Trạm có pin AVAILABLE/PENDING
+        long availableBatteryCount = batteryRepository.findByCurrentStation_Id(id)
+            .stream()
+            .filter(b -> b.getStatus() == com.evbs.BackEndEvBs.entity.Battery.Status.AVAILABLE || 
+                        b.getStatus() == com.evbs.BackEndEvBs.entity.Battery.Status.PENDING)
+            .count();
+            
+        if (availableBatteryCount > 0) {
+            throw new IllegalStateException("Trạm đang có " + availableBatteryCount + " pin, không thể xóa!");
+        }
+        
+        // KIỂM TRA: Trạm có booking CONFIRMED
+        long confirmedBookingCount = bookingRepository.findAll()
+            .stream()
+            .filter(b -> b.getStation().getId().equals(id) && 
+                        b.getStatus() == com.evbs.BackEndEvBs.entity.Booking.Status.CONFIRMED)
+            .count();
+            
+        if (confirmedBookingCount > 0) {
+            throw new IllegalStateException("Trạm đang có " + confirmedBookingCount + " booking CONFIRMED, không thể xóa!");
+        }
+        
+        // Soft delete
         station.setStatus(Station.Status.INACTIVE);
         stationRepository.save(station);
-
     }
 
     /**

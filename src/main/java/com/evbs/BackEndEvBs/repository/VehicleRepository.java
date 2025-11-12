@@ -24,4 +24,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle,Long> {
 
     // Tìm vehicles theo driver và status
     List<Vehicle> findByDriverAndStatus(User driver, Vehicle.VehicleStatus status);
+    
+    // Đếm số xe ACTIVE của driver
+    long countByDriverAndStatus(User driver, Vehicle.VehicleStatus status);
+    
+    // Đếm số xe theo loại BatteryType (kiểm tra khi xóa BatteryType)
+    long countByBatteryType_Id(Long batteryTypeId);
 }

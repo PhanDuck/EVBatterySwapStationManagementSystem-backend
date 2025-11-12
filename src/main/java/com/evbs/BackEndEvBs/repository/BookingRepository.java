@@ -95,5 +95,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
         List<Booking> bookings = findConfirmedBookingsByDriverAndStation(driver, station);
         return bookings.isEmpty() ? Optional.empty() : Optional.of(bookings.get(0));
     }
+    
+    // Đếm số booking CONFIRMED của driver
+    long countByDriverAndStatus(User driver, Booking.Status status);
 }
-

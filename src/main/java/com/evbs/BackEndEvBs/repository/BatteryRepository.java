@@ -80,4 +80,10 @@ public interface BatteryRepository extends JpaRepository<Battery, Long> {
             "GROUP BY bt.Name",
             nativeQuery = true)
     List<Object[]> countBatteriesByType();
+    
+    // Đếm số pin tại trạm
+    long countByCurrentStation_Id(Long stationId);
+    
+    // Đếm số pin theo loại BatteryType (kiểm tra khi xóa BatteryType)
+    long countByBatteryType_Id(Long batteryTypeId);
 }

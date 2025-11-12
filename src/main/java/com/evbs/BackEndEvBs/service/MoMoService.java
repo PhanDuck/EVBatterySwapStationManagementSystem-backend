@@ -452,7 +452,7 @@ public class MoMoService {
             }
 
         } catch (Exception e) {
-            log.error("❌ UPGRADE - Lỗi tạo MoMo payment: {}", e.getMessage());
+            log.error("UPGRADE - Lỗi tạo MoMo payment: {}", e.getMessage());
             throw new RuntimeException("Không thể tạo MoMo payment URL cho upgrade", e);
         }
     }

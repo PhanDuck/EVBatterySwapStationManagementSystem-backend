@@ -217,30 +217,6 @@ public class VehicleService {
     }
 
     /**
-     * UPDATE - Cập nhật thông tin không quan trọng (Driver)
-     */
-    @Transactional
-    public Vehicle updateMyVehicle(Long id, VehicleUpdateRequest vehicleRequest, MultipartFile registrationImageFile) {
-        User currentUser = authenticationService.getCurrentUser();
-        Vehicle existingVehicle = vehicleRepository.findByIdAndDriver(id, currentUser)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe hoặc truy cập bị từ chối"));
-
-        // Driver chỉ được update model, không được thay đổi VIN, PlateNumber
-        if (vehicleRequest.getModel() != null && !vehicleRequest.getModel().trim().isEmpty()) {
-            existingVehicle.setModel(vehicleRequest.getModel());
-        }
-
-        // Driver có thể update battery type
-        if (vehicleRequest.getBatteryTypeId() != null) {
-            BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
-            existingVehicle.setBatteryType(batteryType);
-        }
-
-        return vehicleRepository.save(existingVehicle);
-    }
-
-    /**
      * UPDATE - Cập nhật đầy đủ (Admin/Staff only)
      * Field nào null hoặc empty thì giữ nguyên giá trị cũ
      */
@@ -295,46 +271,20 @@ public class VehicleService {
             existingVehicle.setPlateNumber(vehicleRequest.getPlateNumber());
         }
 
-        // Update battery type nếu có
+        // KHÔNG ĐỔI LOẠI PIN KHI XE CÓ PIN
         if (vehicleRequest.getBatteryTypeId() != null) {
+            if (existingVehicle.getCurrentBattery() != null) {
+                throw new IllegalStateException("Xe đang có pin, không thể đổi loại pin!");
+            }
+            
             BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
             existingVehicle.setBatteryType(batteryType);
         }
 
-        // Update driver nếu có (chỉ admin/staff)
+        // KHÔNG CHO ĐỔI DRIVER
         if (vehicleRequest.getDriverId() != null) {
-            User newDriver = userRepository.findById(vehicleRequest.getDriverId())
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy tài xế với ID: " + vehicleRequest.getDriverId()));
-            
-            // Kiểm tra user có vai trò DRIVER không
-            if (newDriver.getRole() != User.Role.DRIVER) {
-                throw new IllegalArgumentException("User này không phải là tài xế (DRIVER)");
-            }
-            
-            // Kiểm tra driver mới không được có quá 2 xe (ACTIVE + PENDING)
-            // CHỈ kiểm tra nếu xe hiện tại đang ACTIVE hoặc PENDING
-            if (existingVehicle.getStatus() == Vehicle.VehicleStatus.ACTIVE 
-                || existingVehicle.getStatus() == Vehicle.VehicleStatus.PENDING) {
-                
-                long newDriverActiveVehicles = vehicleRepository.findByDriverAndStatus(newDriver, Vehicle.VehicleStatus.ACTIVE).size();
-                long newDriverPendingVehicles = vehicleRepository.findByDriverAndStatus(newDriver, Vehicle.VehicleStatus.PENDING).size();
-                long totalVehicles = newDriverActiveVehicles + newDriverPendingVehicles;
-                
-                // Loại trừ xe hiện tại nếu cùng driver
-                if (existingVehicle.getDriver().getId().equals(newDriver.getId())) {
-                    totalVehicles--;
-                }
-                
-                if (totalVehicles >= 2) {
-                    throw new IllegalStateException(
-                        "Tài xế " + newDriver.getFullName() + " đã có " + totalVehicles + 
-                        " xe (ACTIVE + PENDING). Không thể gán thêm xe."
-                    );
-                }
-            }
-            
-            existingVehicle.setDriver(newDriver);
+            throw new IllegalStateException("Không thể đổi driver của xe!");
         }
 
         return vehicleRepository.save(existingVehicle);
@@ -369,6 +319,9 @@ public class VehicleService {
         if (!confirmedBookings.isEmpty()) {
             throw new IllegalStateException("Không thể xóa xe đang có lịch đặt chỗ hoạt động. Vui lòng hoàn tất hoặc hủy lịch đặt trước.");
         }
+
+        // CHO PHÉP XÓA XE CUỐI CÙNG - Driver có quyền rời khỏi hệ thống
+        // Pin sẽ được trả về kho tự động
 
         // Xử lý pin hiện tại khi xóa xe
         Battery currentBattery = vehicle.getCurrentBattery();

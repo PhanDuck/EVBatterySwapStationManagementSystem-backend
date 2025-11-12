@@ -96,7 +96,7 @@ public class FileStorageService {
             return fullUrl;
 
         } catch (IOException e) {
-            System.err.println("❌ Error uploading file: " + e.getMessage());
+            System.err.println("Error uploading file: " + e.getMessage());
             e.printStackTrace();
             throw new AuthenticationException("Lỗi khi upload file: " + e.getMessage());
         }

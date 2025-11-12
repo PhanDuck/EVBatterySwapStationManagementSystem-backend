@@ -39,4 +39,7 @@ public interface StationRepository extends JpaRepository<Station, Long> {
     // Tổng capacity của tất cả stations
     @Query("SELECT SUM(s.capacity) FROM Station s")
     Long sumTotalCapacity();
+    
+    // Đếm số trạm theo loại BatteryType (kiểm tra khi xóa BatteryType)
+    long countByBatteryType_Id(Long batteryTypeId);
 }

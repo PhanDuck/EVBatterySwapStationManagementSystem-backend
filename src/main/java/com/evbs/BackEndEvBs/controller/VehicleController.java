@@ -53,19 +53,7 @@ public class VehicleController {
         return ResponseEntity.ok(myVehicles);
     }
 
-    /**
-     * PUT /api/vehicle/my-vehicles/{id} : Update vehicle's info by ID (Driver)
-     * Driver chỉ được update: model, batteryTypeId
-     */
-    @PutMapping(value = "/my-vehicles/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Update vehicle (Driver) - model, batteryType only")
-    public ResponseEntity<Vehicle> updateMyVehicle(
-            @PathVariable Long id,
-            @Valid @ModelAttribute VehicleUpdateRequest request) {
-        
-        Vehicle updatedVehicle = vehicleService.updateMyVehicle(id, request, null);
-        return ResponseEntity.ok(updatedVehicle);
-    }
+
 
     /**
      * GET /api/vehicle : Get all vehicles (Admin/Staff only)

@@ -308,7 +308,7 @@ public class EmailService {
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(driver.getEmail());
             mimeMessageHelper.setText(htmlContent, true);
-            mimeMessageHelper.setSubject("⚠️ THÔNG BÁO: Gói dịch vụ của bạn đã bị hủy - EV Battery Swap");
+            mimeMessageHelper.setSubject("THÔNG BÁO: Gói dịch vụ của bạn đã bị hủy - EV Battery Swap");
 
             mailSender.send(mimeMessage);
 
@@ -680,7 +680,7 @@ public class EmailService {
             mimeMessageHelper.setFrom(fromEmail);
             mimeMessageHelper.setTo(driver.getEmail());
             mimeMessageHelper.setText(htmlContent, true);
-            mimeMessageHelper.setSubject("❌ Yêu cầu đăng ký xe bị từ chối - EV Battery Swap Station");
+            mimeMessageHelper.setSubject("Yêu cầu đăng ký xe bị từ chối - EV Battery Swap Station");
 
             mailSender.send(mimeMessage);
 

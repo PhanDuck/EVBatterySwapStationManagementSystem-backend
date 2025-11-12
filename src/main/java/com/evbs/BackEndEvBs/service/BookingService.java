@@ -88,8 +88,7 @@ public class BookingService {
             );
         }
 
-        // ❌ XÓA: Không check driver có booking active (cho phép driver có nhiều xe booking cùng lúc)
-        // Driver có 2 xe → được booking 2 lần cho 2 xe khác nhau
+        // Cho phép driver có nhiều xe booking cùng lúc
 
         // VALIDATION: Max 10 bookings per user per day
         LocalDate today = LocalDate.now();

@@ -153,6 +153,20 @@ public class BatteryService {
         Battery battery = batteryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
+        // CHẶN UPDATE KHI PIN ĐANG SỬ DỤNG
+        if (battery.getStatus() == Battery.Status.IN_USE) {
+            throw new IllegalStateException("Pin đang lắp trên xe, không thể cập nhật!");
+        }
+        
+        if (battery.getStatus() == Battery.Status.PENDING) {
+            throw new IllegalStateException("Pin đã được đặt trước, không thể cập nhật!");
+        }
+
+        // CHẶN ĐỔI LOẠI PIN KHI PIN Ở TRẠM
+        if (request.getBatteryTypeId() != null && battery.getCurrentStation() != null) {
+            throw new IllegalStateException("Pin đang ở trạm, không thể đổi loại pin! Chuyển về kho trước.");
+        }
+
         // Lưu trạng thái cũ để xử lý StationInventory
         com.evbs.BackEndEvBs.entity.Station oldStation = battery.getCurrentStation();
 
@@ -181,10 +195,15 @@ public class BatteryService {
             battery.setBatteryType(batteryType);
         }
         
-        // XỬ LÝ CHUYỂN ĐỔI VỊ TRÍ PIN (KHO ↔ TRẠM)
+        // XỬ LÝ CHUYỂN ĐỔI VỊ TRÍ PIN (KHO - TRẠM)
         if (request.getCurrentStationId() != null) {
             com.evbs.BackEndEvBs.entity.Station newStation = stationRepository.findById(request.getCurrentStationId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm"));
+            
+            // KIỂM TRA LOẠI PIN KHỚP VỚI TRẠM
+            if (!battery.getBatteryType().getId().equals(newStation.getBatteryType().getId())) {
+                throw new IllegalArgumentException("Loại pin không khớp với trạm!");
+            }
             
             // Trường hợp 1: KHO → TRẠM (oldStation = null → newStation != null)
             if (oldStation == null) {
@@ -198,9 +217,7 @@ public class BatteryService {
             battery.setCurrentStation(newStation);
             
         } else if (request.getCurrentStationId() == null && oldStation != null) {
-            // Trường hợp 2: TRẠM → KHO (oldStation != null → newStation = null)
-            // Chỉ xử lý nếu request EXPLICITLY set currentStationId = null
-            // (Để tránh trường hợp không update station)
+            // Trường hợp 2: TRẠM → KHO
             
             // Set currentStation = null
             battery.setCurrentStation(null);
@@ -220,6 +237,7 @@ public class BatteryService {
 
     /**
      * DELETE - Xóa battery (Admin only)
+     * CHỈ CHO PHÉP XÓA PIN ĐANG Ở KHO (currentStation = NULL)
      */
     @Transactional
     public void deleteBattery(Long id) {
@@ -231,6 +249,20 @@ public class BatteryService {
         Battery battery = batteryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
 
+        // KIỂM TRA PIN PHẢI Ở KHO
+        if (battery.getCurrentStation() != null) {
+            throw new IllegalStateException("Pin đang ở trạm, không thể xóa!");
+        }
+
+        if (battery.getStatus() == Battery.Status.IN_USE) {
+            throw new IllegalStateException("Pin đang lắp trên xe, không thể xóa!");
+        }
+
+        if (battery.getStatus() == Battery.Status.PENDING) {
+            throw new IllegalStateException("Pin đã được đặt trước, không thể xóa!");
+        }
+
+        // Soft delete
         battery.setStatus(Battery.Status.RETIRED);
         batteryRepository.save(battery);
     }

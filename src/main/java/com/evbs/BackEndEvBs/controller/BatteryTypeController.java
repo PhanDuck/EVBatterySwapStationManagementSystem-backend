@@ -50,4 +50,12 @@ public class BatteryTypeController {
         return ResponseEntity.ok(batteryType);
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete battery type (chỉ khi không có pin/xe/trạm sử dụng)")
+    public ResponseEntity<Void> deleteBatteryType(@PathVariable Long id) {
+        batteryTypeService.deleteBatteryType(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

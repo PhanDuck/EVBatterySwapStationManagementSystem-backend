@@ -152,6 +152,11 @@ public class UserService {
 
         // Cập nhật ngày sinh nếu có
         if (request.getDateOfBirth() != null) {
+            // Validate tuổi từ 15-100
+            int age = java.time.Period.between(request.getDateOfBirth(), java.time.LocalDate.now()).getYears();
+            if (age < 15 || age > 100) {
+                throw new IllegalArgumentException("Tuổi phải từ 15 đến 100 tuổi!");
+            }
             currentUser.setDateOfBirth(request.getDateOfBirth());
         }
 

@@ -96,6 +96,8 @@ public class EmailService {
             context.setVariable("status", emailDetail.getStatus());
             context.setVariable("cancellationPolicy", emailDetail.getCancellationPolicy());
             context.setVariable("confirmationCode", emailDetail.getConfirmationCode());
+            context.setVariable("cancellationType", emailDetail.getCancellationType());
+            context.setVariable("cancellationReason", emailDetail.getCancellationReason());
 
             String text = templateEngine.process("booking-cancellation", context);
 

@@ -514,15 +514,36 @@ public class BookingService {
     public List<Booking> getMyBookings() {
         User currentUser = authenticationService.getCurrentUser();
         // Sử dụng JOIN FETCH để tránh N+1 query problem
-        return bookingRepository.findByDriverWithDetails(currentUser);
+        List<Booking> bookings = bookingRepository.findByDriverWithDetails(currentUser);
+        
+        // Lấy subscription ACTIVE hiện tại để populate remainingSwaps
+        DriverSubscription activeSubscription = driverSubscriptionRepository
+                .findActiveSubscriptionByDriver(currentUser, java.time.LocalDate.now())
+                .orElse(null);
+        
+        Integer remainingSwaps = activeSubscription != null ? activeSubscription.getRemainingSwaps() : 0;
+        
+        // Set remainingSwaps cho tất cả bookings
+        bookings.forEach(b -> b.setRemainingSwaps(remainingSwaps));
+        
+        return bookings;
     }
 
     @Transactional(readOnly = true)
     public Booking getMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         // Sử dụng JOIN FETCH để tránh N+1 query problem
-        return bookingRepository.findByIdAndDriverWithDetails(id, currentUser)
+        Booking booking = bookingRepository.findByIdAndDriverWithDetails(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Lịch đặt không tìm thấy"));
+        
+        // Lấy subscription ACTIVE hiện tại để populate remainingSwaps
+        DriverSubscription activeSubscription = driverSubscriptionRepository
+                .findActiveSubscriptionByDriver(currentUser, java.time.LocalDate.now())
+                .orElse(null);
+        
+        booking.setRemainingSwaps(activeSubscription != null ? activeSubscription.getRemainingSwaps() : 0);
+        
+        return booking;
     }
 
     @Transactional(readOnly = true)

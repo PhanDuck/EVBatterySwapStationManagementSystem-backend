@@ -140,14 +140,4 @@ public class User implements UserDetails {
         return Status.ACTIVE.equals(this.status);
     }
 
-    // ===============================
-    // Helper Methods
-    // ===============================
-    public DriverSubscription getActiveSubscription() {
-        return this.subscriptions.stream()
-                .filter(sub -> sub.getStatus() == DriverSubscription.Status.ACTIVE)
-                .findFirst()
-                .orElse(null);
-    }
-
 }

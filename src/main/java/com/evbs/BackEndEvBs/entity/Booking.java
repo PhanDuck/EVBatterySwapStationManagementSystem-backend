@@ -88,6 +88,9 @@ public class Booking {
     @Column(name = "CancellationReason", length = 500)
     private String cancellationReason;  // Lý do hủy booking (nếu có)
 
+    @Transient
+    private Integer remainingSwaps;  // Số lượt swap còn lại của driver (set từ service)
+
     // Expose IDs
     public Long getDriverId() {
         return this.driver != null ? this.driver.getId() : null;
@@ -188,14 +191,5 @@ public class Booking {
     @Transient
     public String getStationContact() {
         return this.station != null ? this.station.getContactInfo() : null;
-    }
-
-    // ========== EXPOSE SUBSCRIPTION INFO ==========
-    @Transient
-    public Integer getRemainingSwaps() {
-        if (this.driver != null && this.driver.getActiveSubscription() != null) {
-            return this.driver.getActiveSubscription().getRemainingSwaps();
-        }
-        return null;
     }
 }

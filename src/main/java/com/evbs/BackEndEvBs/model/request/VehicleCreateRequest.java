@@ -18,7 +18,7 @@ public class VehicleCreateRequest {
 
     @NotEmpty(message = "Số hiệu tấm không được để trống!")
     @Pattern(
-            regexp = "^[0-9]{2}[a-zA-Z]{1,2}[0-9]{5,6}(\\.[a-zA-Z]{1,2})?$",
+            regexp = "^[0-9]{2}[a-zA-Z]{1,2}[0-9]{6}(\\.[a-zA-Z]{1,2})?$",
             message = "Định dạng biển số xe máy Việt Nam không hợp lệ! Ví dụ hợp lệ: 29X112345, 51F11234, 30H112350"
     )
     @Schema(description = "Biển số xe", example = "29X112345")

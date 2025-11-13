@@ -403,52 +403,6 @@ public class DriverSubscriptionService {
         return savedSubscription;
     }
 
-    /**
-     * GENERATE RECOMMENDATION MESSAGE
-     */
-    private String generateUpgradeRecommendation(
-            ServicePackage currentPackage,
-            ServicePackage newPackage,
-            Integer usedSwaps,
-            Integer remainingSwaps,
-            BigDecimal savingsPerSwap
-    ) {
-        StringBuilder recommendation = new StringBuilder();
-
-        recommendation.append("Phân tích: ");
-
-        if (savingsPerSwap.compareTo(BigDecimal.ZERO) > 0) {
-            recommendation.append(String.format(
-                    "Gói mới tiết kiệm %,d VNĐ/lượt so với gói cũ. ",
-                    savingsPerSwap.intValue()
-            ));
-        }
-
-        if (remainingSwaps > currentPackage.getMaxSwaps() / 2) {
-            recommendation.append(String.format(
-                    "Bạn còn %d/%d lượt chưa dùng (%d%%). " +
-                            "Nên sử dụng thêm vài lượt trước khi nâng cấp để tối ưu chi phí. ",
-                    remainingSwaps,
-                    currentPackage.getMaxSwaps(),
-                    (remainingSwaps * 100 / currentPackage.getMaxSwaps())
-            ));
-        } else {
-            recommendation.append("Thời điểm nâng cấp hợp lý! ");
-        }
-
-        int additionalSwaps = newPackage.getMaxSwaps() - currentPackage.getMaxSwaps();
-        if (additionalSwaps > 0) {
-            recommendation.append(String.format(
-                    "Sau nâng cấp, bạn sẽ có thêm %d lượt swap (%s → %s). ",
-                    additionalSwaps,
-                    currentPackage.getMaxSwaps(),
-                    newPackage.getMaxSwaps()
-            ));
-        }
-
-        return recommendation.toString();
-    }
-
     // ========================================
     // GIA HẠN GÓI (RENEWAL/EXTEND)
     // ========================================

@@ -20,12 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -420,6 +417,9 @@ public class VehicleService {
         // Gắn pin vào xe
         vehicle.setCurrentBattery(battery);
 
+        // LƯU GIÁ TRỊ PIN GỐC TRƯỚC KHI THAY ĐỔI BẤT KỲ GÌ
+        BigDecimal originalChargeLevel = battery.getChargeLevel();
+
         // Cập nhật trạng thái pin: IN_USE và XÓA currentStation (pin đã rời kho)
         battery.setStatus(Battery.Status.IN_USE);
         battery.setCurrentStation(null);  // Pin không còn ở station nữa
@@ -433,16 +433,25 @@ public class VehicleService {
 
         // Chuyển status xe sang ACTIVE
         vehicle.setStatus(Vehicle.VehicleStatus.ACTIVE);
-
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
-        // Gửi email thông báo cho tài xế
+        // Gửi email thông báo cho tài xế (TRƯỚC KHI GIẢM PIN - email sẽ hiển thị pin cao)
         try {
             emailService.sendVehicleApprovedToDriver(savedVehicle);
         } catch (Exception e) {
             // Log lỗi nhưng không throw exception để không ảnh hưởng đến luồng chính
             System.err.println("Lỗi khi gửi email thông báo xe được phê duyệt: " + e.getMessage());
         }
+
+        //SIMULATE: Giảm mức pin xuống random dưới 50% SAU KHI GỬI EMAIL
+        // (Email hiển thị pin cao, nhưng xe thực tế có pin thấp để test)
+        Random random = new Random();
+        BigDecimal randomChargeLevel = BigDecimal.valueOf(10 + random.nextInt(40)); // Random 10-49%
+        battery.setChargeLevel(randomChargeLevel);
+        batteryRepository.save(battery);
+
+        System.out.println(String.format("Pin ID %d được gắn vào xe - Email hiển thị: %.0f%%, Mức pin thực tế giảm xuống: %.0f%%",
+                battery.getId(), originalChargeLevel.doubleValue(), randomChargeLevel.doubleValue()));
 
         return savedVehicle;
     }

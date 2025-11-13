@@ -190,7 +190,8 @@ public class SwapTransactionService {
             log.warn("Sử dụng tài khoản admin thay thế cho xác nhận booking: {}", staffWhoConfirmed.getUsername());
         }
 
-        // 10. Tạo swap transaction
+        // 10. Tạo swap transaction và LƯU SNAPSHOT TRƯỚC KHI GIẢM PIN
+        // (Để history hiển thị: pin cũ = thấp, pin mới = cao)
         SwapTransaction transaction = new SwapTransaction();
         transaction.setDriver(driver);
         transaction.setVehicle(vehicle);
@@ -204,21 +205,35 @@ public class SwapTransactionService {
         transaction.setEndTime(LocalDateTime.now());
         transaction.setStatus(SwapTransaction.Status.COMPLETED);
 
-        // LƯU SNAPSHOT thông tin pin tại thời điểm swap
+
+        // LƯU SNAPSHOT thông tin pin TRƯỚC KHI GIẢM (để history đúng)
         if (swapOutBattery != null) {
             transaction.setSwapOutBatteryModel(swapOutBattery.getModel());
-            transaction.setSwapOutBatteryChargeLevel(swapOutBattery.getChargeLevel());
+            transaction.setSwapOutBatteryChargeLevel(swapOutBattery.getChargeLevel()); // Pin mới: CAO
             transaction.setSwapOutBatteryHealth(swapOutBattery.getStateOfHealth());
         }
         if (swapInBattery != null) {
             transaction.setSwapInBatteryModel(swapInBattery.getModel());
-            transaction.setSwapInBatteryChargeLevel(swapInBattery.getChargeLevel());
+            transaction.setSwapInBatteryChargeLevel(swapInBattery.getChargeLevel()); // Pin cũ: THẤP
             transaction.setSwapInBatteryHealth(swapInBattery.getStateOfHealth());
         }
 
         SwapTransaction savedTransaction = swapTransactionRepository.save(transaction);
 
-        // 11. Xử lý hoàn tất: pin, subscription, booking
+        // 11. SAU KHI LƯU SNAPSHOT → Giảm pin mới xuống dưới 50%
+        // (Mô phỏng việc tài xế sử dụng xe sau khi đổi pin)
+        if (swapOutBattery != null) {
+            java.util.Random random = new java.util.Random();
+            BigDecimal randomChargeLevel = BigDecimal.valueOf(10 + random.nextInt(40)); // Random 10-49%
+            swapOutBattery.setChargeLevel(randomChargeLevel);
+            batteryRepository.save(swapOutBattery);
+            log.info("🔋 Pin ID {} được đổi vào xe - Snapshot: {}%, Mức pin hiện tại giảm xuống: {}%",
+                    swapOutBattery.getId(),
+                    savedTransaction.getSwapOutBatteryChargeLevel().intValue(),
+                    randomChargeLevel.intValue());
+        }
+
+        // 12. Xử lý hoàn tất: pin, subscription, booking
         handleTransactionCompletion(savedTransaction, activeSubscription, booking);
 
         log.info("Self-service swap hoàn thành thành công - Tài xế: {}, Mã: {}, Nhân viên: {}, Xe: {}",
@@ -457,10 +472,6 @@ public class SwapTransactionService {
 
             swapOutBattery.setCurrentStation(null); // No longer at any station
             swapOutBattery.setStatus(Battery.Status.IN_USE); // Now in use
-
-            // Increase usage count
-            Integer currentUsage = swapOutBattery.getUsageCount();
-            swapOutBattery.setUsageCount(currentUsage != null ? currentUsage + 1 : 1);
 
             batteryRepository.save(swapOutBattery);
 

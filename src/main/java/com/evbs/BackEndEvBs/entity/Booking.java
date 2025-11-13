@@ -189,4 +189,13 @@ public class Booking {
     public String getStationContact() {
         return this.station != null ? this.station.getContactInfo() : null;
     }
+
+    // ========== EXPOSE SUBSCRIPTION INFO ==========
+    @Transient
+    public Integer getRemainingSwaps() {
+        if (this.driver != null && this.driver.getActiveSubscription() != null) {
+            return this.driver.getActiveSubscription().getRemainingSwaps();
+        }
+        return null;
+    }
 }

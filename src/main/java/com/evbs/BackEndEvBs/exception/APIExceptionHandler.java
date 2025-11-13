@@ -75,13 +75,16 @@ public class APIExceptionHandler {
 
     /**
      * Xử lý tất cả các exception chưa được handle - 500 Internal Server Error
+     * Tất cả lỗi hệ thống (JDBC, database, network, etc.) đều trả về "Lỗi mạng!"
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneralException(Exception exception) {
-        // Log để debug
+        // Log để debug (chỉ server thấy, không gửi cho client)
         System.err.println("Unhandled exception: " + exception.getClass().getName());
         exception.printStackTrace();
-        return ResponseEntity.status(500).body("Lỗi hệ thống: " + exception.getMessage());
+        
+        // Trả về message ngắn gọn, dễ hiểu cho user
+        return ResponseEntity.status(500).body("Lỗi mạng!");
     }
 }
 

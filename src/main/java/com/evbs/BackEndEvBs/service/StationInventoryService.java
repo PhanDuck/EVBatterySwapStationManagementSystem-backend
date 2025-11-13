@@ -179,15 +179,15 @@ public class StationInventoryService {
      */
     private void validateBatteryTypeMatchesStation(Battery battery, Station station) {
         if (battery.getBatteryType() == null) {
-            throw new RuntimeException("Lỗi mạng!");
+            throw new IllegalStateException("Lỗi mạng!");
         }
 
         if (station.getBatteryType() == null) {
-            throw new RuntimeException("Lỗi mạng!");
+            throw new IllegalStateException("Lỗi mạng!");
         }
 
         if (!battery.getBatteryType().getId().equals(station.getBatteryType().getId())) {
-            throw new RuntimeException("Loại pin không tương thích!");
+            throw new IllegalStateException("Loại pin không tương thích!");
         }
 
         log.debug("Validation passed: Battery type {} matches station type {}",
@@ -256,22 +256,22 @@ public class StationInventoryService {
     private void validateBatteryForStationTransfer(Battery battery, Long stationId, Long batteryTypeId) {
         // Check if battery is at station already
         if (battery.getCurrentStation() != null) {
-            throw new RuntimeException("Pin đã ở trạm!");
+            throw new IllegalStateException("Pin đã ở trạm!");
         }
 
         // Check battery status
         if (battery.getStatus() != Battery.Status.AVAILABLE) {
-            throw new RuntimeException("Pin không sẵn sàng!");
+            throw new IllegalStateException("Pin không sẵn sàng!");
         }
 
         // Check battery type
         if (!battery.getBatteryType().getId().equals(batteryTypeId)) {
-            throw new RuntimeException("Loại pin không đúng!");
+            throw new IllegalStateException("Loại pin không đúng!");
         }
 
         // Check battery health
         if (battery.getStateOfHealth() == null || battery.getStateOfHealth().compareTo(new BigDecimal("90.00")) < 0) {
-            throw new RuntimeException("Pin SOH < 90%!");
+            throw new IllegalStateException("Pin SOH < 90%!");
         }
     }
 
@@ -281,12 +281,12 @@ public class StationInventoryService {
     private void validateBatteryForWarehouseTransfer(Battery battery, Long stationId) {
         // Check if battery is at the specified station
         if (battery.getCurrentStation() == null || !battery.getCurrentStation().getId().equals(stationId)) {
-            throw new RuntimeException("Pin không ở trạm này!");
+            throw new IllegalStateException("Pin không ở trạm này!");
         }
 
         // Check battery status
         if (battery.getStatus() != Battery.Status.MAINTENANCE) {
-            throw new RuntimeException("Pin phải đang bảo trì!");
+            throw new IllegalStateException("Pin phải đang bảo trì!");
         }
     }
 

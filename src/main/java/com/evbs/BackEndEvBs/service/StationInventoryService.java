@@ -110,9 +110,9 @@ public class StationInventoryService {
         // Validate other conditions
         validateBatteryForStationTransfer(battery, stationId, batteryTypeId);
 
-        // KIỂM TRA: Không vượt quá capacity của trạm
+        // KIỂM TRA: Không vượt quá capacity của trạm (giữ lại 1 slot trống)
         long currentBatteryCount = batteryRepository.findByCurrentStation_Id(stationId).size();
-        if (currentBatteryCount >= station.getCapacity()) {
+        if (currentBatteryCount >= station.getCapacity() - 1) {
             throw new IllegalStateException(
                 String.format("Trạm '%s' đã đầy (%d/%d pin). Không thể chuyển thêm pin!", 
                     station.getName(), currentBatteryCount, station.getCapacity())

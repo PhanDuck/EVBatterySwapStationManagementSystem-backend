@@ -217,6 +217,9 @@ public class BookingService {
         log.info("Đã trừ 1 lượt swap khi booking. Driver: {}, Còn lại: {}", 
                 currentUser.getId(), activeSubscription.getRemainingSwaps());
 
+        // Set số lượt còn lại vào response để driver biết
+        savedBooking.setRemainingSwaps(activeSubscription.getRemainingSwaps());
+
         // Gửi email xác nhận booking VỚI MÃ CODE
         sendBookingConfirmedEmail(savedBooking, booking.getConfirmedBy());
 
@@ -514,36 +517,15 @@ public class BookingService {
     public List<Booking> getMyBookings() {
         User currentUser = authenticationService.getCurrentUser();
         // Sử dụng JOIN FETCH để tránh N+1 query problem
-        List<Booking> bookings = bookingRepository.findByDriverWithDetails(currentUser);
-        
-        // Lấy subscription ACTIVE hiện tại để populate remainingSwaps
-        DriverSubscription activeSubscription = driverSubscriptionRepository
-                .findActiveSubscriptionByDriver(currentUser, java.time.LocalDate.now())
-                .orElse(null);
-        
-        Integer remainingSwaps = activeSubscription != null ? activeSubscription.getRemainingSwaps() : 0;
-        
-        // Set remainingSwaps cho tất cả bookings
-        bookings.forEach(b -> b.setRemainingSwaps(remainingSwaps));
-        
-        return bookings;
+        return bookingRepository.findByDriverWithDetails(currentUser);
     }
 
     @Transactional(readOnly = true)
     public Booking getMyBooking(Long id) {
         User currentUser = authenticationService.getCurrentUser();
         // Sử dụng JOIN FETCH để tránh N+1 query problem
-        Booking booking = bookingRepository.findByIdAndDriverWithDetails(id, currentUser)
+        return bookingRepository.findByIdAndDriverWithDetails(id, currentUser)
                 .orElseThrow(() -> new NotFoundException("Lịch đặt không tìm thấy"));
-        
-        // Lấy subscription ACTIVE hiện tại để populate remainingSwaps
-        DriverSubscription activeSubscription = driverSubscriptionRepository
-                .findActiveSubscriptionByDriver(currentUser, java.time.LocalDate.now())
-                .orElse(null);
-        
-        booking.setRemainingSwaps(activeSubscription != null ? activeSubscription.getRemainingSwaps() : 0);
-        
-        return booking;
     }
 
     @Transactional(readOnly = true)

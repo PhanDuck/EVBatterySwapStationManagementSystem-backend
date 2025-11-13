@@ -162,10 +162,10 @@ public class BatteryService {
             throw new IllegalStateException("Pin đã đặt trước!");
         }
 
-//        // CHẶN ĐỔI LOẠI PIN KHI PIN Ở TRẠM
-//        if (request.getBatteryTypeId() != null && battery.getCurrentStation() != null) {
-//            throw new IllegalStateException("Pin đang ở trạm, không thể đổi loại pin! Chuyển về kho trước.");
-//        }
+        // CHẶN ĐỔI LOẠI PIN KHI PIN Ở TRẠM
+        if (request.getBatteryTypeId() != null && battery.getCurrentStation() != null) {
+            throw new IllegalStateException("Pin đang ở trạm, không thể đổi loại pin! Chuyển về kho trước.");
+        }
 
         // Lưu trạng thái cũ để xử lý StationInventory
         com.evbs.BackEndEvBs.entity.Station oldStation = battery.getCurrentStation();

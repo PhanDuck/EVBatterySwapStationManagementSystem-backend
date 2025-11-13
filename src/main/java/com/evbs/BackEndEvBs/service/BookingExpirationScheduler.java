@@ -64,8 +64,7 @@ public class BookingExpirationScheduler {
                 }
 
                 if (booking.getStatus() == Booking.Status.CONFIRMED) {
-                    // TRU LUOT SWAP VI DRIVER KHONG DEN
-                    deductSwapForNoShow(booking);
+                    // KHÔNG HOÀN LẠI LƯỢT SWAP (đã trừ từ lúc booking, driver không đến = mất lượt)
 
                     // Lưu mã code trước khi xóa để gửi email
                     String oldCode = booking.getConfirmationCode();
@@ -76,7 +75,7 @@ public class BookingExpirationScheduler {
                     booking.setReservationExpiry(null);
                     bookingRepository.save(booking);
 
-                    logger.info("Da huy booking het han VA TRU LUOT SWAP. BookingID: {}, ConfirmationCode: '{}' (da xoa), DriverID: {}",
+                    logger.info("Da huy booking het han (KHONG HOAN LAI LUOT). BookingID: {}, ConfirmationCode: '{}' (da xoa), DriverID: {}",
                             booking.getId(), oldCode, booking.getDriver().getId());
                     cancelledCount++;
 
@@ -102,44 +101,6 @@ public class BookingExpirationScheduler {
 
         logger.debug("Da giai phong pin. BatteryID: {}, StationID: {}",
                 battery.getId(), battery.getCurrentStation() != null ? battery.getCurrentStation().getId() : null);
-    }
-
-    private void deductSwapForNoShow(Booking booking) {
-        try {
-            List<DriverSubscription> activeSubscriptions = driverSubscriptionRepository
-                    .findActiveSubscriptionsByDriver(booking.getDriver(), java.time.LocalDate.now());
-
-            if (activeSubscriptions.isEmpty()) {
-                logger.warn("Khong tim thay subscription ACTIVE cho driver. DriverID: {}",
-                        booking.getDriver().getId());
-                return;
-            }
-
-            DriverSubscription subscription = activeSubscriptions.get(0);
-            int remainingBefore = subscription.getRemainingSwaps();
-
-            if (remainingBefore > 0) {
-                subscription.setRemainingSwaps(remainingBefore - 1);
-
-                if (subscription.getRemainingSwaps() == 0) {
-                    subscription.setStatus(DriverSubscription.Status.EXPIRED);
-                    logger.info("Subscription het luot swap. SubscriptionID: {}, DriverID: {}",
-                            subscription.getId(), booking.getDriver().getId());
-                }
-
-                driverSubscriptionRepository.save(subscription);
-
-                logger.info("Da tru luot swap vi khong den. DriverID: {}, RemainingSwaps: {} → {}",
-                        booking.getDriver().getId(), remainingBefore, subscription.getRemainingSwaps());
-            } else {
-                logger.warn("Subscription da het luot swap. SubscriptionID: {}, DriverID: {}",
-                        subscription.getId(), booking.getDriver().getId());
-            }
-
-        } catch (Exception e) {
-            logger.error("Loi khi tru luot swap. BookingID: {}, DriverID: {}",
-                    booking.getId(), booking.getDriver().getId(), e);
-        }
     }
 
     /**
@@ -175,7 +136,7 @@ public class BookingExpirationScheduler {
             // Thông báo lý do hủy tự động
             emailDetail.setCancellationPolicy(
                     "Booking của bạn đã bị hủy tự động do hết thời gian giữ chỗ (3 giờ). " +
-                            "Một lượt swap đã bị trừ khỏi gói dịch vụ của bạn vì không đến thực hiện swap."
+                            "Lượt swap đã bị trừ từ lúc booking và KHÔNG ĐƯỢC HOÀN LẠI vì bạn không đến."
             );
 
             // Thêm loại hủy và lý do

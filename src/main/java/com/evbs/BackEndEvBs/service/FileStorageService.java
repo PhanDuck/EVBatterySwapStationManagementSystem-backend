@@ -34,19 +34,19 @@ public class FileStorageService {
 
             // Validate file
             if (file.isEmpty()) {
-                throw new AuthenticationException("File không được để trống!");
+                throw new AuthenticationException("File trống!");
             }
 
             // Kiểm tra định dạng file (chỉ cho phép ảnh)
             String contentType = file.getContentType();
             if (contentType == null || !contentType.startsWith("image/")) {
-                throw new AuthenticationException("Chỉ chấp nhận file ảnh (jpg, png, jpeg, gif)!");
+                throw new AuthenticationException("Chỉ chấp nhận ảnh!");
             }
 
             // Kiểm tra kích thước file (max 10MB)
             long maxFileSize = 10 * 1024 * 1024; // 10MB
             if (file.getSize() > maxFileSize) {
-                throw new AuthenticationException("Kích thước file không được vượt quá 10MB!");
+                throw new AuthenticationException("File quá 10MB!");
             }
 
             // Tạo thư mục nếu chưa tồn tại
@@ -60,7 +60,7 @@ public class FileStorageService {
 
             // Kiểm tra quyền ghi
             if (!Files.isWritable(uploadDirectory)) {
-                throw new AuthenticationException("Không có quyền ghi vào thư mục: " + uploadPath);
+                throw new AuthenticationException("Lỗi mạng!");
             }
 
             // Tạo tên file unique để tránh trùng lặp
@@ -85,7 +85,7 @@ public class FileStorageService {
                 System.out.println("File saved successfully!");
                 System.out.println("File size: " + Files.size(filePath) + " bytes");
             } else {
-                throw new AuthenticationException("File không được lưu thành công!");
+                throw new AuthenticationException("Lỗi lưu file!");
             }
 
             // Trả về URL đầy đủ để truy cập file
@@ -98,7 +98,7 @@ public class FileStorageService {
         } catch (IOException e) {
             System.err.println("Error uploading file: " + e.getMessage());
             e.printStackTrace();
-            throw new AuthenticationException("Lỗi khi upload file: " + e.getMessage());
+            throw new AuthenticationException("Lỗi upload!");
         }
     }
 

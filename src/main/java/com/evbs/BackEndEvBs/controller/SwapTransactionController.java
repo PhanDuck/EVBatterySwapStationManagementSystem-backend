@@ -84,7 +84,7 @@ public class SwapTransactionController {
     @SecurityRequirement(name = "api")
     @Operation(summary = "Get all transactions")
     public ResponseEntity<List<SwapTransaction>> getAllTransactions() {
-        List<SwapTransaction> transactions = swapTransactionService.getAllTransactions();
+        List<SwapTransaction> transactions = swapTransactionService.getAllSwapTransactions();
         return ResponseEntity.ok(transactions);
     }
 

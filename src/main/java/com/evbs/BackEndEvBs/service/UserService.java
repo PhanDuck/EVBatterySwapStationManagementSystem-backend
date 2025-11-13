@@ -50,12 +50,12 @@ public class UserService {
     public UserResponse createUser(CreateUserRequest request) {
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại!");
+            throw new IllegalArgumentException("Email đã được sử dụng!");
         }
 
         // Kiểm tra phone number đã tồn tại
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new IllegalArgumentException("Số điện thoại đã tồn tại!");
+            throw new IllegalArgumentException("SĐT đã được sử dụng!");
         }
 
         // Tạo user mới
@@ -78,7 +78,7 @@ public class UserService {
         // Kiểm tra user hiện tại không được cập nhật chính mình
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getId().equals(id)) {
-            throw new AuthenticationException("Bạn không thể cập nhật tài khoản của chính mình");
+            throw new AuthenticationException("Không tự cập nhật!");
         }
 
         User user = userRepository.findById(id)
@@ -86,7 +86,7 @@ public class UserService {
 
         // BẢO VỆ ADMIN ROLE
         if (user.getRole() == User.Role.ADMIN && request.getRole() != null && request.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Không thể hạ cấp Admin!");
+            throw new AuthenticationException("Không được hạ cấp Admin!");
         }
 
         // Cập nhật các field nếu có giá trị mới
@@ -97,7 +97,7 @@ public class UserService {
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             // Kiểm tra email mới có trùng với user khác không
             if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại!");
+                throw new IllegalArgumentException("Email đã được sử dụng!");
             }
             user.setEmail(request.getEmail());
         }
@@ -105,7 +105,7 @@ public class UserService {
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
             // Kiểm tra phone number mới có trùng với user khác không
             if (!user.getPhoneNumber().equals(request.getPhoneNumber()) && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-                throw new IllegalArgumentException("Số điện thoại đã tồn tại!");
+                throw new IllegalArgumentException("SĐT đã được sử dụng!");
             }
             user.setPhoneNumber(request.getPhoneNumber());
         }
@@ -114,6 +114,23 @@ public class UserService {
             user.setRole(request.getRole());
         }
 
+        // KHÔNG CHO ĐỔI THÀNH INACTIVE KHI CÓ XE/BOOKING ĐANG HOẠT ĐỘNG
+        if (request.getStatus() != null && request.getStatus() == User.Status.INACTIVE) {
+            if (user.getRole() == User.Role.DRIVER) {
+                // Kiểm tra xe ACTIVE
+                long activeVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.ACTIVE);
+                if (activeVehicleCount > 0) {
+                    throw new IllegalStateException("Tài xế có xe hoạt động!");
+                }
+                
+                // Kiểm tra booking CONFIRMED
+                long confirmedBookingCount = bookingRepository.countByDriverAndStatus(user, Booking.Status.CONFIRMED);
+                if (confirmedBookingCount > 0) {
+                    throw new IllegalStateException("Tài xế có booking!");
+                }
+            }
+        }
+        
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
         }
@@ -129,7 +146,7 @@ public class UserService {
         // Kiểm tra user hiện tại không được xóa chính mình
         User currentUser = authenticationService.getCurrentUser();
         if (currentUser.getId().equals(id)) {
-            throw new AuthenticationException("Bạn không thể xóa tài khoản của chính mình");
+            throw new AuthenticationException("Không tự xóa!");
         }
 
         User user = userRepository.findById(id)
@@ -140,19 +157,19 @@ public class UserService {
             // Kiểm tra xe ACTIVE
             long activeVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.ACTIVE);
             if (activeVehicleCount > 0) {
-                throw new IllegalStateException("Driver đang có " + activeVehicleCount + " xe ACTIVE, không thể xóa!");
+                throw new IllegalStateException("Tài xế có xe hoạt động!");
             }
             
             // Kiểm tra booking CONFIRMED
             long confirmedBookingCount = bookingRepository.countByDriverAndStatus(user, Booking.Status.CONFIRMED);
             if (confirmedBookingCount > 0) {
-                throw new IllegalStateException("Driver đang có " + confirmedBookingCount + " booking CONFIRMED, không thể xóa!");
+                throw new IllegalStateException("Tài xế có booking!");
             }
         } else if (user.getRole() == User.Role.STAFF) {
             // Kiểm tra assignment
             long assignmentCount = staffStationAssignmentRepository.countByStaff(user);
             if (assignmentCount > 0) {
-                throw new IllegalStateException("Staff đang quản lý " + assignmentCount + " trạm, không thể xóa!");
+                throw new IllegalStateException("Staff đang quản lý trạm!");
             }
         }
 
@@ -186,7 +203,7 @@ public class UserService {
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             // Kiểm tra email mới có trùng với user khác không
             if (!currentUser.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại!");
+                throw new IllegalArgumentException("Email đã được sử dụng!");
             }
             currentUser.setEmail(request.getEmail());
         }
@@ -196,7 +213,7 @@ public class UserService {
             // Validate tuổi từ 16-100
             int age = java.time.Period.between(request.getDateOfBirth(), java.time.LocalDate.now()).getYears();
             if (age < 16 || age > 100) {
-                throw new IllegalArgumentException("Tuổi phải từ 16 đến 100 tuổi!");
+                throw new IllegalArgumentException("Tuổi từ 16-100!");
             }
             currentUser.setDateOfBirth(request.getDateOfBirth());
         }

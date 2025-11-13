@@ -129,44 +129,31 @@ public class SwapTransactionService {
 
         // 3. Validate booking status
         if (booking.getStatus() == Booking.Status.COMPLETED) {
-            throw new AuthenticationException(
-                    "Mã xác nhận đã được sử dụng. Booking này đã hoàn thành."
-            );
+            throw new AuthenticationException("Mã đã sử dụng!");
         }
 
         if (booking.getStatus() == Booking.Status.CANCELLED) {
-            throw new AuthenticationException(
-                    "Mã xác nhận không còn hiệu lực. Booking đã bị hủy."
-            );
+            throw new AuthenticationException("Booking đã bị hủy!");
         }
 
         if (booking.getStatus() != Booking.Status.CONFIRMED) {
-            throw new AuthenticationException(
-                    "Mã xác nhận chưa được kích hoạt. Vui lòng chờ nhân viên xác nhận. " +
-                            "Trạng thái hiện tại: " + booking.getStatus()
-            );
+            throw new AuthenticationException("Mã chưa được kích hoạt!");
         }
 
         // 3.1. Double check: Nếu đã có swap transaction → Code đã dùng rồi
         SwapTransaction existingTransaction = swapTransactionRepository.findByBooking(booking)
                 .orElse(null);
         if (existingTransaction != null) {
-            throw new AuthenticationException(
-                    "Mã xác nhận đã được sử dụng lúc " +
-                            existingTransaction.getEndTime() + ". Không thể swap lại."
-            );
+            throw new AuthenticationException("Mã đã được sử dụng!");
         }
 
         // 4. Validate subscription của driver
         DriverSubscription activeSubscription = driverSubscriptionRepository
                 .findActiveSubscriptionByDriver(driver, LocalDate.now())
-                .orElseThrow(() -> new AuthenticationException(
-                        "Bạn không có gói dịch vụ ACTIVE. Vui lòng mua gói dịch vụ trước khi sử dụng."
-                ));
+                .orElseThrow(() -> new AuthenticationException("Không có gói dịch vụ!"));
 
-        if (activeSubscription.getRemainingSwaps() <= 0) {
-            throw new AuthenticationException("Bạn đã hết lượt swap trong gói hiện tại.");
-        }
+        // KHÔNG CẦN CHECK remainingSwaps > 0 vì đã trừ lượt từ booking rồi
+        // Khi swap, remainingSwaps có thể = 0 (lượt cuối) nhưng vẫn hợp lệ
 
         // 5. Lấy thông tin từ booking
         Vehicle vehicle = booking.getVehicle();
@@ -174,21 +161,14 @@ public class SwapTransactionService {
 
         // 6. Validate battery type compatibility
         if (!station.getBatteryType().getId().equals(vehicle.getBatteryType().getId())) {
-            throw new AuthenticationException(
-                    "KHÔNG TƯƠNG THÍCH! Trạm '" + station.getName() +
-                            "' chỉ hỗ trợ pin loại '" + station.getBatteryType().getName() +
-                            "', nhưng xe '" + vehicle.getPlateNumber() +
-                            "' cần pin loại '" + vehicle.getBatteryType().getName() + "'."
-            );
+            throw new AuthenticationException("Loại pin không tương thích!");
         }
 
         // 7. Use RESERVED (PENDING) battery for this booking
         Battery swapOutBattery = batteryRepository.findByStatusAndReservedForBooking(
                 Battery.Status.PENDING,
                 booking
-        ).orElseThrow(() -> new AuthenticationException(
-                "Không tìm thấy pin đã đặt trước cho booking này. Vui lòng liên hệ nhân viên."
-        ));
+        ).orElseThrow(() -> new AuthenticationException("Không tìm thấy pin đặt trước!"));
 
         log.info("Sử dụng pin đã đặt trước {} cho booking {} (mã xác nhận: {})",
                 swapOutBattery.getId(), booking.getId(), confirmationCode);
@@ -276,10 +256,10 @@ public class SwapTransactionService {
      * READ - Lấy tất cả transactions (Admin/Staff only)
      */
     @Transactional(readOnly = true)
-    public List<SwapTransaction> getAllTransactions() {
+    public List<SwapTransaction> getAllSwapTransactions() {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Truy cập bị từ chối");
+            throw new AuthenticationException("Không có quyền truy cập!");
         }
         // Sử dụng JOIN FETCH để tránh N+1 query problem
         return swapTransactionRepository.findAllWithDetails();
@@ -301,7 +281,7 @@ public class SwapTransactionService {
         // - Staff/Admin xem được tất cả
         if (currentUser.getRole() == User.Role.DRIVER) {
             if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
-                throw new AuthenticationException("Bạn không có quyền xem lịch sử xe này");
+                throw new AuthenticationException("Không có quyền xem!");
             }
         }
 
@@ -323,7 +303,7 @@ public class SwapTransactionService {
 
         // Chỉ Staff/Admin mới xem được lịch sử pin
         if (!isAdminOrStaff(currentUser)) {
-            throw new AuthenticationException("Chỉ nhân viên/quản trị viên mới có quyền xem lịch sử sử dụng pin");
+            throw new AuthenticationException("Chỉ Staff/Admin!");
         }
 
         // Kiểm tra pin có tồn tại không
@@ -432,10 +412,8 @@ public class SwapTransactionService {
         User currentStaff = transaction.getStaff(); // Lấy từ transaction (đã set trong createSwapByConfirmationCode)
         handleBatterySwap(transaction, currentStaff);
 
-        // 2. Trừ remainingSwaps
-        int currentRemaining = subscription.getRemainingSwaps();
-        subscription.setRemainingSwaps(currentRemaining - 1);
-        driverSubscriptionRepository.save(subscription);
+        // 2. KHÔNG TRỪ remainingSwaps Ở ĐÂY NỮA (đã trừ từ booking)
+        // Logic mới: Booking đã trừ lượt swap, swap chỉ thực hiện đổi pin
 
         // 3. Cập nhật booking: set status COMPLETED và XÓA confirmationCode để tái sử dụng
         if (booking != null && booking.getStatus() == Booking.Status.CONFIRMED) {
@@ -444,7 +422,6 @@ public class SwapTransactionService {
             bookingRepository.save(booking);
             log.info("Đã xóa confirmationCode cho booking ID {} sau khi swap thành công", booking.getId());
         }
-
 
         // 4. Kiểm tra nếu hết lượt swap → set subscription status = EXPIRED
         if (subscription.getRemainingSwaps() <= 0) {

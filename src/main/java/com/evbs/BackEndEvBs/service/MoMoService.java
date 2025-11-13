@@ -164,12 +164,12 @@ public class MoMoService {
 
                 return result;
             } else {
-                throw new RuntimeException("MoMo API error: " + responseBody);
+                throw new RuntimeException("Lỗi mạng!");
             }
 
         } catch (Exception e) {
             log.error("Lỗi tạo MoMo payment: {}", e.getMessage());
-            throw new RuntimeException("Không thể tạo MoMo payment URL", e);
+            throw new RuntimeException("Lỗi mạng!", e);
         }
     }
 
@@ -229,7 +229,7 @@ public class MoMoService {
             Long driverId = extractLong(extraDataMap, "driverId");
 
             if (packageId == null || driverId == null) {
-                throw new RuntimeException("Không thể lấy packageId hoặc driverId từ extraData: " + extraData);
+                throw new RuntimeException("Lỗi mạng!");
             }
 
             ServicePackage servicePackage = servicePackageRepository.findById(packageId)
@@ -448,12 +448,12 @@ public class MoMoService {
 
                 return result;
             } else {
-                throw new RuntimeException("MoMo API error: " + responseBody);
+                throw new RuntimeException("Lỗi mạng!");
             }
 
         } catch (Exception e) {
             log.error("UPGRADE - Lỗi tạo MoMo payment: {}", e.getMessage());
-            throw new RuntimeException("Không thể tạo MoMo payment URL cho upgrade", e);
+            throw new RuntimeException("Lỗi mạng!", e);
         }
     }
 
@@ -602,7 +602,7 @@ public class MoMoService {
                         : "Unknown error";
 
                 log.error("RENEWAL - MoMo payment URL creation failed: {}", errorMessage);
-                throw new RuntimeException("Không thể tạo URL thanh toán MoMo: " + errorMessage);
+                throw new RuntimeException("Lỗi mạng!");
             }
 
             String payUrl = (String) responseBody.get("payUrl");
@@ -622,7 +622,7 @@ public class MoMoService {
 
         } catch (Exception e) {
             log.error("RENEWAL - Exception when calling MoMo API: {}", e.getMessage());
-            throw new RuntimeException("Lỗi khi gọi MoMo API: " + e.getMessage(), e);
+            throw new RuntimeException("Lỗi mạng!", e);
         }
     }
 }

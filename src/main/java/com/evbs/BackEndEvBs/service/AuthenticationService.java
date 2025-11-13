@@ -58,17 +58,17 @@ public class AuthenticationService implements UserDetailsService {
     public User register(RegisterRequest request){
         // Xác thực CAPTCHA trước
         if (!captchaService.verifyCaptcha(request.getCaptchaToken())) {
-            throw new AuthenticationException("Xác thực CAPTCHA không thành công!");
+            throw new AuthenticationException("CAPTCHA không hợp lệ!");
         }
 
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại!");
+            throw new IllegalArgumentException("Email đã được sử dụng!");
         }
 
         // Kiểm tra phone number đã tồn tại
         if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
-            throw new IllegalArgumentException("Số điện thoại đã tồn tại!");
+            throw new IllegalArgumentException("Số điện thoại đã được sử dụng!");
         }
 
         // Tạo user mới
@@ -118,7 +118,7 @@ public class AuthenticationService implements UserDetailsService {
         User user = authenticationRepository.findUserByEmail(email);
 
         if (user == null) {
-            throw new com.evbs.BackEndEvBs.exception.exceptions.NotFoundException("Email không tồn tại trong hệ thống");
+            throw new com.evbs.BackEndEvBs.exception.exceptions.NotFoundException("Email không tồn tại!");
         }
 
         // Tạo token cho reset password được 15 thôi ehhehe
@@ -154,17 +154,17 @@ public class AuthenticationService implements UserDetailsService {
 
         // 1. Kiểm tra mật khẩu cũ có đúng không
         if (!passwordEncoder.matches(request.getOldPassword(), currentUser.getPasswordHash())) {
-            throw new AuthenticationException("Mật khẩu cũ không chính xác!");
+            throw new AuthenticationException("Mật khẩu cũ sai!");
         }
 
         // 2. Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp không
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new IllegalArgumentException("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+            throw new IllegalArgumentException("Mật khẩu xác nhận không khớp!");
         }
 
         // 3. Kiểm tra mật khẩu mới không được trùng mật khẩu cũ
         if (passwordEncoder.matches(request.getNewPassword(), currentUser.getPasswordHash())) {
-            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu cũ!");
+            throw new IllegalArgumentException("Mật khẩu mới trùng mật khẩu cũ!");
         }
 
         // 4. Cập nhật mật khẩu mới

@@ -125,7 +125,10 @@ public class BookingExpirationScheduler {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yyyy");
             emailDetail.setBookingTime(booking.getBookingTime().format(formatter));
 
-            emailDetail.setVehicleModel(booking.getVehicle().getModel() != null ? booking.getVehicle().getModel() : booking.getVehicle().getPlateNumber());
+            // TÁCH RIÊNG: Model xe và Biển số xe
+            emailDetail.setVehicleModel(booking.getVehicle().getModel() != null ? booking.getVehicle().getModel() : "Xe điện");
+            emailDetail.setVehiclePlateNumber(booking.getVehicle().getPlateNumber()); // Biển số riêng
+            
             emailDetail.setBatteryType(
                     booking.getStation().getBatteryType().getName() +
                             (booking.getStation().getBatteryType().getCapacity() != null ? " - " + booking.getStation().getBatteryType().getCapacity() + "kWh" : "")

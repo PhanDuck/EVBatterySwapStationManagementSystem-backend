@@ -136,7 +136,7 @@ public class BookingService {
 
         // ========== TỰ ĐỘNG SET THỜI GIAN 3 TIẾNG SAU ==========
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime bookingTime = now.plusHours(3); // LUÔN ĐẶT 3 TIẾNG SAU
+        LocalDateTime bookingTime = now.plusHours(3); //ĐẶT 3 TIẾNG SAU
 
         // ========== TỰ ĐỘNG CONFIRM BOOKING VÀ RESERVE PIN ==========
 

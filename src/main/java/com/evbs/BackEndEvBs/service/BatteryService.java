@@ -157,7 +157,7 @@ public class BatteryService {
         if (battery.getStatus() == Battery.Status.IN_USE) {
             throw new IllegalStateException("Pin đang lắp xe!");
         }
-        
+
         if (battery.getStatus() == Battery.Status.PENDING) {
             throw new IllegalStateException("Pin đã đặt trước!");
         }
@@ -194,7 +194,7 @@ public class BatteryService {
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy pin"));
             battery.setBatteryType(batteryType);
         }
-        
+
         // KHÔNG CHO UPDATE currentStation (vị trí pin chỉ thay đổi qua SwapTransaction)
 
         return batteryRepository.save(battery);
@@ -235,6 +235,7 @@ public class BatteryService {
     /**
      * READ - Lấy pin ở kho theo vehicle (Admin/Staff only)
      * Lấy pin khớp với loại pin của xe
+     * Pin ở kho: currentStation = NULL và có trong StationInventory
      */
     @Transactional(readOnly = true)
     public List<Battery> getWarehouseBatteriesByVehicleId(Long vehicleId) {
@@ -245,15 +246,108 @@ public class BatteryService {
 
         // Tìm xe và lấy battery type
         com.evbs.BackEndEvBs.entity.Vehicle vehicle = vehicleRepository.findById(vehicleId)
-            .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
         Long batteryTypeId = vehicle.getBatteryType().getId();
 
-        // Lấy pin AVAILABLE và có currentStation (trong kho) theo loại pin của xe
-        return batteryRepository.findByBatteryType_IdAndStatusAndCurrentStationIsNotNull(
-            batteryTypeId, 
-            Battery.Status.AVAILABLE
+        // Lấy pin AVAILABLE và currentStation = NULL (trong kho) theo loại pin của xe
+        return batteryRepository.findByBatteryType_IdAndStatusAndCurrentStationIsNull(
+                batteryTypeId,
+                Battery.Status.AVAILABLE
         );
+    }
+
+    /**
+     * SWAP FAULTY BATTERY - Đổi pin lỗi (chỉ áp dụng cho pin IN_USE)
+     * Pin lỗi: Lấy từ xe (IN_USE) -> đưa về kho với status MAINTENANCE
+     * Pin thay thế: Lấy từ kho (AVAILABLE + currentStation = NULL + có trong StationInventory) -> gắn lên xe
+     */
+    @Transactional
+    public Battery swapFaultyBattery(Long vehicleId, Long replacementBatteryId, String reason) {
+        User currentUser = authenticationService.getCurrentUser();
+        if (!isAdminOrStaff(currentUser)) {
+            throw new AuthenticationException("Truy cập bị từ chối");
+        }
+
+        // 1. Tìm xe
+        com.evbs.BackEndEvBs.entity.Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
+
+        // 2. Lấy pin lỗi TỪ XE (pin IN_USE đang gắn trên xe)
+        Battery faultyBattery = vehicle.getCurrentBattery();
+        if (faultyBattery == null) {
+            throw new IllegalStateException("Xe không có pin để đổi");
+        }
+
+        // 3. VALIDATE: Pin lỗi phải có status IN_USE (đang gắn trên xe)
+        if (faultyBattery.getStatus() != Battery.Status.IN_USE) {
+            throw new IllegalStateException("Chỉ có thể đổi pin đang sử dụng (IN_USE). Pin hiện tại: " + faultyBattery.getStatus());
+        }
+
+        // 4. VALIDATE: Pin lỗi không được có currentStation (vì đang ở trên xe)
+        if (faultyBattery.getCurrentStation() != null) {
+            throw new IllegalStateException("Pin lỗi đang có currentStation, không hợp lệ cho pin IN_USE trên xe");
+        }
+
+        // 5. Tìm pin thay thế TỪ KHO
+        Battery replacementBattery = batteryRepository.findById(replacementBatteryId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy pin thay thế"));
+
+        // 6. VALIDATE: Pin thay thế phải ở trong KHO (currentStation = NULL và có trong StationInventory)
+        if (replacementBattery.getCurrentStation() != null) {
+            throw new IllegalStateException("Pin thay thế phải ở trong KHO (currentStation = NULL), không được ở trạm");
+        }
+        if(replacementBattery.getStatus() == Battery.Status.IN_USE) {
+            throw new IllegalStateException("Pin thay thế đang ở trên xe khác");
+        }
+
+        // 7. VALIDATE: Pin thay thế phải có status AVAILABLE
+        if (replacementBattery.getStatus() != Battery.Status.AVAILABLE) {
+            throw new IllegalStateException("Pin thay thế phải có trạng thái AVAILABLE. Pin hiện tại: " + replacementBattery.getStatus());
+        }
+
+        // 8. VALIDATE: Pin thay thế phải có trong StationInventory (chứng minh đang ở kho)
+        StationInventory replacementInventory = stationInventoryRepository.findByBattery(replacementBattery)
+                .orElseThrow(() -> new IllegalStateException("Pin thay thế không có trong kho (không tìm thấy StationInventory)"));
+
+        // 9. VALIDATE: Loại pin phải khớp
+        if (!faultyBattery.getBatteryType().getId().equals(replacementBattery.getBatteryType().getId())) {
+            throw new IllegalStateException("Loại pin thay thế không khớp với loại pin của xe");
+        }
+
+        // ========== BẮT ĐẦU THỰC HIỆN SWAP ==========
+
+        // 10. Cập nhật PIN LỖI: Rời xe -> Vào kho với status MAINTENANCE
+        faultyBattery.setStatus(Battery.Status.MAINTENANCE);
+        faultyBattery.setCurrentStation(null);  // Vẫn ở kho (currentStation = NULL)
+        faultyBattery.setLastMaintenanceDate(LocalDate.now());
+        batteryRepository.save(faultyBattery);
+
+        // 11. Tạo StationInventory cho pin lỗi (đưa vào kho)
+        StationInventory faultyInventory = stationInventoryRepository.findByBattery(faultyBattery)
+                .orElseGet(() -> {
+                    StationInventory newInventory = new StationInventory();
+                    newInventory.setBattery(faultyBattery);
+                    return newInventory;
+                });
+        faultyInventory.setStatus(StationInventory.Status.MAINTENANCE);
+        faultyInventory.setLastUpdate(LocalDateTime.now());
+        stationInventoryRepository.save(faultyInventory);
+
+        // 12. Cập nhật PIN THAY THẾ: Rời kho -> Lên xe với status IN_USE
+        replacementBattery.setStatus(Battery.Status.IN_USE);
+        replacementBattery.setCurrentStation(null);  // Không thuộc trạm nào (đang ở trên xe)
+        replacementBattery.incrementUsageCount();
+        batteryRepository.save(replacementBattery);
+
+        // 13. Xóa StationInventory của pin thay thế (rời kho)
+        stationInventoryRepository.delete(replacementInventory);
+
+        // 14. Cập nhật XE: Tháo pin lỗi, gắn pin mới
+        vehicle.setCurrentBattery(replacementBattery);
+        vehicleRepository.save(vehicle);
+
+        return replacementBattery;
     }
 
 

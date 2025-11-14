@@ -172,12 +172,22 @@ public class DriverSubscriptionService {
     // ========================================
 
     /**
-     * TÍNH TOÁN CHI PHÍ NÂNG CẤP GÓI - MÔ HÌNH TELCO (ĐƠN GIẢN NHẤT)
+     * TÍNH TOÁN CHI PHÍ NÂNG CẤP GÓI
+     *
+     * CÔNG THỨC MỚI:
+     * 1. Giá trị hoàn lại = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ)
+     * 2. Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
+     *
+     * VÍ DỤ:
+     * - Gói cũ: 20 lượt = 400,000đ (đã dùng 5, còn 15)
+     * - Gói mới: 50 lượt = 800,000đ
+     * - Giá trị hoàn lại = 15 × (400,000 / 20) = 15 × 20,000 = 300,000đ
+     * - Tổng tiền = 800,000 - 300,000 = 500,000đ
      *
      * BUSINESS RULES:
      * 1. HỦY gói cũ ngay lập tức (CANCELLED)
      * 2. KÍCH HOẠT gói mới FULL 100%
-     * 3. THANH TOÁN = Giá FULL gói mới
+     * 3. THANH TOÁN = Giá gói mới - Giá trị hoàn lại từ gói cũ
      *
      * @param newPackageId ID của gói mới muốn nâng cấp
      * @return UpgradeCalculationResponse chứa chi tiết tính toán
@@ -221,13 +231,24 @@ public class DriverSubscriptionService {
         long daysRemaining = ChronoUnit.DAYS.between(today, currentSub.getEndDate());
 
         // ========================================
-        // 5. TÍNH TOÁN THANH TOÁN - SIÊU ĐƠN GIẢN!
+        // 5. TÍNH TOÁN THANH TOÁN THEO CÔNG THỨC MỚI
         // ========================================
 
-        // PHƯƠNG ÁN A: Trả FULL giá gói mới
-        BigDecimal paymentRequired = newPackage.getPrice();
+        // Bước 1: Tính giá trị hoàn lại = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ)
+        BigDecimal pricePerSwapOld = currentPackage.getPrice()
+                .divide(new BigDecimal(currentPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
 
-        // Ước tính giá trị mất mát (chỉ để hiển thị cho user)
+        BigDecimal refundValue = pricePerSwapOld
+                .multiply(new BigDecimal(remainingSwaps))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // Bước 2: Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
+        BigDecimal paymentRequired = newPackage.getPrice()
+                .subtract(refundValue)
+                .max(BigDecimal.ZERO)  // Đảm bảo không âm
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // Ước tính giá trị mất mát (về ngày còn lại - chỉ để hiển thị)
         long totalDays = ChronoUnit.DAYS.between(currentSub.getStartDate(), currentSub.getEndDate());
         BigDecimal estimatedLostValue = totalDays > 0
                 ? currentPackage.getPrice()
@@ -243,9 +264,15 @@ public class DriverSubscriptionService {
         String warning = String.format(
                 "CẢNH BÁO QUAN TRỌNG - VUI LÒNG ĐỌC KỸ:\n\n" +
                         "KHI NÂNG CẤP:\n" +
-                        "GÓI CŨ sẽ bị HỦY hoàn toàn\n\n" +
-                        "Và chuyển sang sử dụng GÓI MỚI\n\n" +
-                        "LƯU Ý: Hãy suy nghĩ thật kỹ trước khi nâng cấp!"
+                        "• GÓI CŨ sẽ bị HỦY hoàn toàn\n" +
+                        "• Bạn sẽ được HOÀN LẠI giá trị của %d lượt chưa dùng = %,.0f VNĐ\n" +
+                        "• GÓI MỚI sẽ được kích hoạt NGAY với FULL %d lượt\n" +
+                        "• Số tiền cần thanh toán: %,.0f VNĐ (= Giá gói mới - Giá trị hoàn lại)\n\n" +
+                        "LƯU Ý: Hãy suy nghĩ thật kỹ trước khi nâng cấp!",
+                remainingSwaps,
+                refundValue,
+                newPackage.getMaxSwaps(),
+                paymentRequired
         );
 
         // 8. Phân tích
@@ -276,11 +303,12 @@ public class DriverSubscriptionService {
                 .newMaxSwaps(newPackage.getMaxSwaps())
                 .newDuration(newPackage.getDuration())
 
-                // Tính toán (ĐƠN GIẢN!)
-                .refundValue(BigDecimal.ZERO) // KHÔNG HOÀN
+                // Tính toán (CÓ HOÀN LẠI GIÁ TRỊ LƯỢT CHƯA DÙNG)
+                .pricePerSwapOld(pricePerSwapOld) // Giá/lượt gói cũ
+                .refundValue(refundValue) // Giá trị hoàn lại
                 .upgradeFee(BigDecimal.ZERO) // KHÔNG PHÍ
-                .totalPaymentRequired(paymentRequired) // FULL PRICE
-                .estimatedLostValue(estimatedLostValue) // CHỈ ĐỂ HIỂN THỊ
+                .totalPaymentRequired(paymentRequired) // Giá gói mới - Giá trị hoàn lại
+                .estimatedLostValue(estimatedLostValue) // Giá trị ngày còn lại bị mất
 
                 // Sau nâng cấp
                 .totalSwapsAfterUpgrade(newPackage.getMaxSwaps()) // FULL
@@ -289,14 +317,14 @@ public class DriverSubscriptionService {
 
                 // Thông báo
                 .canUpgrade(true)
-                .message("Bạn có thể nâng cấp. Gói cũ sẽ BỊ HỦY, gói mới sẽ kích hoạt ngay lập tức.")
+                .message("Bạn có thể nâng cấp. Gói cũ sẽ BỊ HỦY, nhưng bạn sẽ được hoàn lại giá trị lượt chưa dùng. Gói mới sẽ kích hoạt ngay lập tức.")
                 .warning(warning)
                 .recommendation(analysis)
                 .build();
     }
 
     /**
-     * PHÂN TÍCH THEO MÔ HÌNH TELCO
+     * PHÂN TÍCH CHI PHÍ NÂNG CẤP
      */
     private String generateTelcoStyleAnalysis(
             ServicePackage currentPackage,
@@ -311,23 +339,33 @@ public class DriverSubscriptionService {
 
         analysis.append("PHÂN TÍCH CHI TIẾT:\n\n");
 
-        // 1. Thông tin mất mát
+        // 1. Tính giá trị lượt chưa dùng
+        BigDecimal pricePerSwap = currentPackage.getPrice()
+                .divide(new BigDecimal(currentPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
+        BigDecimal refundValue = pricePerSwap
+                .multiply(new BigDecimal(remainingSwaps))
+                .setScale(2, RoundingMode.HALF_UP);
+
         analysis.append(String.format(
-                "CẢNH BÁO QUAN TRỌNG - VUI LÒNG ĐỌC KỸ:\n\n" +
-                        "KHI NÂNG CẤP:\n" +
-                        "GÓI CŨ sẽ bị HỦY hoàn toàn\n\n" +
-                        "Và chuyển sang sử dụng GÓI MỚI\n\n" +
-                        "LƯU Ý: Hãy suy nghĩ thật kỹ trước khi nâng cấp!"
+                "Thanh toán:\n" +
+                        "Giá mới:     %,.0f đ\n\n" +
+                        "Hoàn lại:    %,.0f đ\n\n" +
+                        "Cần trả:     %,.0f đ\n\n" +
+                        "Hãy suy nghĩ thật kĩ trước khi nâng cấp !\n\n",
+                newPackage.getPrice(),
+                refundValue,
+                paymentRequired
         ));
         return analysis.toString();
     }
 
     /**
-     * XỬ LÝ NÂNG CẤP GÓI SAU KHI THANH TOÁN THÀNH CÔNG (TELCO MODEL)
+     * XỬ LÝ NÂNG CẤP GÓI SAU KHI THANH TOÁN THÀNH CÔNG
      *
-     * MÔ HÌNH TELCO - PHƯƠNG ÁN A (ĐƠN GIẢN NHẤT):
+     * LOGIC:
      * 1. HỦY gói cũ ngay lập tức (mất hết lượt và ngày còn lại)
-     * 2. KÍCH HOẠT gói mới với FULL capacity:
+     * 2. User đã được HOÀN LẠI giá trị lượt chưa dùng qua thanh toán
+     * 3. KÍCH HOẠT gói mới với FULL capacity
      *
      * @param newPackageId ID gói mới
      * @param driverId ID driver
@@ -350,14 +388,22 @@ public class DriverSubscriptionService {
 
         ServicePackage oldPackage = oldSubscription.getServicePackage();
 
-        // Ghi log thông tin nâng cấp TELCO STYLE
-        log.info("========== NÂNG CẤP GÓI (TELCO MODEL) ==========");
+        // Ghi log thông tin nâng cấp
+        log.info("========== NÂNG CÁP GÓI (CÓ HOÀN LẠI) ==========");
         log.info("Tài xế: {}", driver.getEmail());
-        log.info("Gói CỦ: {} - {} lượt - Còn lại: {} lượt - Status: {} → EXPIRED (HỦY TOÀN BỘ)",
+        log.info("Gói CỦ: {} - {} lượt - Còn lại: {} lượt - Status: {} → EXPIRED (HỦY)",
                 oldPackage.getName(),
                 oldPackage.getMaxSwaps(),
                 oldSubscription.getRemainingSwaps(),
                 oldSubscription.getStatus()
+        );
+        log.info("Giá trị hoàn lại: {} lượt × ({} VNĐ / {} lượt) = {} VNĐ (đã trừ vào thanh toán)",
+                oldSubscription.getRemainingSwaps(),
+                oldPackage.getPrice(),
+                oldPackage.getMaxSwaps(),
+                oldPackage.getPrice()
+                        .divide(new BigDecimal(oldPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal(oldSubscription.getRemainingSwaps()))
         );
         log.info("Gói MỚI: {} - {} lượt FULL - {} VNĐ - {} ngày",
                 newPackage.getName(),
@@ -371,7 +417,7 @@ public class DriverSubscriptionService {
         oldSubscription.setEndDate(LocalDate.now()); // Kết thúc ngay hôm nay
         driverSubscriptionRepository.save(oldSubscription);
 
-        log.info("Gói cũ ID={} đã HỦY. {} lượt bị MẤT TRẮNG (TELCO model).",
+        log.info("Gói cũ ID={} đã HỦY. {} lượt đã được HOÀN LẠI giá trị qua thanh toán.",
                 oldSubscription.getId(),
                 oldSubscription.getRemainingSwaps()
         );

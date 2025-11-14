@@ -227,7 +227,7 @@ public class SwapTransactionService {
             BigDecimal randomChargeLevel = BigDecimal.valueOf(10 + random.nextInt(40)); // Random 10-49%
             swapOutBattery.setChargeLevel(randomChargeLevel);
             batteryRepository.save(swapOutBattery);
-            log.info("🔋 Pin ID {} được đổi vào xe - Snapshot: {}%, Mức pin hiện tại giảm xuống: {}%",
+            log.info("Pin ID {} được đổi vào xe - Snapshot: {}%, Mức pin hiện tại giảm xuống: {}%",
                     swapOutBattery.getId(),
                     savedTransaction.getSwapOutBatteryChargeLevel().intValue(),
                     randomChargeLevel.intValue());

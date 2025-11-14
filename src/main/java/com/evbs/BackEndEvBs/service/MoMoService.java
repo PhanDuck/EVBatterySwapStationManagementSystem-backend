@@ -327,9 +327,14 @@ public class MoMoService {
      * TẠO PAYMENT URL CHO NÂNG CẤP GÓI (UPGRADE)
      *
      * Tính toán theo công thức:
-     * - Giá trị hoàn lại = (Lượt chưa dùng) × (Giá/lượt gói cũ)
-     * - Phí nâng cấp = Giá gói cũ × 7%
-     * - Số tiền thanh toán = Giá gói mới + Phí nâng cấp - Giá trị hoàn lại
+     * 1. Giá trị hoàn lại = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ)
+     * 2. Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
+     *
+     * Ví dụ:
+     * - Gói cũ: 20 lượt = 400,000đ (đã dùng 5, còn 15)
+     * - Gói mới: 50 lượt = 800,000đ
+     * - Giá trị hoàn lại = 15 × (400,000 / 20) = 15 × 20,000 = 300,000đ
+     * - Tổng tiền = 800,000 - 300,000 = 500,000đ
      *
      * @param newPackageId ID gói mới
      * @param customRedirectUrl URL redirect sau khi thanh toán (optional)

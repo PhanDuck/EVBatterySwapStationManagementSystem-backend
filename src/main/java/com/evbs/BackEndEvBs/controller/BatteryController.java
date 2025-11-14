@@ -98,8 +98,7 @@ public class BatteryController {
     public ResponseEntity<Battery> swapFaultyBattery(@Valid @RequestBody FaultyBatterySwapRequest request) {
         Battery replacementBattery = batteryService.swapFaultyBattery(
                 request.getVehicleId(),
-                request.getReplacementBatteryId(),
-                request.getReason()
+                request.getReplacementBatteryId()
         );
         return ResponseEntity.ok(replacementBattery);
     }

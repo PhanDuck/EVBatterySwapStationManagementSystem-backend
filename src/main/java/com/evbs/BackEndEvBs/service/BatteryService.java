@@ -263,7 +263,7 @@ public class BatteryService {
      * Pin thay thế: Lấy từ kho (AVAILABLE + currentStation = NULL + có trong StationInventory) -> gắn lên xe
      */
     @Transactional
-    public Battery swapFaultyBattery(Long vehicleId, Long replacementBatteryId, String reason) {
+    public Battery swapFaultyBattery(Long vehicleId, Long replacementBatteryId) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Truy cập bị từ chối");

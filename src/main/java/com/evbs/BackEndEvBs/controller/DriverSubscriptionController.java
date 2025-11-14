@@ -64,7 +64,8 @@ public class DriverSubscriptionController {
     @Operation(
             summary = "Calculate upgrade cost",
             description = "Tính toán chi phí nâng cấp gói dịch vụ. " +
-                    "Công thức: Tổng tiền = Giá gói mới + Phí nâng cấp (7%) - Giá trị hoàn lại. " +
+                    "Công thức: Giá trị hoàn lại = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ). " +
+                    "Số tiền cần trả = Giá gói mới - Giá trị hoàn lại. " +
                     "Driver cần truyền vào packageId của gói muốn nâng cấp."
     )
     public ResponseEntity<UpgradeCalculationResponse> calculateUpgradeCost(
@@ -80,7 +81,8 @@ public class DriverSubscriptionController {
             summary = "Initiate package upgrade",
             description = "Khởi tạo quy trình nâng cấp gói. " +
                     "Sẽ tạo MoMo payment URL với số tiền đã tính toán theo công thức: " +
-                    "Tổng tiền = Giá gói mới + 7% phí - Giá trị hoàn lại. " +
+                    "Giá trị hoàn lại = (Lượt chưa dùng) × (Giá/lượt gói cũ). " +
+                    "Số tiền cần trả = Giá gói mới - Giá trị hoàn lại. " +
                     "Sau khi thanh toán thành công, gói cũ sẽ bị expire và gói mới được kích hoạt với FULL swaps."
     )
     public ResponseEntity<Map<String, String>> initiateUpgrade(

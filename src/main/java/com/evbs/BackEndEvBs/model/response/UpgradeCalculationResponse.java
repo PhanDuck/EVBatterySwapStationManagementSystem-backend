@@ -11,13 +11,17 @@ import java.time.LocalDate;
 /**
  * Response DTO cho API tính toán chi phí nâng cấp gói
  *
- * MÔ HÌNH MỚI - TELCO STYLE (Phương án A):
- * - Gói cũ: BỊ HỦY ngay lập tức (mất hết lượt và ngày còn lại)
+ * MÔ HÌNH MỚI - CÓ HOÀN LẠI GIÁ TRỊ:
+ * - Gói cũ: BỊ HỦY ngay lập tức
+ * - Giá trị hoàn lại: Tính theo lượt chưa dùng = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ)
  * - Gói mới: Kích hoạt FULL capacity (100% swaps, 100% duration)
- * - Thanh toán: FULL price của gói mới (không hoàn, không phí)
+ * - Thanh toán: Giá gói mới - Giá trị hoàn lại
  *
- * Giống như Viettel/Vinaphone: Đổi V90 sang V200
- * → Mất data V90, nhận FULL data V200, trả FULL tiền V200
+ * VÍ DỤ:
+ * - Gói cũ: 20 lượt = 400,000đ (đã dùng 5, còn 15)
+ * - Gói mới: 50 lượt = 800,000đ
+ * - Giá trị hoàn lại = 15 × (400,000 / 20) = 15 × 20,000 = 300,000đ
+ * - Tổng tiền = 800,000 - 300,000 = 500,000đ
  */
 @Data
 @Builder
@@ -44,12 +48,12 @@ public class UpgradeCalculationResponse {
     private Integer newMaxSwaps;
     private Integer newDuration;
 
-    // ===== TÍNH TOÁN CHI PHÍ (TELCO MODEL) =====
-    private BigDecimal pricePerSwapOld;          // Giá/lượt gói cũ (chỉ để tham khảo)
-    private BigDecimal refundValue;              // = 0 VNĐ (KHÔNG HOÀN)
-    private BigDecimal upgradeFee;               // = 0 VNĐ (KHÔNG PHÍ)
-    private BigDecimal totalPaymentRequired;     // = FULL price gói mới
-    private BigDecimal estimatedLostValue;       // Giá trị ước tính bị mất (để hiển thị cảnh báo)
+    // ===== TÍNH TOÁN CHI PHÍ =====
+    private BigDecimal pricePerSwapOld;          // Giá/lượt gói cũ (= Giá gói cũ / Tổng lượt)
+    private BigDecimal refundValue;              // Giá trị hoàn lại = (Lượt chưa dùng) × (Giá/lượt)
+    private BigDecimal upgradeFee;               // Phí nâng cấp (hiện tại = 0)
+    private BigDecimal totalPaymentRequired;     // Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
+    private BigDecimal estimatedLostValue;       // Giá trị ngày còn lại bị mất (để hiển thị)
 
     // ===== THÔNG TIN SAU NÂNG CẤP =====
     private Integer totalSwapsAfterUpgrade;      // = newMaxSwaps (FULL 100%)

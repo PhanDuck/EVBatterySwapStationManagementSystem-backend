@@ -11,7 +11,5 @@ public class LoginRequest {
     
     @NotEmpty
     String password;
-    
-    @NotEmpty(message = "Captcha không được để trống!")
-    String captchaToken;
+
 }

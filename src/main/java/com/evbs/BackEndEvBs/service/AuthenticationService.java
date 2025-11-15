@@ -87,10 +87,6 @@ public class AuthenticationService implements UserDetailsService {
 
 
     public UserResponse login(LoginRequest loginRequest){
-        // Xác thực CAPTCHA trước khi đăng nhập
-        if (!captchaService.verifyCaptcha(loginRequest.getCaptchaToken())) {
-            throw new AuthenticationException("CAPTCHA không hợp lệ!");
-        }
 
         //xứ lí logic
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(

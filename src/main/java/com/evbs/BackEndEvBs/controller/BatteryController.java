@@ -3,6 +3,7 @@ package com.evbs.BackEndEvBs.controller;
 import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
 import com.evbs.BackEndEvBs.model.request.BatteryUpdateRequest;
+import com.evbs.BackEndEvBs.model.request.FaultyBatterySwapRequest;
 import com.evbs.BackEndEvBs.service.BatteryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -84,6 +85,22 @@ public class BatteryController {
     public ResponseEntity<List<Battery>> getWarehouseBatteriesByVehicle(@PathVariable Long vehicleId) {
         List<Battery> batteries = batteryService.getWarehouseBatteriesByVehicleId(vehicleId);
         return ResponseEntity.ok(batteries);
+    }
+
+    /**
+     * POST /api/battery/swap-faulty : Swap faulty battery (Admin/Staff only)
+     * Đổi pin lỗi - chỉ áp dụng cho pin IN_USE
+     * Lấy pin từ kho để thay thế và thu hồi pin lỗi về kho với status MAINTENANCE
+     */
+    @PostMapping("/swap-faulty")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Swap faulty battery", description = "Đổi pin lỗi đang sử dụng (IN_USE) bằng pin từ kho. Pin lỗi sẽ được đưa về kho với status MAINTENANCE")
+    public ResponseEntity<Battery> swapFaultyBattery(@Valid @RequestBody FaultyBatterySwapRequest request) {
+        Battery replacementBattery = batteryService.swapFaultyBattery(
+                request.getVehicleId(),
+                request.getReplacementBatteryId()
+        );
+        return ResponseEntity.ok(replacementBattery);
     }
 
 }

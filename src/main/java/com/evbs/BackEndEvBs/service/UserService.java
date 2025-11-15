@@ -17,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -211,7 +213,7 @@ public class UserService {
         // Cập nhật ngày sinh nếu có
         if (request.getDateOfBirth() != null) {
             // Validate tuổi từ 16-100
-            int age = java.time.Period.between(request.getDateOfBirth(), java.time.LocalDate.now()).getYears();
+            int age = Period.between(request.getDateOfBirth(), LocalDate.now()).getYears();
             if (age < 16 || age > 100) {
                 throw new IllegalArgumentException("Tuổi từ 16-100!");
             }

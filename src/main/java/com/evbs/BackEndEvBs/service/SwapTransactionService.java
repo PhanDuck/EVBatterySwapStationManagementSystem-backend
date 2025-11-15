@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Service xử lý các giao dịch hoán đổi pin
@@ -223,7 +225,7 @@ public class SwapTransactionService {
         // 11. SAU KHI LƯU SNAPSHOT → Giảm pin mới xuống dưới 50%
         // (Mô phỏng việc tài xế sử dụng xe sau khi đổi pin)
         if (swapOutBattery != null) {
-            java.util.Random random = new java.util.Random();
+            Random random = new Random();
             BigDecimal randomChargeLevel = BigDecimal.valueOf(10 + random.nextInt(40)); // Random 10-49%
             swapOutBattery.setChargeLevel(randomChargeLevel);
             batteryRepository.save(swapOutBattery);
@@ -332,7 +334,7 @@ public class SwapTransactionService {
         List<SwapTransaction> swapInHistory = swapTransactionRepository.findBySwapInBatteryWithDetailsOrderByStartTimeDesc(battery);
 
         // Gộp 2 danh sách và sắp xếp theo thời gian
-        List<SwapTransaction> allHistory = new java.util.ArrayList<>();
+        List<SwapTransaction> allHistory = new ArrayList<>();
         allHistory.addAll(swapOutHistory);
         allHistory.addAll(swapInHistory);
 

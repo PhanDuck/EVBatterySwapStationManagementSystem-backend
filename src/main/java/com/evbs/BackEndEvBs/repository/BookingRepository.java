@@ -3,6 +3,7 @@ package com.evbs.BackEndEvBs.repository;
 import com.evbs.BackEndEvBs.entity.Booking;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.entity.User;
+import com.evbs.BackEndEvBs.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -75,7 +76,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // KIỂM TRA: 1 xe chỉ có 1 booking active tại 1 thời điểm
     @Query("SELECT b FROM Booking b WHERE b.vehicle = :vehicle AND b.status NOT IN :statuses")
     List<Booking> findByVehicleAndStatusNotIn(
-            @Param("vehicle") com.evbs.BackEndEvBs.entity.Vehicle vehicle,
+            @Param("vehicle") Vehicle vehicle,
             @Param("statuses") List<Booking.Status> statuses
     );
     

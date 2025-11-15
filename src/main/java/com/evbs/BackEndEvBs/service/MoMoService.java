@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -69,7 +70,7 @@ public class MoMoService {
         User currentDriver = authenticationService.getCurrentUser();
         var activeSubscriptionOpt = driverSubscriptionRepository.findActiveSubscriptionByDriver(
                 currentDriver,
-                java.time.LocalDate.now()
+                LocalDate.now()
         );
 
         if (activeSubscriptionOpt.isPresent()) {

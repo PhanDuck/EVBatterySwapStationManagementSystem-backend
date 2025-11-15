@@ -1,9 +1,6 @@
 package com.evbs.BackEndEvBs.service;
 
-import com.evbs.BackEndEvBs.entity.Battery;
-import com.evbs.BackEndEvBs.entity.BatteryType;
-import com.evbs.BackEndEvBs.entity.StationInventory;
-import com.evbs.BackEndEvBs.entity.User;
+import com.evbs.BackEndEvBs.entity.*;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.BatteryRequest;
@@ -168,7 +165,7 @@ public class BatteryService {
         }
 
         // Lưu trạng thái cũ để xử lý StationInventory
-        com.evbs.BackEndEvBs.entity.Station oldStation = battery.getCurrentStation();
+        Station oldStation = battery.getCurrentStation();
 
         // Chỉ update những field không null
         if (request.getModel() != null && !request.getModel().trim().isEmpty()) {
@@ -245,7 +242,7 @@ public class BatteryService {
         }
 
         // Tìm xe và lấy battery type
-        com.evbs.BackEndEvBs.entity.Vehicle vehicle = vehicleRepository.findById(vehicleId)
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
         Long batteryTypeId = vehicle.getBatteryType().getId();
@@ -270,7 +267,7 @@ public class BatteryService {
         }
 
         // 1. Tìm xe
-        com.evbs.BackEndEvBs.entity.Vehicle vehicle = vehicleRepository.findById(vehicleId)
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
         // 2. Lấy pin lỗi TỪ XE (pin IN_USE đang gắn trên xe)

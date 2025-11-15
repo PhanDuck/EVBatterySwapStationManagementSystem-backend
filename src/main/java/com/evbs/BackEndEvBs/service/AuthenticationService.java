@@ -4,6 +4,7 @@ package com.evbs.BackEndEvBs.service;
 import com.evbs.BackEndEvBs.entity.User;
 
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
+import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.model.request.LoginRequest;
 import com.evbs.BackEndEvBs.model.request.RegisterRequest;
@@ -86,6 +87,10 @@ public class AuthenticationService implements UserDetailsService {
 
 
     public UserResponse login(LoginRequest loginRequest){
+        // Xác thực CAPTCHA trước khi đăng nhập
+        if (!captchaService.verifyCaptcha(loginRequest.getCaptchaToken())) {
+            throw new AuthenticationException("CAPTCHA không hợp lệ!");
+        }
 
         //xứ lí logic
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
@@ -118,7 +123,7 @@ public class AuthenticationService implements UserDetailsService {
         User user = authenticationRepository.findUserByEmail(email);
 
         if (user == null) {
-            throw new com.evbs.BackEndEvBs.exception.exceptions.NotFoundException("Email không tồn tại!");
+            throw new NotFoundException("Email không tồn tại!");
         }
 
         // Tạo token cho reset password được 15 thôi ehhehe

@@ -33,7 +33,7 @@ public class BatteryController {
      * POST /api/battery : Create new battery (Admin/Staff only)
      */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create new battery")
     public ResponseEntity<Battery> createBattery(@Valid @RequestBody BatteryRequest request) {
         Battery battery = batteryService.createBattery(request);
@@ -44,7 +44,7 @@ public class BatteryController {
      * GET /api/battery : Get all batteries (Admin/Staff only)
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get all batteries")
     public ResponseEntity<List<Battery>> getAllBatteries() {
         List<Battery> batteries = batteryService.getAllBatteries();
@@ -55,7 +55,7 @@ public class BatteryController {
      * PUT /api/battery/{id} : Update battery (Admin/Staff only)
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update battery")
     public ResponseEntity<Battery> updateBattery(
             @PathVariable Long id,

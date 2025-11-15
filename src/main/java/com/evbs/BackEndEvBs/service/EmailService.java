@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.model.EmailDetail;
 import com.evbs.BackEndEvBs.entity.Payment;
 import com.evbs.BackEndEvBs.entity.ServicePackage;
 import com.evbs.BackEndEvBs.entity.User;
+import com.evbs.BackEndEvBs.entity.Vehicle;
 import com.evbs.BackEndEvBs.entity.SwapTransaction;
 import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.DriverSubscription;
@@ -182,7 +183,7 @@ public class EmailService {
     /**
      * Gửi email thông báo ticket mới đến Staff
      */
-    public void sendTicketCreatedToStaff(java.util.List<User> staffList, SupportTicket ticket) {
+    public void sendTicketCreatedToStaff(List<User> staffList, SupportTicket ticket) {
         if (staffList == null || staffList.isEmpty()) {
             log.warn("Không có staff nào để gửi email cho ticket: {}", ticket.getId());
             return;
@@ -222,7 +223,7 @@ public class EmailService {
     /**
      * Gửi email thông báo ticket mới đến Admin
      */
-    public void sendTicketCreatedToAdmin(java.util.List<User> adminList, SupportTicket ticket) {
+    public void sendTicketCreatedToAdmin(List<User> adminList, SupportTicket ticket) {
         if (adminList == null || adminList.isEmpty()) {
             log.warn("Không có admin nào để gửi email cho ticket: {}", ticket.getId());
             return;
@@ -494,7 +495,7 @@ public class EmailService {
         context.setVariable("remainingSwaps", remainingSwaps.toString());
 
         // Thông tin hủy bỏ
-        context.setVariable("cancellationTime", java.time.LocalDateTime.now().format(dateTimeFormatter));
+        context.setVariable("cancellationTime", LocalDateTime.now().format(dateTimeFormatter));
         context.setVariable("cancelledBy", cancelledBy != null ? cancelledBy : "Quản trị viên");
         context.setVariable("reason", reason != null && !reason.isEmpty() ? reason :
                 "Gói dịch vụ đã bị hủy bởi quản trị viên hệ thống. Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với bộ phận hỗ trợ khách hàng.");
@@ -550,7 +551,7 @@ public class EmailService {
     /**
      * Gửi email thông báo cho admin khi có yêu cầu đăng ký xe mới
      */
-    public void sendVehicleRequestToAdmin(List<User> adminList, com.evbs.BackEndEvBs.entity.Vehicle vehicle) {
+    public void sendVehicleRequestToAdmin(List<User> adminList, Vehicle vehicle) {
         try {
             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
@@ -599,7 +600,7 @@ public class EmailService {
     /**
      * Gửi email thông báo cho tài xế khi xe được phê duyệt
      */
-    public void sendVehicleApprovedToDriver(com.evbs.BackEndEvBs.entity.Vehicle vehicle) {
+    public void sendVehicleApprovedToDriver(Vehicle vehicle) {
         try {
             User driver = vehicle.getDriver();
             Context context = new Context();
@@ -654,7 +655,7 @@ public class EmailService {
     /**
      * Gửi email thông báo cho tài xế khi xe bị từ chối
      */
-    public void sendVehicleRejectedToDriver(com.evbs.BackEndEvBs.entity.Vehicle vehicle, String rejectionReason) {
+    public void sendVehicleRejectedToDriver(Vehicle vehicle, String rejectionReason) {
         try {
             User driver = vehicle.getDriver();
             Context context = new Context();

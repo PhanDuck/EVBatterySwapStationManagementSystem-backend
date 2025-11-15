@@ -1,5 +1,6 @@
 package com.evbs.BackEndEvBs.repository;
 
+import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.Booking;
 import com.evbs.BackEndEvBs.entity.SwapTransaction;
 import com.evbs.BackEndEvBs.entity.User;
@@ -78,7 +79,7 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.swapOutBattery = :battery " +
            "ORDER BY st.startTime DESC")
-    List<SwapTransaction> findBySwapOutBatteryWithDetailsOrderByStartTimeDesc(@Param("battery") com.evbs.BackEndEvBs.entity.Battery battery);
+    List<SwapTransaction> findBySwapOutBatteryWithDetailsOrderByStartTimeDesc(@Param("battery") Battery battery);
 
     //  Tìm tất cả lần pin được đem vào trạm với JOIN FETCH để tránh N+1 query
     @Query("SELECT DISTINCT st FROM SwapTransaction st " +
@@ -93,7 +94,7 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
            "LEFT JOIN FETCH st.booking " +
            "WHERE st.swapInBattery = :battery " +
            "ORDER BY st.startTime DESC")
-    List<SwapTransaction> findBySwapInBatteryWithDetailsOrderByStartTimeDesc(@Param("battery") com.evbs.BackEndEvBs.entity.Battery battery);
+    List<SwapTransaction> findBySwapInBatteryWithDetailsOrderByStartTimeDesc(@Param("battery") Battery battery);
 
     // Tìm TẤT CẢ transactions với JOIN FETCH để tránh N+1 query (cho getAllTransactions)
     @Query("SELECT DISTINCT st FROM SwapTransaction st " +

@@ -1,6 +1,8 @@
 package com.evbs.BackEndEvBs.service;
 
+import com.evbs.BackEndEvBs.entity.Battery;
 import com.evbs.BackEndEvBs.entity.BatteryType;
+import com.evbs.BackEndEvBs.entity.Booking;
 import com.evbs.BackEndEvBs.entity.Station;
 import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -211,8 +214,8 @@ public class StationService {
         // KIỂM TRA: Trạm có pin AVAILABLE/PENDING
         long availableBatteryCount = batteryRepository.findByCurrentStation_Id(id)
             .stream()
-            .filter(b -> b.getStatus() == com.evbs.BackEndEvBs.entity.Battery.Status.AVAILABLE || 
-                        b.getStatus() == com.evbs.BackEndEvBs.entity.Battery.Status.PENDING)
+            .filter(b -> b.getStatus() == Battery.Status.AVAILABLE || 
+                        b.getStatus() == Battery.Status.PENDING)
             .count();
             
         if (availableBatteryCount > 0) {
@@ -223,7 +226,7 @@ public class StationService {
         long confirmedBookingCount = bookingRepository.findAll()
             .stream()
             .filter(b -> b.getStation().getId().equals(id) && 
-                        b.getStatus() == com.evbs.BackEndEvBs.entity.Booking.Status.CONFIRMED)
+                        b.getStatus() == Booking.Status.CONFIRMED)
             .count();
             
         if (confirmedBookingCount > 0) {
@@ -257,12 +260,12 @@ public class StationService {
         }
 
         // Lấy tất cả pin có SOH < 70% (từ BatteryHealthService)
-        List<com.evbs.BackEndEvBs.entity.Battery> allBatteriesNeedMaintenance = batteryHealthService.getBatteriesNeedingMaintenance();
+        List<Battery> allBatteriesNeedMaintenance = batteryHealthService.getBatteriesNeedingMaintenance();
         
         // Filter chỉ lấy pin Ở TRẠM NÀY (currentStation = stationId)
-        List<com.evbs.BackEndEvBs.entity.Battery> batteriesAtStation = allBatteriesNeedMaintenance.stream()
+        List<Battery> batteriesAtStation = allBatteriesNeedMaintenance.stream()
                 .filter(b -> b.getCurrentStation() != null && b.getCurrentStation().getId().equals(stationId))
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
         
         Map<String, Object> response = new HashMap<>();
         response.put("stationId", stationId);

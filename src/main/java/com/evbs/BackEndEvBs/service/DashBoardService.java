@@ -26,18 +26,16 @@ public class DashBoardService {
     private final PaymentRepository paymentRepository;
 
     /**
-     * Lấy toàn bộ dữ liệu dashboard
+     * Lấy toàn bộ dữ liệu dashboard - RÚT GỌN CHỈ CÁI CẦN THIẾT
      */
     public DashboardResponse getDashboardData() {
         return DashboardResponse.builder()
                 .overview(getOverviewStats())
-                .revenue(getRevenueStats())
-                .transactions(getTransactionStats())
-                .users(getUserStats())
-                .stations(getStationStats())
-                .batteries(getBatteryStats())
+                .revenue(getRevenueStatsSimplified())
+                .users(getUserStatsSimplified())
+                .stations(getStationStatsSimplified())
+                .batteries(getBatteryStatsSimplified())
                 .recentTransactions(getRecentTransactions(10))
-                .topStations(getTopStations(5))
                 .build();
     }
 
@@ -97,182 +95,56 @@ public class DashBoardService {
     }
 
     /**
-     * Thống kê doanh thu
+     * Thống kê doanh thu - RÚT GỌN (CHỈ DÙNG monthlyRevenues)
      */
-    private DashboardResponse.RevenueStats getRevenueStats() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-        LocalDateTime weekStart = todayStart.minusDays(6);
-        LocalDateTime monthStart = now.withDayOfMonth(1).with(LocalTime.MIN);
-        LocalDateTime yearStart = now.withDayOfYear(1).with(LocalTime.MIN);
-
-        BigDecimal totalRevenue = paymentRepository.sumTotalRevenue();
-        BigDecimal todayRevenue = paymentRepository.sumRevenueByDateRange(todayStart, now);
-        BigDecimal weekRevenue = paymentRepository.sumRevenueByDateRange(weekStart, now);
-        BigDecimal monthRevenue = paymentRepository.sumRevenueByDateRange(monthStart, now);
-        BigDecimal yearRevenue = paymentRepository.sumRevenueByDateRange(yearStart, now);
-
-        // Giá trị giao dịch trung bình
-        Long transactionCount = swapTransactionRepository.count();
-        BigDecimal averageTransactionValue = BigDecimal.ZERO;
-        if (transactionCount > 0 && totalRevenue != null) {
-            averageTransactionValue = totalRevenue.divide(
-                    BigDecimal.valueOf(transactionCount), 2, RoundingMode.HALF_UP
-            );
-        }
-
-        // Doanh thu 7 ngày gần nhất
-        List<DashboardResponse.DailyRevenue> dailyRevenues = getDailyRevenues(7);
-
-        // Doanh thu 12 tháng gần nhất
+    private DashboardResponse.RevenueStats getRevenueStatsSimplified() {
+        // Chỉ lấy doanh thu theo tháng (12 tháng gần nhất) để vẽ biểu đồ
         List<DashboardResponse.MonthlyRevenue> monthlyRevenues = getMonthlyRevenues(12);
 
         return DashboardResponse.RevenueStats.builder()
-                .totalRevenue(totalRevenue != null ? totalRevenue : BigDecimal.ZERO)
-                .todayRevenue(todayRevenue != null ? todayRevenue : BigDecimal.ZERO)
-                .weekRevenue(weekRevenue != null ? weekRevenue : BigDecimal.ZERO)
-                .monthRevenue(monthRevenue != null ? monthRevenue : BigDecimal.ZERO)
-                .yearRevenue(yearRevenue != null ? yearRevenue : BigDecimal.ZERO)
-                .averageTransactionValue(averageTransactionValue)
-                .dailyRevenues(dailyRevenues)
                 .monthlyRevenues(monthlyRevenues)
                 .build();
     }
 
-    /**
-     * Thống kê giao dịch
-     */
-    private DashboardResponse.TransactionStats getTransactionStats() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-        LocalDateTime weekStart = todayStart.minusDays(6);
-        LocalDateTime monthStart = now.withDayOfMonth(1).with(LocalTime.MIN);
-
-        Long totalTransactions = swapTransactionRepository.count();
-        Long completedTransactions = swapTransactionRepository.countByStatus(SwapTransaction.Status.COMPLETED);
-        Long pendingTransactions = swapTransactionRepository.countByStatus(SwapTransaction.Status.PENDING_PAYMENT);
-        Long cancelledTransactions = swapTransactionRepository.countByStatus(SwapTransaction.Status.CANCELLED);
-
-        Long todayTransactions = swapTransactionRepository.countByStartTimeBetween(todayStart, now);
-        Long weekTransactions = swapTransactionRepository.countByStartTimeBetween(weekStart, now);
-        Long monthTransactions = swapTransactionRepository.countByStartTimeBetween(monthStart, now);
-
-        // Thời gian đổi pin trung bình (phút)
-        Double averageSwapTime = swapTransactionRepository.calculateAverageSwapTime();
-        if (averageSwapTime == null) averageSwapTime = 0.0;
-
-        // Giao dịch theo giờ (hôm nay)
-        List<DashboardResponse.HourlyTransaction> hourlyTransactions = getHourlyTransactions();
-
-        return DashboardResponse.TransactionStats.builder()
-                .totalTransactions(totalTransactions)
-                .completedTransactions(completedTransactions)
-                .pendingTransactions(pendingTransactions)
-                .cancelledTransactions(cancelledTransactions)
-                .todayTransactions(todayTransactions)
-                .weekTransactions(weekTransactions)
-                .monthTransactions(monthTransactions)
-                .averageSwapTime(averageSwapTime)
-                .hourlyTransactions(hourlyTransactions)
-                .build();
-    }
+    // XÓA getTransactionStats() vì không cần thiết cho frontend
 
     /**
-     * Thống kê người dùng
+     * Thống kê người dùng - RÚT GỌN (CHỈ totalUsers)
      */
-    private DashboardResponse.UserStats getUserStats() {
+    private DashboardResponse.UserStats getUserStatsSimplified() {
         Long totalUsers = userRepository.count();
-        Long totalDrivers = userRepository.countByRole(User.Role.DRIVER);
-        Long totalStaff = userRepository.countByRole(User.Role.STAFF);
-        Long totalAdmins = userRepository.countByRole(User.Role.ADMIN);
-        Long activeUsers = userRepository.countByStatus(User.Status.ACTIVE);
-
-        // Placeholder cho các thống kê mới (cần thêm trường createdAt trong entity)
-        Long newUsersToday = 0L;
-        Long newUsersWeek = 0L;
-        Long newUsersMonth = 0L;
-        Long activeSubscriptions = 0L; // Tạm thời set 0, sẽ cần query từ DriverSubscriptionRepository
 
         return DashboardResponse.UserStats.builder()
                 .totalUsers(totalUsers)
-                .totalDrivers(totalDrivers)
-                .totalStaff(totalStaff)
-                .totalAdmins(totalAdmins)
-                .activeUsers(activeUsers)
-                .newUsersToday(newUsersToday)
-                .newUsersWeek(newUsersWeek)
-                .newUsersMonth(newUsersMonth)
-                .activeSubscriptions(activeSubscriptions)
                 .build();
     }
 
     /**
-     * Thống kê trạm
+     * Thống kê trạm - RÚT GỌN (CHỈ totalStations và stationUtilizations)
      */
-    private DashboardResponse.StationStats getStationStats() {
+    private DashboardResponse.StationStats getStationStatsSimplified() {
         Long totalStations = stationRepository.count();
-        Long activeStations = stationRepository.countByStatus(Station.Status.ACTIVE);
-        Long inactiveStations = totalStations - activeStations;
 
-        // Tổng số khe pin
-        Long totalBatterySlots = stationRepository.sumTotalCapacity();
-        if (totalBatterySlots == null) totalBatterySlots = 0L;
-
-        // Số khe đang được sử dụng
-        Long usedSlots = batteryRepository.countByCurrentStationIsNotNull();
-
-        // Khe còn trống
-        Long availableBatterySlots = totalBatterySlots - usedSlots;
-
-        // Tỷ lệ sử dụng trung bình
-        Double averageUtilization = 0.0;
-        if (totalBatterySlots > 0) {
-            averageUtilization = (usedSlots * 100.0) / totalBatterySlots;
-        }
-
-        // Tỷ lệ sử dụng từng trạm
-        List<DashboardResponse.StationUtilization> stationUtilizations = getStationUtilizations();
+        // Tỷ lệ sử dụng từng trạm (SỬA công thức: số booking của trạm / tổng booking * 100)
+        List<DashboardResponse.StationUtilization> stationUtilizations = getStationUtilizationsNew();
 
         return DashboardResponse.StationStats.builder()
                 .totalStations(totalStations)
-                .activeStations(activeStations)
-                .inactiveStations(inactiveStations)
-                .totalBatterySlots(totalBatterySlots)
-                .availableBatterySlots(availableBatterySlots)
-                .averageUtilization(averageUtilization)
                 .stationUtilizations(stationUtilizations)
                 .build();
     }
 
     /**
-     * Thống kê pin
+     * Thống kê pin - RÚT GỌN (CHỈ totalBatteries và batteryTypeDistributions)
      */
-    private DashboardResponse.BatteryStats getBatteryStats() {
+    private DashboardResponse.BatteryStats getBatteryStatsSimplified() {
         Long totalBatteries = batteryRepository.count();
-        Long availableBatteries = batteryRepository.countByStatus(Battery.Status.AVAILABLE);
-        Long chargingBatteries = batteryRepository.countByStatus(Battery.Status.CHARGING);
-        Long maintenanceBatteries = batteryRepository.countByStatus(Battery.Status.MAINTENANCE);
-        Long damagedBatteries = batteryRepository.countByStatus(Battery.Status.RETIRED);
 
-        // Mức sạc trung bình
-        Double averageChargeLevel = batteryRepository.calculateAverageChargeLevel();
-        if (averageChargeLevel == null) averageChargeLevel = 0.0;
-
-        // Tình trạng sức khỏe trung bình
-        Double averageHealthLevel = batteryRepository.calculateAverageHealthLevel();
-        if (averageHealthLevel == null) averageHealthLevel = 0.0;
-
-        // Phân bố loại pin
+        // Phân bố loại pin (để vẽ Pie Chart)
         List<DashboardResponse.BatteryTypeDistribution> batteryTypeDistributions = getBatteryTypeDistributions();
 
         return DashboardResponse.BatteryStats.builder()
                 .totalBatteries(totalBatteries)
-                .availableBatteries(availableBatteries)
-                .chargingBatteries(chargingBatteries)
-                .maintenanceBatteries(maintenanceBatteries)
-                .damagedBatteries(damagedBatteries)
-                .averageChargeLevel(averageChargeLevel)
-                .averageHealthLevel(averageHealthLevel)
                 .batteryTypeDistributions(batteryTypeDistributions)
                 .build();
     }
@@ -298,39 +170,7 @@ public class DashBoardService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Lấy danh sách trạm hoạt động tốt nhất
-     */
-    public List<DashboardResponse.TopStation> getTopStations(int limit) {
-        LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).with(LocalTime.MIN);
-
-        List<Object[]> results = swapTransactionRepository.findTopStationsByTransactionCount(monthStart);
-
-        return results.stream()
-                .limit(limit)
-                .map(r -> {
-                    Station station = (Station) r[0];
-                    Long transactionCount = (Long) r[1];
-                    BigDecimal revenue = (BigDecimal) r[2];
-
-                    // Tính tỷ lệ sử dụng
-                    int usedSlots = station.getCurrentBatteryCount();
-                    double utilizationRate = 0.0;
-                    if (station.getCapacity() != null && station.getCapacity() > 0) {
-                        utilizationRate = (usedSlots * 100.0) / station.getCapacity();
-                    }
-
-                    return DashboardResponse.TopStation.builder()
-                            .stationId(station.getId())
-                            .stationName(station.getName())
-                            .location(station.getLocation())
-                            .transactionCount(transactionCount)
-                            .revenue(revenue != null ? revenue : BigDecimal.ZERO)
-                            .utilizationRate(utilizationRate)
-                            .build();
-                })
-                .collect(Collectors.toList());
-    }
+    // XÓA getTopStations() vì không cần thiết cho frontend
 
     // ============ PRIVATE HELPER METHODS ============
 
@@ -348,30 +188,7 @@ public class DashBoardService {
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
-    /**
-     * Lấy doanh thu theo ngày (n ngày gần nhất)
-     */
-    private List<DashboardResponse.DailyRevenue> getDailyRevenues(int days) {
-        List<DashboardResponse.DailyRevenue> dailyRevenues = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-        for (int i = days - 1; i >= 0; i--) {
-            LocalDate date = LocalDate.now().minusDays(i);
-            LocalDateTime dayStart = LocalDateTime.of(date, LocalTime.MIN);
-            LocalDateTime dayEnd = LocalDateTime.of(date, LocalTime.MAX);
-
-            BigDecimal revenue = paymentRepository.sumRevenueByDateRange(dayStart, dayEnd);
-            Long transactionCount = swapTransactionRepository.countByStartTimeBetween(dayStart, dayEnd);
-
-            dailyRevenues.add(DashboardResponse.DailyRevenue.builder()
-                    .date(date.format(formatter))
-                    .revenue(revenue != null ? revenue : BigDecimal.ZERO)
-                    .transactionCount(transactionCount)
-                    .build());
-        }
-
-        return dailyRevenues;
-    }
+    // XÓA getDailyRevenues() vì không cần thiết cho frontend
 
     /**
      * Lấy doanh thu theo tháng (n tháng gần nhất)
@@ -401,56 +218,36 @@ public class DashBoardService {
         return monthlyRevenues;
     }
 
-    /**
-     * Lấy giao dịch theo giờ (hôm nay)
-     */
-    private List<DashboardResponse.HourlyTransaction> getHourlyTransactions() {
-        LocalDateTime todayStart = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-        LocalDateTime now = LocalDateTime.now();
-
-        List<Object[]> results = swapTransactionRepository.countTransactionsByHour(todayStart, now);
-
-        // Tạo map từ kết quả - SQL Server trả về Integer cho COUNT và DATEPART
-        Map<Integer, Long> hourMap = new HashMap<>();
-        for (Object[] r : results) {
-            Integer hour = ((Number) r[0]).intValue();
-            Long count = ((Number) r[1]).longValue(); // Convert Integer to Long
-            hourMap.put(hour, count);
-        }
-
-        // Tạo danh sách đầy đủ 24 giờ
-        List<DashboardResponse.HourlyTransaction> hourlyTransactions = new ArrayList<>();
-        for (int hour = 0; hour < 24; hour++) {
-            hourlyTransactions.add(DashboardResponse.HourlyTransaction.builder()
-                    .hour(hour)
-                    .count(hourMap.getOrDefault(hour, 0L))
-                    .build());
-        }
-
-        return hourlyTransactions;
-    }
+    // XÓA getHourlyTransactions() vì không cần thiết cho frontend
 
     /**
-     * Lấy tỷ lệ sử dụng từng trạm
+     * Lấy tỷ lệ sử dụng từng trạm - CÔNG THỨC MỚI
+     * Tỷ lệ = (Số booking của trạm / Tổng số booking) * 100
      */
-    private List<DashboardResponse.StationUtilization> getStationUtilizations() {
+    private List<DashboardResponse.StationUtilization> getStationUtilizationsNew() {
         List<Station> stations = stationRepository.findAll();
-
+        
+        // Đếm tổng số booking của tất cả trạm
+        Long totalBookings = swapTransactionRepository.count();
+        
         return stations.stream()
                 .map(station -> {
-                    int totalSlots = station.getCapacity() != null ? station.getCapacity() : 0;
-                    int usedSlots = station.getCurrentBatteryCount();
+                    // Đếm số booking của trạm này
+                    Long stationBookings = swapTransactionRepository.countByStationId(station.getId());
+                    
+                    // Tính tỷ lệ: (Booking trạm / Tổng booking) * 100
                     double utilizationRate = 0.0;
-
-                    if (totalSlots > 0) {
-                        utilizationRate = (usedSlots * 100.0) / totalSlots;
+                    if (totalBookings != null && totalBookings > 0) {
+                        utilizationRate = (stationBookings * 100.0) / totalBookings;
+                        // Làm tròn 2 chữ số thập phân cho đẹp
+                        utilizationRate = Math.round(utilizationRate * 100.0) / 100.0;
                     }
 
                     return DashboardResponse.StationUtilization.builder()
                             .stationId(station.getId())
                             .stationName(station.getName())
-                            .totalSlots(totalSlots)
-                            .usedSlots(usedSlots)
+                            .totalSlots(stationBookings.intValue())  // Số booking của trạm
+                            .usedSlots(totalBookings.intValue())     // Tổng booking
                             .utilizationRate(utilizationRate)
                             .build();
                 })

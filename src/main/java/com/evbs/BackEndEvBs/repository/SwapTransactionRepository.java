@@ -138,4 +138,8 @@ public interface SwapTransactionRepository extends JpaRepository<SwapTransaction
             "ORDER BY DATEPART(HOUR, StartTime)",
             nativeQuery = true)
     List<Object[]> countTransactionsByHour(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Đếm số booking theo station_id (cho dashboard)
+    @Query("SELECT COUNT(st) FROM SwapTransaction st WHERE st.station.id = :stationId")
+    Long countByStationId(@Param("stationId") Long stationId);
 }

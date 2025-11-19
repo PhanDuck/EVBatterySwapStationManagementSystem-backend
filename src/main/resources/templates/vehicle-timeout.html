@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" style="margin:0; padding:0">
+<head>
+    <meta charset="utf-8">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Yêu cầu đăng ký xe đã hết hạn - EV Battery Swap Station</title>
+    <style>
+        .hover-underline:hover{ text-decoration: underline !important; }
+        @media (prefers-color-scheme: dark) {
+            .bg-body { background:#0e1114 !important; }
+            .card { background:#1b232c !important; border-color:#2b3642 !important; }
+            .text-muted { color:#9fb0c0 !important; }
+            .text { color:#e6eef7 !important; }
+            .hero { color:#e6eef7 !important; }
+            .btn { background:#ff9800 !important; border-color:#ff9800 !important; }
+            .info-box { background:#1f2937 !important; border-color:#374151 !important; }
+        }
+        a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+    </style>
+</head>
+<body class="bg-body" style="margin:0; padding:0; width:100% !important; background:#f6f6f6;">
+<!-- Preheader -->
+<div style="display:none; overflow:hidden; line-height:1px; opacity:0; max-height:0; max-width:0;">
+    Yêu cầu đăng ký xe [[${vehiclePlateNumber}]] đã hết hạn do không được duyệt trong [[${timeoutHours}]] tiếng
+</div>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-spacing:0; border-collapse:collapse; width:100%; background:#f6f6f6;">
+    <tr>
+        <td align="center" style="padding:24px 8px;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" class="card" style="border:1px solid #e9e9e9; border-radius:8px; background:#ffffff; width:100%; max-width:600px;">
+
+                <!-- Header -->
+                <tr>
+                    <td align="center" style="background:linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color:#ffffff; border-radius:8px 8px 0 0; padding:32px 16px;">
+                        <div style="font-size:48px; margin-bottom:12px;">
+                            ⏰
+                        </div>
+                        <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:32px; font-weight:700; color:#ffffff; margin-bottom:8px;">
+                            Yêu cầu đã hết hạn
+                        </div>
+                        <div class="hero" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:18px; color:#ffffff; opacity:.95;">
+                            Tự động hủy do không được duyệt
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:32px 24px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+
+                            <!-- Greeting -->
+                            <tr>
+                                <td class="text" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; color:#333333; padding:0 0 20px 0;">
+                                    Xin chào <strong th:text="${driverName}">Tài xế</strong>,
+                                </td>
+                            </tr>
+
+                            <!-- Timeout Message -->
+                            <tr>
+                                <td class="text" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; color:#333333; padding:0 0 24px 0; line-height:1.6;">
+                                    Chúng tôi rất tiếc phải thông báo rằng yêu cầu đăng ký xe của bạn <strong style="color:#ff9800;">đã bị hủy tự động</strong>
+                                    do không được xử lý trong thời gian <strong th:text="${timeoutHours}">12</strong> tiếng.
+                                    <br><br>
+                                    Điều này có nghĩa là quản trị viên chưa kịp xem xét yêu cầu của bạn trong khoảng thời gian quy định.
+                                </td>
+                            </tr>
+
+                            <!-- Vehicle Details Box -->
+                            <tr>
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #e9e9e9; border-radius:8px; background:#f8f9fa;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:18px; font-weight:700; color:#ff9800; margin-bottom:16px;">
+                                                    🚗 Thông tin xe đã hết hạn
+                                                </div>
+
+                                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0; width:40%;">
+                                                            <strong>Biển số xe:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span style="background:#ff9800; color:#ffffff; padding:4px 12px; border-radius:4px; font-weight:700; display:inline-block; letter-spacing:1px;" th:text="${vehiclePlateNumber}">29A-12345</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Số VIN:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span th:text="${vehicleVin}">XXXXXXXXXXXXXXXXX</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Model xe:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span th:text="${vehicleModel}">VinFast VF8</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Loại pin:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#333333; padding:8px 0;">
+                                                            <span th:text="${batteryTypeName}">Lithium-ion 75kWh</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#666666; padding:8px 0;">
+                                                            <strong>Trạng thái:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; padding:8px 0;">
+                                                            <span style="background:#6c757d; color:#ffffff; padding:4px 12px; border-radius:4px; font-weight:600; display:inline-block;">INACTIVE (HẾT HẠN)</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Timeline Box -->
+                            <tr>
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #fff3cd; border-radius:8px; background:#fff3cd;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; color:#856404; margin-bottom:16px;">
+                                                    ⏱️ Dòng thời gian
+                                                </div>
+
+                                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0; width:45%;">
+                                                            <strong>📅 Thời gian gửi yêu cầu:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <span th:text="${requestTime}">18/11/2025 10:30:00</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <strong>⏳ Thời gian chờ thực tế:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <span th:text="${actualWaitingHours}">13</span> tiếng
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <strong>⏰ Thời gian hết hạn:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <span th:text="${timeoutHours}">12</span> tiếng
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <strong>🕐 Thời gian hủy:</strong>
+                                                        </td>
+                                                        <td style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#856404; padding:8px 0;">
+                                                            <span th:text="${currentTime}">19/11/2025 00:00:00</span>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Reason Box -->
+                            <tr>
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #d1ecf1; border-radius:8px; background:#d1ecf1;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; color:#0c5460; margin-bottom:12px;">
+                                                    ℹ️ Lý do hủy tự động
+                                                </div>
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#0c5460; line-height:1.6;">
+                                                    Hệ thống tự động hủy yêu cầu đăng ký xe khi không được quản trị viên xử lý trong thời gian
+                                                    <strong th:text="${timeoutHours}">12</strong> tiếng. Điều này đảm bảo không có yêu cầu nào bị tồn đọng vô thời hạn trong hệ thống.
+                                                    <br><br>
+                                                    <strong>Đây KHÔNG PHẢI là từ chối</strong> - đơn giản là chưa được xử lý kịp thời.
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Next Steps -->
+                            <tr>
+                                <td style="padding:0 0 24px 0;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" class="info-box" style="border:1px solid #d4edda; border-radius:8px; background:#d4edda;">
+                                        <tr>
+                                            <td style="padding:20px;">
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:16px; font-weight:700; color:#155724; margin-bottom:12px;">
+                                                    📌 Bạn có thể làm gì?
+                                                </div>
+                                                <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:14px; color:#155724; line-height:1.8;">
+                                                    ✅ <strong>Gửi lại yêu cầu đăng ký xe</strong> - Bạn hoàn toàn có thể đăng ký lại ngay<br>
+                                                    ✅ <strong>Kiểm tra thông tin</strong> - Đảm bảo giấy tờ và ảnh rõ ràng<br>
+                                                    ✅ <strong>Liên hệ hỗ trợ</strong> - Nếu cần hỗ trợ đặc biệt hoặc ưu tiên xét duyệt<br>
+                                                    ✅ <strong>Chọn thời gian phù hợp</strong> - Gửi yêu cầu trong giờ làm việc để được duyệt nhanh hơn
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <!-- Apology Message -->
+                            <tr>
+                                <td class="text" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:15px; color:#333333; padding:0 0 16px 0; line-height:1.6; background:#f8f9fa; border-radius:8px; padding:16px;">
+                                    <strong style="color:#ff9800;">Chúng tôi xin lỗi vì sự bất tiện này!</strong>
+                                    <br><br>
+                                    Yêu cầu của bạn chưa được xử lý kịp thời có thể do quản trị viên đang bận hoặc ngoài giờ làm việc.
+                                    Vui lòng thử lại hoặc liên hệ với chúng tôi để được hỗ trợ ưu tiên.
+                                </td>
+                            </tr>
+
+                            <!-- Contact Support -->
+                            <tr>
+                                <td class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:13px; color:#777777; line-height:1.6; border-top:1px solid #e9e9e9; padding-top:20px;">
+                                    <strong>Cần hỗ trợ?</strong><br>
+                                    📧 Email: <a href="mailto:sp.evswapstation@gmail.com" th:href="'mailto:' + ${supportEmail}" style="color:#ff9800; text-decoration:none;" th:text="${supportEmail}">sp.evswapstation@gmail.com</a><br>
+                                    📞 Hotline: <strong>1900-9999</strong>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td align="center" style="padding:20px 12px 24px; background:#f8f9fa; border-radius:0 0 8px 8px;">
+                        <div class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; color:#999999;">
+                            Email này được gửi tự động từ hệ thống EV Battery Swap Station.
+                        </div>
+                        <div class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; color:#999999; padding-top:8px;">
+                            <a href="#" style="color:#999999; text-decoration:underline;">Chính sách bảo mật</a> •
+                            <a href="#" style="color:#999999; text-decoration:underline;">Điều khoản sử dụng</a>
+                        </div>
+                        <div class="text-muted" style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:12px; color:#999999; padding-top:8px;">
+                            © 2025 EV Battery Swap Station Management System
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+</body>
+</html>

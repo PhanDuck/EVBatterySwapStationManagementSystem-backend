@@ -692,4 +692,58 @@ public class EmailService {
             e.printStackTrace();
         }
     }
+
+    /**
+     * Gửi email thông báo cho tài xế khi yêu cầu đăng ký xe bị hủy tự động do quá thời gian chờ
+     */
+    public void sendVehicleTimeoutToDriver(Vehicle vehicle, long timeoutHours) {
+        try {
+            User driver = vehicle.getDriver();
+            Context context = new Context();
+            DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+            // Thông tin tài xế
+            context.setVariable("driverName", driver.getFullName());
+
+            // Thông tin xe
+            context.setVariable("vehiclePlateNumber", vehicle.getPlateNumber());
+            context.setVariable("vehicleVin", vehicle.getVin());
+            context.setVariable("vehicleModel", vehicle.getModel());
+            context.setVariable("batteryTypeName", vehicle.getBatteryType() != null ?
+                    vehicle.getBatteryType().getName() : "Chưa xác định");
+
+            // Thông tin thời gian
+            context.setVariable("requestTime", vehicle.getCreatedAt().format(dateTimeFormatter));
+            context.setVariable("timeoutHours", timeoutHours);
+            context.setVariable("currentTime", LocalDateTime.now().format(dateTimeFormatter));
+
+            // Tính thời gian chờ thực tế
+            long actualWaitingHours = java.time.Duration.between(
+                    vehicle.getCreatedAt(),
+                    LocalDateTime.now()
+            ).toHours();
+            context.setVariable("actualWaitingHours", actualWaitingHours);
+
+            // Thông tin hỗ trợ
+            context.setVariable("supportEmail", "sp.evswapstation@gmail.com");
+
+            String htmlContent = templateEngine.process("vehicle-timeout", context);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "UTF-8");
+
+            mimeMessageHelper.setFrom(fromEmail);
+            mimeMessageHelper.setTo(driver.getEmail());
+            mimeMessageHelper.setText(htmlContent, true);
+            mimeMessageHelper.setSubject("⏰ Yêu cầu đăng ký xe đã hết hạn - EV Battery Swap Station");
+
+            mailSender.send(mimeMessage);
+
+            log.info("Email thông báo timeout đã được gửi cho tài xế: {}", driver.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("Lỗi khi gửi email thông báo timeout cho tài xế: {}", e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }

@@ -115,6 +115,7 @@ public class VehicleService {
 
         // Set status = PENDING - chờ admin duyệt
         vehicle.setStatus(Vehicle.VehicleStatus.PENDING);
+        vehicle.setCreatedAt(LocalDateTime.now());
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 

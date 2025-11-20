@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.entity.User;
 import com.evbs.BackEndEvBs.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,4 +31,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle,Long> {
     
     // Đếm số xe theo loại BatteryType (kiểm tra khi xóa BatteryType)
     long countByBatteryType_Id(Long batteryTypeId);
+
+    // Tìm xe PENDING quá thời gian chờ duyệt (12 tiếng)
+    List<Vehicle> findByStatusAndCreatedAtBefore(Vehicle.VehicleStatus status, LocalDateTime createdBefore);
 }

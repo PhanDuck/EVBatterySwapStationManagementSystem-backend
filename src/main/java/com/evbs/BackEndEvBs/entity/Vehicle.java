@@ -63,6 +63,9 @@ public class Vehicle {
     @Column(name = "Status", nullable = false, length = 20)
     private VehicleStatus status = VehicleStatus.ACTIVE;
 
+    @Column(name = "CreatedAt")
+    private LocalDateTime createdAt;
+
     @Column(name = "DeletedAt")
     private LocalDateTime deletedAt;
 

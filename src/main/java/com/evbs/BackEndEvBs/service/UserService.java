@@ -86,9 +86,45 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng với id: " + id));
 
-        // BẢO VỆ ADMIN ROLE
-        if (user.getRole() == User.Role.ADMIN && request.getRole() != null && request.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Không được hạ cấp Admin!");
+        // BẢO VỆ ADMIN ROLE - KHÔNG ĐƯỢC UPDATE USER ADMIN
+        if (user.getRole() == User.Role.ADMIN) {
+            throw new AuthenticationException("Không được cập nhật tài khoản Admin!");
+        }
+
+        // KIỂM TRA ROLE CHANGE
+        if (request.getRole() != null && request.getRole() != user.getRole()) {
+            // DRIVER -> STAFF/ADMIN: Kiểm tra xe
+            if (user.getRole() == User.Role.DRIVER && 
+                (request.getRole() == User.Role.STAFF || request.getRole() == User.Role.ADMIN)) {
+                
+                // Kiểm tra có xe ACTIVE không
+                long activeVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.ACTIVE);
+                if (activeVehicleCount > 0) {
+                    throw new IllegalStateException("Không thể chuyển role! Driver đang có " + activeVehicleCount + " xe ACTIVE!");
+                }
+                
+                // Kiểm tra có xe PENDING không
+                long pendingVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.PENDING);
+                if (pendingVehicleCount > 0) {
+                    throw new IllegalStateException("Không thể chuyển role! Driver đang có " + pendingVehicleCount + " xe PENDING!");
+                }
+                
+                // Kiểm tra booking CONFIRMED
+                long confirmedBookingCount = bookingRepository.countByDriverAndStatus(user, Booking.Status.CONFIRMED);
+                if (confirmedBookingCount > 0) {
+                    throw new IllegalStateException("Không thể chuyển role! Driver đang có " + confirmedBookingCount + " booking CONFIRMED!");
+                }
+            }
+            
+            // STAFF -> DRIVER/ADMIN: Kiểm tra assignment
+            if (user.getRole() == User.Role.STAFF && 
+                (request.getRole() == User.Role.DRIVER || request.getRole() == User.Role.ADMIN)) {
+                
+                long assignmentCount = staffStationAssignmentRepository.countByStaff(user);
+                if (assignmentCount > 0) {
+                    throw new IllegalStateException("Không thể chuyển role! Staff đang có " + assignmentCount + " assignment tại trạm!");
+                }
+            }
         }
 
         // Cập nhật các field nếu có giá trị mới
@@ -112,27 +148,41 @@ public class UserService {
             user.setPhoneNumber(request.getPhoneNumber());
         }
 
-        if (request.getRole() != null) {
-            user.setRole(request.getRole());
-        }
-
-        // KHÔNG CHO ĐỔI THÀNH INACTIVE KHI CÓ XE/BOOKING ĐANG HOẠT ĐỘNG
+        // KIỂM TRA STATUS INACTIVE TRƯỚC KHI ĐỔI ROLE (dùng role CŨ để kiểm tra)
         if (request.getStatus() != null && request.getStatus() == User.Status.INACTIVE) {
             if (user.getRole() == User.Role.DRIVER) {
                 // Kiểm tra xe ACTIVE
                 long activeVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.ACTIVE);
                 if (activeVehicleCount > 0) {
-                    throw new IllegalStateException("Tài xế có xe hoạt động!");
+                    throw new IllegalStateException("Không thể set INACTIVE! Tài xế có " + activeVehicleCount + " xe ACTIVE!");
+                }
+                
+                // Kiểm tra xe PENDING
+                long pendingVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.PENDING);
+                if (pendingVehicleCount > 0) {
+                    throw new IllegalStateException("Không thể set INACTIVE! Tài xế có " + pendingVehicleCount + " xe PENDING!");
                 }
                 
                 // Kiểm tra booking CONFIRMED
                 long confirmedBookingCount = bookingRepository.countByDriverAndStatus(user, Booking.Status.CONFIRMED);
                 if (confirmedBookingCount > 0) {
-                    throw new IllegalStateException("Tài xế có booking!");
+                    throw new IllegalStateException("Không thể set INACTIVE! Tài xế có " + confirmedBookingCount + " booking CONFIRMED!");
+                }
+            } else if (user.getRole() == User.Role.STAFF) {
+                // Kiểm tra assignment
+                long assignmentCount = staffStationAssignmentRepository.countByStaff(user);
+                if (assignmentCount > 0) {
+                    throw new IllegalStateException("Không thể set INACTIVE! Staff đang có " + assignmentCount + " assignment tại trạm!");
                 }
             }
         }
+
+        // UPDATE ROLE (sau khi đã kiểm tra status)
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
         
+        // UPDATE STATUS
         if (request.getStatus() != null) {
             user.setStatus(request.getStatus());
         }
@@ -154,24 +204,35 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng với id: " + id));
 
+        // BẢO VỆ ADMIN - KHÔNG ĐƯỢC XÓA ADMIN
+        if (user.getRole() == User.Role.ADMIN) {
+            throw new AuthenticationException("Không được xóa tài khoản Admin!");
+        }
+
         // KIỂM TRA THEO VAI TRÒ
         if (user.getRole() == User.Role.DRIVER) {
             // Kiểm tra xe ACTIVE
             long activeVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.ACTIVE);
             if (activeVehicleCount > 0) {
-                throw new IllegalStateException("Tài xế có xe hoạt động!");
+                throw new IllegalStateException("Không thể xóa! Tài xế có " + activeVehicleCount + " xe ACTIVE!");
+            }
+            
+            // Kiểm tra xe PENDING
+            long pendingVehicleCount = vehicleRepository.countByDriverAndStatus(user, Vehicle.VehicleStatus.PENDING);
+            if (pendingVehicleCount > 0) {
+                throw new IllegalStateException("Không thể xóa! Tài xế có " + pendingVehicleCount + " xe PENDING!");
             }
             
             // Kiểm tra booking CONFIRMED
             long confirmedBookingCount = bookingRepository.countByDriverAndStatus(user, Booking.Status.CONFIRMED);
             if (confirmedBookingCount > 0) {
-                throw new IllegalStateException("Tài xế có booking!");
+                throw new IllegalStateException("Không thể xóa! Tài xế có " + confirmedBookingCount + " booking CONFIRMED!");
             }
         } else if (user.getRole() == User.Role.STAFF) {
             // Kiểm tra assignment
             long assignmentCount = staffStationAssignmentRepository.countByStaff(user);
             if (assignmentCount > 0) {
-                throw new IllegalStateException("Staff đang quản lý trạm!");
+                throw new IllegalStateException("Không thể xóa! Staff đang có " + assignmentCount + " assignment tại trạm!");
             }
         }
 

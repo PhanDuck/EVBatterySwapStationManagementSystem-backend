@@ -121,6 +121,22 @@ public class StationInventoryService {
 
         // Move battery to station
         battery.setCurrentStation(station);
+        
+        // Kiểm tra mức sạc để quyết định status (SOH đã kiểm tra >= 90% ở validation)
+        BigDecimal currentCharge = battery.getChargeLevel();
+        
+        if (currentCharge != null && currentCharge.compareTo(BigDecimal.valueOf(100)) < 0) {
+            // SoC < 100% → Bắt đầu sạc
+            battery.setStatus(Battery.Status.CHARGING);
+            battery.setLastChargedTime(LocalDateTime.now());
+            log.info("Pin {} chuyển đến trạm {} với SoC {}% < 100% → Chuyển sang CHARGING",
+                    battery.getId(), station.getName(), currentCharge.intValue());
+        } else {
+            // SoC = 100% → Giữ AVAILABLE
+            log.info("Pin {} chuyển đến trạm {} với SoC 100% → Giữ AVAILABLE",
+                    battery.getId(), station.getName());
+        }
+        
         batteryRepository.save(battery);
 
         // Remove from inventory

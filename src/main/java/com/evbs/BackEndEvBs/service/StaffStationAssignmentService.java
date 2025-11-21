@@ -39,15 +39,15 @@ public class StaffStationAssignmentService {
     private static final int MAX_STAFF_PER_STATION = 3;
 
     /**
-     * CREATE - Quản trị viên (Admin) gán trạm cho nhân viên
+     * CREATE - Quản trị viên (Admin) phân quyền trạm cho nhân viên
      */
     @Transactional
     public StaffStationAssignment assignStaffToStation(StaffStationAssignmentRequest request) {
         User currentAdmin = authenticationService.getCurrentUser();
 
-        //  Chỉ Admin mới có quyền gán nhân viên vào trạm
+        //  Chỉ Admin mới có quyền phân quyền nhân viên vào trạm
         if (currentAdmin.getRole() != User.Role.ADMIN) {
-            throw new AuthenticationException("Từ chối truy cập. Chỉ quản trị viên mới có quyền gán nhân viên vào trạm.");
+            throw new AuthenticationException("Từ chối truy cập. Chỉ quản trị viên mới có quyền phân quyền nhân viên vào trạm.");
         }
 
         // Kiểm tra nhân viên có tồn tại và có vai trò STAFF không
@@ -55,16 +55,16 @@ public class StaffStationAssignmentService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy nhân viên."));
 
         if (staff.getRole() != User.Role.STAFF) {
-            throw new IllegalArgumentException("Người dùng này không phải là nhân viên. Chỉ tài khoản có vai trò STAFF mới được gán vào trạm.");
+            throw new IllegalArgumentException("Người dùng này không phải là nhân viên. Chỉ tài khoản có vai trò STAFF mới được phân quyền vào trạm.");
         }
 
         // Kiểm tra trạm có tồn tại không
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm."));
 
-        // Kiểm tra xem nhân viên đã được gán vào trạm này chưa
+        // Kiểm tra xem nhân viên đã được phân quyền vào trạm này chưa
         if (assignmentRepository.existsByStaffAndStation(staff, station)) {
-            throw new IllegalStateException("Nhân viên này đã được gán vào trạm này rồi.");
+            throw new IllegalStateException("Nhân viên này đã được phân quyền vào trạm này rồi.");
         }
 
         // Kiểm tra số lượng trạm mà nhân viên đang quản lý (tối đa 5)
@@ -119,7 +119,7 @@ public class StaffStationAssignmentService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm."));
 
         StaffStationAssignment assignment = assignmentRepository.findByStaffAndStation(staff, station)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy phân công. Nhân viên này chưa được gán vào trạm."));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy phân công. Nhân viên này chưa được phân quyền vào trạm."));
 
         assignmentRepository.delete(assignment);
     }
@@ -177,7 +177,7 @@ public class StaffStationAssignmentService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm."));
 
         StaffStationAssignment assignment = assignmentRepository.findByStaffAndStation(staff, station)
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy phân công. Nhân viên này chưa được gán vào trạm."));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy phân công. Nhân viên này chưa được phân quyền vào trạm."));
         
         // Populate staffName và stationName
         assignment.setStaffName(staff.getFullName());
@@ -209,7 +209,7 @@ public class StaffStationAssignmentService {
             return true;
         }
 
-        // Nhân viên chỉ được quản lý trạm đã được gán
+        // Nhân viên chỉ được quản lý trạm đã được phân quyền
         if (staff.getRole() == User.Role.STAFF) {
             return assignmentRepository.existsByStaffAndStation(staff, station);
         }
@@ -229,7 +229,7 @@ public class StaffStationAssignmentService {
             return;
         }
 
-        // Nhân viên chỉ được truy cập trạm được gán
+        // Nhân viên chỉ được truy cập trạm được phân quyền
         if (currentUser.getRole() == User.Role.STAFF) {
             Station station = stationRepository.findById(stationId)
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm với ID: " + stationId));
@@ -238,7 +238,7 @@ public class StaffStationAssignmentService {
 
             if (!hasAccess) {
                 throw new AuthenticationException(
-                        "Từ chối truy cập. Bạn không được gán để quản lý trạm này (ID: " + stationId + ")."
+                        "Từ chối truy cập. Bạn không được phân quyền để quản lý trạm này (ID: " + stationId + ")."
                 );
             }
             return;

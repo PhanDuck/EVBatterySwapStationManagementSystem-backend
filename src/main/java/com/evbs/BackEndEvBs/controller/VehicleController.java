@@ -72,7 +72,7 @@ public class VehicleController {
      * Admin/Staff được update: vin, plateNumber, model, driverId, batteryTypeId, status
      */
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update vehicle (Admin/Staff) - all fields except image")
     public ResponseEntity<Vehicle> updateVehicle(
             @PathVariable Long id,
@@ -86,7 +86,7 @@ public class VehicleController {
      * DELETE /api/vehicle/{id} : Delete vehicle by ID (Admin/Staff only)
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete vehicle by ID (Admin/Staff only)")
     public ResponseEntity<Void> deleteVehicle(@PathVariable Long id) {
         vehicleService.deleteVehicle(id);
@@ -97,7 +97,7 @@ public class VehicleController {
      * PUT /api/vehicle/{id}/approve : Approve vehicle with battery assignment (Admin/Staff only)
      */
     @PutMapping("/{id}/approve")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Approve vehicle and assign battery (Admin/Staff only)")
     public ResponseEntity<Vehicle> approveVehicle(
             @PathVariable Long id,
@@ -110,7 +110,7 @@ public class VehicleController {
      * PUT /api/vehicle/{id}/reject : Reject vehicle (Admin/Staff only)
      */
     @PutMapping("/{id}/reject")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Reject vehicle with optional reason (Admin/Staff only)")
     public ResponseEntity<Vehicle> rejectVehicle(
             @PathVariable Long id,

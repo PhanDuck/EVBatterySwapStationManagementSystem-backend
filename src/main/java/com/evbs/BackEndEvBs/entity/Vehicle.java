@@ -33,6 +33,13 @@ public class Vehicle {
     @Column(name = "RegistrationImage", length = 500)
     private String registrationImage;
 
+    // Thông tin tiền cọc pin (400k VND cố định)
+    @Column(name = "DepositStatus", length = 20)
+    private String depositStatus; // PENDING, PAID, REFUNDABLE, REFUNDED
+
+    @Column(name = "DepositRefundNote", columnDefinition = "NVARCHAR(500)")
+    private String depositRefundNote; // Ghi chú hoàn tiền (bao gồm cả ngày hoàn)
+
     @ManyToOne
     @JoinColumn(name = "DriverID", nullable = false)
     @JsonIgnore
@@ -78,7 +85,8 @@ public class Vehicle {
     public enum VehicleStatus {
         ACTIVE,
         INACTIVE,
-        PENDING
+        PENDING,
+        UNPAID
     }
 
     // Transient fields để serialize IDs
@@ -131,8 +139,8 @@ public class Vehicle {
 
     @JsonProperty("batteryTypeName")
     public String getBatteryTypeName() {
-        return this.batteryTypeName != null ? this.batteryTypeName : 
-               (this.batteryType != null ? this.batteryType.getName() : null);
+        return this.batteryTypeName != null ? this.batteryTypeName :
+                (this.batteryType != null ? this.batteryType.getName() : null);
     }
 
     public void setBatteryTypeName(String batteryTypeName) {
@@ -142,7 +150,7 @@ public class Vehicle {
     @JsonProperty("driverName")
     public String getDriverName() {
         return this.driverName != null ? this.driverName :
-               (this.driver != null ? this.driver.getFullName() : null);
+                (this.driver != null ? this.driver.getFullName() : null);
     }
 
     public void setDriverName(String driverName) {

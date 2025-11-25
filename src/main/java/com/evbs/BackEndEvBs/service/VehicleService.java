@@ -62,27 +62,39 @@ public class VehicleService {
     @Autowired
     private final FileStorageService fileStorageService;
 
+    @Autowired
+    private final MoMoService moMoService;
+
     /**
-     * Creates a new Vehicle (status = PENDING, chờ admin duyệt)
+     * Creates a new Vehicle với status UNPAID (chưa cọc)
      * Upload ảnh giấy đăng ký xe
      * CHỈ CHO PHÉP user có role DRIVER
+     *
+     * Flow:
+     * 1. Tạo xe với status = UNPAID (cho phép hủy)
+     * 2. Driver gọi API thanh toán cọc riêng
+     * 3. Sau thanh toán -> status = PENDING
+     * 4. Admin approve -> ACTIVE
+     * 5. Admin reject -> depositStatus = REFUNDABLE, status = INACTIVE
+     *
+     * @return Vehicle đã tạo
      */
     @Transactional
     public Vehicle createVehicle(VehicleRequest vehicleRequest, MultipartFile registrationImageFile) {
         User currentUser = authenticationService.getCurrentUser();
-        
+
         // Kiểm tra role: Chỉ DRIVER mới được tạo xe
         if (currentUser.getRole() != User.Role.DRIVER) {
             throw new AuthenticationException("Chỉ tài xế mới đăng ký xe!");
         }
 
-        // Validate VIN unique - CHỈ kiểm tra xe ACTIVE hoặc PENDING (bỏ qua INACTIVE)
-        List<Vehicle.VehicleStatus> activeStatuses = List.of(Vehicle.VehicleStatus.ACTIVE, Vehicle.VehicleStatus.PENDING);
+        // Validate VIN unique - CHỈ kiểm tra xe ACTIVE, PENDING, UNPAID (bỏ qua INACTIVE)
+        List<Vehicle.VehicleStatus> activeStatuses = List.of(Vehicle.VehicleStatus.ACTIVE, Vehicle.VehicleStatus.PENDING, Vehicle.VehicleStatus.UNPAID);
         if (vehicleRepository.existsByVinAndStatusIn(vehicleRequest.getVin(), activeStatuses)) {
             throw new IllegalArgumentException("VIN đã tồn tại!");
         }
 
-        // Validate PlateNumber unique - CHỈ kiểm tra xe ACTIVE hoặc PENDING (bỏ qua INACTIVE)
+        // Validate PlateNumber unique - CHỈ kiểm tra xe ACTIVE, PENDING, UNPAID (bỏ qua INACTIVE)
         if (vehicleRepository.existsByPlateNumberAndStatusIn(vehicleRequest.getPlateNumber(), activeStatuses)) {
             throw new IllegalArgumentException("Biển số xe đã tồn tại!");
         }
@@ -91,7 +103,7 @@ public class VehicleService {
         BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
 
-        // Enforce max 2 ACTIVE vehicles per user (không đếm xe PENDING hoặc INACTIVE)
+        // Enforce max 2 ACTIVE vehicles per user (không đếm xe PENDING, UNPAID hoặc INACTIVE)
         long activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE).size();
         if (activeVehicles >= 2) {
             throw new IllegalStateException("Đã đủ 2 xe hoạt động!");
@@ -100,7 +112,11 @@ public class VehicleService {
         if (pendingVehicles >= 1) {
             throw new IllegalStateException("Có xe đang chờ duyệt!");
         }
-        
+        long unpaidVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.UNPAID).size();
+        if (unpaidVehicles >= 1) {
+            throw new IllegalStateException("Có xe chưa thanh toán cọc! Vui lòng thanh toán hoặc hủy xe trước.");
+        }
+
         // Upload file ảnh giấy đăng ký
         String registrationImagePath = fileStorageService.uploadFile(registrationImageFile);
 
@@ -113,39 +129,95 @@ public class VehicleService {
         vehicle.setDriver(currentUser);
         vehicle.setBatteryType(batteryType);
 
-        // Set status = PENDING - chờ admin duyệt
-        vehicle.setStatus(Vehicle.VehicleStatus.PENDING);
+        // Set status = UNPAID - chưa thanh toán cọc (cho phép hủy)
+        vehicle.setStatus(Vehicle.VehicleStatus.UNPAID);
+        vehicle.setDepositStatus("PENDING");
         vehicle.setCreatedAt(LocalDateTime.now());
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
-
-        // Gửi email thông báo cho admin
-        try {
-            List<User> adminList = userRepository.findByRole(User.Role.ADMIN);
-            if (!adminList.isEmpty()) {
-                emailService.sendVehicleRequestToAdmin(adminList, savedVehicle);
-            }
-        } catch (Exception e) {
-            // Log error nhưng không throw exception để không ảnh hưởng đến việc tạo vehicle
-            System.err.println("Lỗi khi gửi email thông báo cho admin: " + e.getMessage());
-        }
-
         return savedVehicle;
     }
 
     /**
-     * READ - Lấy vehicles của tôi (Driver only) - lấy xe ACTIVE và PENDING
+     * Tạo payment URL để thanh toán cọc pin (400k VND)
+     * CHỈ CHO PHÉP xe có status = UNPAID
+     *
+     * @param vehicleId ID của xe cần thanh toán cọc
+     * @return Map chứa paymentUrl, orderId, amount
+     */
+    @Transactional
+    public Map<String, Object> payDeposit(Long vehicleId) {
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
+
+        User currentUser = authenticationService.getCurrentUser();
+
+        // Chỉ driver sở hữu xe mới được thanh toán cọc
+        if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
+            throw new AuthenticationException("Bạn không có quyền thanh toán cọc cho xe này!");
+        }
+
+        // Kiểm tra xe đang ở trạng thái UNPAID
+        if (vehicle.getStatus() != Vehicle.VehicleStatus.UNPAID) {
+            throw new IllegalStateException("Xe không ở trạng thái chưa cọc!");
+        }
+
+        // Tạo payment URL
+        Map<String, String> paymentInfo = moMoService.createDepositPaymentUrl(vehicleId, null);
+
+        // Trả về payment info
+        Map<String, Object> result = new HashMap<>();
+        result.put("vehicleId", vehicle.getId());
+        result.put("paymentUrl", paymentInfo.get("payUrl"));
+        result.put("orderId", paymentInfo.get("orderId"));
+        result.put("amount", paymentInfo.get("amount"));
+        result.put("message", "Vui lòng quét mã QR để thanh toán 400,000 VNĐ tiền cọc pin. Sau khi thanh toán thành công, xe sẽ tự động chuyển sang trạng thái chờ duyệt.");
+
+        return result;
+    }
+
+    /**
+     * Hủy xe khi đang ở trạng thái UNPAID (chưa thanh toán cọc)
+     * CHỈ driver sở hữu xe mới được hủy
+     *
+     * @param vehicleId ID của xe cần hủy
+     */
+    @Transactional
+    public void cancelUnpaidVehicle(Long vehicleId) {
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
+
+        User currentUser = authenticationService.getCurrentUser();
+
+        // Chỉ driver sở hữu xe mới được hủy
+        if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
+            throw new AuthenticationException("Bạn không có quyền hủy xe này!");
+        }
+
+        // Chỉ hủy được xe UNPAID
+        if (vehicle.getStatus() != Vehicle.VehicleStatus.UNPAID) {
+            throw new IllegalStateException("Chỉ có thể hủy xe đang ở trạng thái chưa cọc!");
+        }
+
+        // Xóa xe khỏi DB
+        vehicleRepository.delete(vehicle);
+    }
+
+    /**
+     * READ - Lấy vehicles của tôi (Driver only) - lấy xe ACTIVE, PENDING và UNPAID
      */
     @Transactional(readOnly = true)
     public List<Vehicle> getMyVehicles() {
         User currentUser = authenticationService.getCurrentUser();
         List<Vehicle> activeVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.ACTIVE);
         List<Vehicle> pendingVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.PENDING);
-        
+        List<Vehicle> unpaidVehicles = vehicleRepository.findByDriverAndStatus(currentUser, Vehicle.VehicleStatus.UNPAID);
+
         List<Vehicle> vehicles = new ArrayList<>();
         vehicles.addAll(activeVehicles);
         vehicles.addAll(pendingVehicles);
-        
+        vehicles.addAll(unpaidVehicles);
+
         populateSwapCounts(vehicles);
         populateBatteryTypeNames(vehicles);
         return vehicles;
@@ -235,14 +307,14 @@ public class VehicleService {
         }
 
         // Kiểm tra trùng VIN nếu thay đổi
-        if (vehicleRequest.getVin() != null && !vehicleRequest.getVin().trim().isEmpty() 
-            && !vehicleRequest.getVin().equals(existingVehicle.getVin())) {
-            
+        if (vehicleRequest.getVin() != null && !vehicleRequest.getVin().trim().isEmpty()
+                && !vehicleRequest.getVin().equals(existingVehicle.getVin())) {
+
             // Validate độ dài VIN
             if (vehicleRequest.getVin().length() != 17) {
                 throw new IllegalArgumentException("VIN phải đủ 17 ký tự!");
             }
-            
+
             // Check duplicate
             if (vehicleRepository.existsByVin(vehicleRequest.getVin())) {
                 throw new IllegalArgumentException("VIN đã tồn tại!");
@@ -252,14 +324,14 @@ public class VehicleService {
 
         // Kiểm tra trùng PlateNumber nếu thay đổi
         if (vehicleRequest.getPlateNumber() != null && !vehicleRequest.getPlateNumber().trim().isEmpty()
-            && !vehicleRequest.getPlateNumber().equals(existingVehicle.getPlateNumber())) {
-            
+                && !vehicleRequest.getPlateNumber().equals(existingVehicle.getPlateNumber())) {
+
             // Validate format biển số (optional - có thể bỏ nếu không cần strict)
             String plateNumberPattern = "^[0-9]{2}[a-zA-Z]{1,2}[0-9]{5,6}(\\.[a-zA-Z]{1,2})?$";
             if (!vehicleRequest.getPlateNumber().matches(plateNumberPattern)) {
                 throw new IllegalArgumentException("Biển số không đúng định dạng!");
             }
-            
+
             // Check duplicate
             if (vehicleRepository.existsByPlateNumber(vehicleRequest.getPlateNumber())) {
                 throw new IllegalArgumentException("Biển số xe đã tồn tại!");
@@ -269,11 +341,11 @@ public class VehicleService {
 
         // KHÔNG ĐỔI LOẠI PIN KHÁC KHI XE CÓ PIN
         if (vehicleRequest.getBatteryTypeId() != null) {
-            if (existingVehicle.getCurrentBattery() != null 
-                && !existingVehicle.getBatteryType().getId().equals(vehicleRequest.getBatteryTypeId())) {
+            if (existingVehicle.getCurrentBattery() != null
+                    && !existingVehicle.getBatteryType().getId().equals(vehicleRequest.getBatteryTypeId())) {
                 throw new IllegalStateException("Xe có pin, không đổi loại!");
             }
-            
+
             BatteryType batteryType = batteryTypeRepository.findById(vehicleRequest.getBatteryTypeId())
                     .orElseThrow(() -> new NotFoundException("Không tìm thấy loại pin"));
             existingVehicle.setBatteryType(batteryType);
@@ -291,9 +363,10 @@ public class VehicleService {
      * DELETE - Soft delete xe (đổi status thành INACTIVE)
      * Admin/Staff only
      * Trả pin hiện tại về kho (nếu có)
+     * Tự động hoàn cọc nếu đã thanh toán
      */
     @Transactional
-    public Vehicle deleteVehicle(Long id) {
+    public Vehicle deleteVehicle(Long id, String refundNote) {
         User currentUser = authenticationService.getCurrentUser();
         if (!isAdminOrStaff(currentUser)) {
             throw new AuthenticationException("Truy cập bị từ chối. Yêu cầu vai trò Admin/Staff.");
@@ -328,11 +401,11 @@ public class VehicleService {
             currentBattery.setStatus(Battery.Status.MAINTENANCE);
             currentBattery.setCurrentStation(null);  // Pin chưa thuộc station nào
             batteryRepository.save(currentBattery);
-            
+
             // Thêm pin vào StationInventory với status MAINTENANCE
             // Kiểm tra xem pin đã có trong StationInventory chưa
             StationInventory existingInventory = stationInventoryRepository.findByBattery(currentBattery).orElse(null);
-            
+
             if (existingInventory != null) {
                 // Cập nhật status
                 existingInventory.setStatus(StationInventory.Status.MAINTENANCE);
@@ -346,9 +419,17 @@ public class VehicleService {
                 newInventory.setLastUpdate(LocalDateTime.now());
                 stationInventoryRepository.save(newInventory);
             }
-            
+
             // Gỡ pin khỏi xe
             vehicle.setCurrentBattery(null);
+        }
+
+        // Xử lý tiền cọc: Nếu đã thanh toán cọc thì đánh dấu REFUNDED
+        if ("PAID".equals(vehicle.getDepositStatus())) {
+            vehicle.setDepositStatus("REFUNDED");
+            String note = (refundNote != null ? refundNote : "Xe bị xóa - Đã hoàn tiền cọc")
+                    + " - Ngày: " + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            vehicle.setDepositRefundNote(note);
         }
 
         // Soft delete: chỉ đổi status
@@ -398,12 +479,12 @@ public class VehicleService {
         if (battery.getStatus() != Battery.Status.AVAILABLE) {
             throw new IllegalStateException("Pin không sẵn sàng!");
         }
-        
+
         // Pin trong KHO phải có currentStation = NULL (không thuộc trạm nào)
         if (battery.getCurrentStation() != null) {
             throw new IllegalStateException("Pin đang ở trạm, không gắn được!");
         }
-        
+
         // Kiểm tra pin có trong StationInventory không (đảm bảo thực sự ở kho)
         boolean isInWarehouse = stationInventoryRepository.findByBattery(battery).isPresent();
         if (!isInWarehouse) {
@@ -479,6 +560,15 @@ public class VehicleService {
         vehicle.setStatus(Vehicle.VehicleStatus.INACTIVE);
         vehicle.setDeletedAt(LocalDateTime.now());
         vehicle.setDeletedBy(currentUser);
+
+        // Nếu đã thanh toán cọc (PAID), đánh dấu có thể hoàn tiền
+        if ("PAID".equals(vehicle.getDepositStatus())) {
+            vehicle.setDepositStatus("REFUNDABLE");
+            String rejectionReason = (request != null && request.getRejectionReason() != null)
+                    ? request.getRejectionReason()
+                    : "Không có lý do cụ thể được cung cấp.";
+            vehicle.setDepositRefundNote("Xe bị từ chối: " + rejectionReason);
+        }
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 

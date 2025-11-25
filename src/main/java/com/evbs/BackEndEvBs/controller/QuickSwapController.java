@@ -2,6 +2,7 @@ package com.evbs.BackEndEvBs.controller;
 
 import com.evbs.BackEndEvBs.entity.SwapTransaction;
 import com.evbs.BackEndEvBs.model.request.QuickSwapRequest;
+import com.evbs.BackEndEvBs.model.response.BatteryInfoResponse;
 import com.evbs.BackEndEvBs.model.response.QuickSwapPreviewResponse;
 import com.evbs.BackEndEvBs.service.QuickSwapService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,6 +53,22 @@ public class QuickSwapController {
     ) {
         QuickSwapPreviewResponse preview = quickSwapService.previewQuickSwap(stationId, vehicleId);
         return ResponseEntity.ok(preview);
+    }
+
+    /**
+     * GET /api/quick-swap/old-battery : Lấy thông tin pin cũ của xe
+     * 
+     * Trả về thông tin pin hiện tại đang gắn trên xe (để hiển thị trong UI)
+     */
+    @GetMapping("/old-battery")
+    @PreAuthorize("hasRole('DRIVER') or hasRole('STAFF') or hasRole('ADMIN')")
+    @Operation(
+            summary = "Lấy thông tin pin cũ của xe",
+            description = "Trả về thông tin pin hiện tại đang gắn trên xe của driver"
+    )
+    public ResponseEntity<BatteryInfoResponse> getOldBatteryInfo(@RequestParam Long vehicleId) {
+        BatteryInfoResponse batteryInfo = quickSwapService.getOldBatteryInfo(vehicleId);
+        return ResponseEntity.ok(batteryInfo);
     }
 
     /**

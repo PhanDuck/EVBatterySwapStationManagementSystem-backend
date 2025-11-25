@@ -4,6 +4,7 @@ import com.evbs.BackEndEvBs.entity.*;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.request.QuickSwapRequest;
+import com.evbs.BackEndEvBs.model.response.BatteryInfoResponse;
 import com.evbs.BackEndEvBs.model.response.QuickSwapPreviewResponse;
 import com.evbs.BackEndEvBs.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,12 @@ public class QuickSwapService {
 
     @Autowired
     private final EmailService emailService;
+
+    @Autowired
+    private final StationInventoryRepository stationInventoryRepository;
+
+    @Autowired
+    private final BookingRepository bookingRepository;
 
     /**
      * Preview thông tin đổi pin nhanh tại trạm
@@ -189,6 +196,19 @@ public class QuickSwapService {
             throw new AuthenticationException("Xe chưa được phê duyệt!");
         }
         
+        // VALIDATION: Xe không được có booking đang active (chưa COMPLETED hoặc CANCELLED)
+        List<Booking> activeBookings = bookingRepository.findByVehicleAndStatusNotIn(
+                vehicle,
+                List.of(Booking.Status.COMPLETED, Booking.Status.CANCELLED)
+        );
+        if (!activeBookings.isEmpty()) {
+            Booking activeBooking = activeBookings.get(0);
+            throw new AuthenticationException(
+                    "Xe đang có booking " + activeBooking.getStatus() + 
+                    ". Vui lòng hoàn thành hoặc hủy booking trước khi đổi pin nhanh!"
+            );
+        }
+        
         // 3. Kiểm tra loại pin tương thích
         BatteryType vehicleBatteryType = vehicle.getBatteryType();
         BatteryType stationBatteryType = station.getBatteryType();
@@ -209,19 +229,7 @@ public class QuickSwapService {
         if (activeSubscription.getRemainingSwaps() <= 0) {
             throw new AuthenticationException("Gói đã hết lượt. Vui lòng gia hạn!");
         }
-        
-        // 5. VALIDATION: Max 10 swaps per user per day (giống booking)
-        LocalDate today = LocalDate.now();
-        long swapsToday = swapTransactionRepository.findByDriver(currentUser)
-                .stream()
-                .filter(t -> t.getStartTime() != null && 
-                            t.getStartTime().toLocalDate().isEqual(today) &&
-                            t.getStatus() == SwapTransaction.Status.COMPLETED)
-                .count();
-        if (swapsToday >= 10) {
-            throw new AuthenticationException("Đã đạt giới hạn 10 lượt đổi pin/ngày!");
-        }
-        
+            
         // 6. Tìm pin cũ trên xe (nếu có)
         Battery swapInBattery = vehicle.getCurrentBattery();
         
@@ -286,66 +294,189 @@ public class QuickSwapService {
         
         SwapTransaction savedTransaction = swapTransactionRepository.save(transaction);
         
-        // 10. Xử lý pin mới (lên xe)
-        swapOutBattery.setCurrentStation(null);
-        swapOutBattery.setStatus(Battery.Status.IN_USE);
-        batteryRepository.save(swapOutBattery);
-        
-        // Kiểm tra và giảm SOH sau khi sử dụng
-        batteryHealthService.degradeSOHAfterUsage(swapOutBattery);
-        
-        log.info("Pin mới {} đã lên xe {}", swapOutBattery.getId(), vehicle.getPlateNumber());
-        
-        // 11. Cập nhật xe: gắn pin mới
-        vehicle.setCurrentBattery(swapOutBattery);
-        vehicleRepository.save(vehicle);
-        
-        // 12. Xử lý pin cũ (về trạm nếu có)
-        if (swapInBattery != null) {
-            swapInBattery.setCurrentStation(station);
-            swapInBattery.setStatus(Battery.Status.CHARGING);
-            
-            // Giảm charge level xuống 20-40%
-            BigDecimal newChargeLevel = BigDecimal.valueOf(20 + (Math.random() * 20));
-            swapInBattery.setChargeLevel(newChargeLevel);
-            
-            batteryRepository.save(swapInBattery);
-            
-            log.info("Pin cũ {} đã về trạm {}", swapInBattery.getId(), station.getName());
+        // 10. SAU KHI LƯU SNAPSHOT → Giảm pin mới xuống dưới 50%
+        // (Mô phỏng việc tài xế sử dụng xe sau khi đổi pin - GIỐNG BOOKING)
+        if (swapOutBattery != null) {
+            java.util.Random random = new java.util.Random();
+            BigDecimal randomChargeLevel = BigDecimal.valueOf(10 + random.nextInt(40)); // Random 10-49%
+            swapOutBattery.setChargeLevel(randomChargeLevel);
+            batteryRepository.save(swapOutBattery);
+            log.info("Pin ID {} được đổi vào xe - Snapshot: {}%, Mức pin hiện tại giảm xuống: {}%",
+                    swapOutBattery.getId(),
+                    savedTransaction.getSwapOutBatteryChargeLevel().intValue(),
+                    randomChargeLevel.intValue());
         }
         
-        // 13. Trừ lượt swap
-        int oldRemaining = activeSubscription.getRemainingSwaps();
-        activeSubscription.setRemainingSwaps(oldRemaining - 1);
-        
-        // Nếu hết lượt, chuyển sang EXPIRED
-        if (activeSubscription.getRemainingSwaps() <= 0) {
-            activeSubscription.setStatus(DriverSubscription.Status.EXPIRED);
-        }
-        
-        driverSubscriptionRepository.save(activeSubscription);
-        
-        log.info("Đã trừ 1 lượt swap. Driver: {}, {} → {}, Status: {}",
-                currentUser.getId(), oldRemaining, activeSubscription.getRemainingSwaps(),
-                activeSubscription.getStatus());
-        
-        // 14. Gửi email thông báo
-        sendQuickSwapSuccessEmail(savedTransaction, activeSubscription);
+        // 11. Xử lý hoàn chỉnh swap transaction (giống SwapTransactionService)
+        handleQuickSwapCompletion(savedTransaction, activeSubscription);
         
         log.info("Quick swap hoàn tất - Transaction ID: {}", savedTransaction.getId());
         
         return savedTransaction;
     }
 
+    // ==================== HELPER METHODS ====================
+    
     /**
-     * Gửi email thông báo đổi pin thành công
+     * Xử lý logic hoàn chỉnh khi quick swap transaction COMPLETED
+     * Học theo SwapTransactionService.handleTransactionCompletion()
      */
-    private void sendQuickSwapSuccessEmail(SwapTransaction transaction, DriverSubscription subscription) {
-        try {
-            emailService.sendSwapSuccessEmail(transaction, subscription);
-            log.info("Đã gửi email thông báo đổi pin thành công");
-        } catch (Exception e) {
-            log.error("Lỗi khi gửi email: {}", e.getMessage());
+    private void handleQuickSwapCompletion(
+            SwapTransaction transaction,
+            DriverSubscription subscription
+    ) {
+        // 1. Xử lý pin swap (lấy staff từ transaction nếu có, nếu không dùng driver)
+        User staff = transaction.getStaff();
+        if (staff == null) {
+            staff = transaction.getDriver(); // Quick swap: driver tự đổi
         }
+        handleBatterySwap(transaction, staff);
+        
+        // 2. Trừ lượt swap từ subscription
+        int oldRemaining = subscription.getRemainingSwaps();
+        subscription.setRemainingSwaps(oldRemaining - 1);
+        
+        log.info("Đã trừ 1 lượt swap. Driver: {}, {} → {}",
+                transaction.getDriver().getId(), oldRemaining, subscription.getRemainingSwaps());
+        
+        // 3. Nếu hết lượt, chuyển sang EXPIRED
+        if (subscription.getRemainingSwaps() <= 0) {
+            subscription.setStatus(DriverSubscription.Status.EXPIRED);
+        }
+        
+        driverSubscriptionRepository.save(subscription);
+        
+        // 4. Gửi email thông báo đổi pin thành công
+        try {
+            emailService.sendSwapSuccessEmail(transaction.getDriver(), transaction, subscription);
+            log.info("Email đổi pin thành công đã được gửi cho tài xế: {}", 
+                    transaction.getDriver().getEmail());
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email đổi pin thành công: {}", e.getMessage());
+        }
+    }
+    
+    /**
+     * Handle battery swap logic when transaction COMPLETED
+     * GIỐNG 100% SwapTransactionService.handleBatterySwap()
+     */
+    private void handleBatterySwap(SwapTransaction transaction, User staff) {
+        Vehicle vehicle = transaction.getVehicle();
+        
+        // Process battery taken OUT from station (new battery for vehicle)
+        if (transaction.getSwapOutBattery() != null) {
+            Battery swapOutBattery = transaction.getSwapOutBattery();
+            
+            // Quick swap: Pin luôn là AVAILABLE, không có PENDING/reservation
+            
+            swapOutBattery.setCurrentStation(null); // No longer at any station
+            swapOutBattery.setStatus(Battery.Status.IN_USE); // Now in use
+            
+            batteryRepository.save(swapOutBattery);
+            
+            // Check and degrade SOH after usage
+            batteryHealthService.degradeSOHAfterUsage(swapOutBattery);
+            
+            log.info("Đã xử lý SWAP_OUT cho pin {}", swapOutBattery.getId());
+        }
+        
+        // Process battery brought IN to station (old battery from vehicle)
+        if (transaction.getSwapInBattery() != null) {
+            Battery swapInBattery = transaction.getSwapInBattery();
+            swapInBattery.setCurrentStation(transaction.getStation()); // Assign to station
+            
+            // Check battery health first: If health < 70% -> MAINTENANCE
+            BigDecimal health = swapInBattery.getStateOfHealth();
+            if (health != null && health.compareTo(BigDecimal.valueOf(70)) < 0) {
+                swapInBattery.setStatus(Battery.Status.MAINTENANCE);
+                swapInBattery.setLastChargedTime(null);
+                log.warn("Pin swap-in {} có sức khỏe thấp {}% < 70%, đặt thành MAINTENANCE",
+                        swapInBattery.getId(), health.doubleValue());
+            } else {
+                // Good health, check charge level
+                BigDecimal currentCharge = swapInBattery.getChargeLevel();
+                if (currentCharge != null && currentCharge.compareTo(BigDecimal.valueOf(100)) < 0) {
+                    swapInBattery.setStatus(Battery.Status.CHARGING); // Start charging
+                    swapInBattery.setLastChargedTime(LocalDateTime.now());
+                } else {
+                    swapInBattery.setStatus(Battery.Status.AVAILABLE); // Fully charged, ready to use
+                }
+            }
+            
+            batteryRepository.save(swapInBattery);
+            
+            // XÓA khỏi StationInventory nếu có (vì pin đã về trạm, không còn ở kho)
+            // GIỐNG BOOKING - PHẦN NÀY BỊ THIẾU TRƯỚC ĐÂY!
+            stationInventoryRepository.findByBattery(swapInBattery).ifPresent(inventory -> {
+                stationInventoryRepository.delete(inventory);
+                log.info("Đã xóa pin {} khỏi StationInventory (pin đã về trạm)", swapInBattery.getId());
+            });
+            
+            log.info("Đã xử lý SWAP_IN cho pin {}", swapInBattery.getId());
+        }
+        
+        // Update vehicle current battery
+        // Mount new battery (swapOut) on vehicle, replacing old battery (swapIn)
+        if (transaction.getSwapOutBattery() != null) {
+            vehicle.setCurrentBattery(transaction.getSwapOutBattery());
+            vehicleRepository.save(vehicle);
+            log.info("Đã cập nhật currentBattery cho xe {} từ {} sang {}",
+                    vehicle.getId(),
+                    transaction.getSwapInBattery() != null ? transaction.getSwapInBattery().getId() : "null",
+                    transaction.getSwapOutBattery().getId());
+        }
+    }
+
+    /**
+     * Lấy thông tin pin cũ của xe đang quick swap
+     * Giống như /swap-transaction/old-battery nhưng dùng cho Quick Swap (không cần code)
+     */
+    @Transactional(readOnly = true)
+    public BatteryInfoResponse getOldBatteryInfo(Long vehicleId) {
+        User currentUser = authenticationService.getCurrentUser();
+        
+        log.info("Lấy thông tin pin cũ cho Quick Swap - Vehicle ID: {}, Driver: {}", 
+                vehicleId, currentUser.getId());
+        
+        BatteryInfoResponse response = new BatteryInfoResponse();
+        
+        // 1. Kiểm tra xe
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
+        
+        // 2. Kiểm tra xe thuộc quyền sở hữu
+        if (!vehicle.getDriver().getId().equals(currentUser.getId())) {
+            throw new AuthenticationException("Xe không thuộc quyền sở hữu!");
+        }
+        
+        // 3. Lấy pin cũ trên xe
+        Battery oldBattery = vehicle.getCurrentBattery();
+        
+        if (oldBattery == null) {
+            response.setMessage("Xe chưa có pin");
+            response.setBatteryRole("OLD");
+            return response;
+        }
+        
+        // 4. Build response với thông tin pin cũ
+        response.setDriverName(currentUser.getFullName());
+        response.setVehiclePlate(vehicle.getPlateNumber());
+        response.setBatteryRole("OLD");
+        
+        // Thông tin pin
+        response.setBatteryId(oldBattery.getId());
+        response.setModel(oldBattery.getModel());
+        response.setChargeLevel(oldBattery.getChargeLevel());
+        response.setStateOfHealth(oldBattery.getStateOfHealth());
+        response.setStatus(oldBattery.getStatus().name());
+        response.setUsageCount(oldBattery.getUsageCount());
+        response.setBatteryType(oldBattery.getBatteryType().getName());
+        
+        response.setMessage("Thông tin pin cũ");
+        
+        log.info("Đã lấy thông tin pin cũ - Battery ID: {}, Charge: {}%, Health: {}%",
+                oldBattery.getId(), oldBattery.getChargeLevel(), oldBattery.getStateOfHealth());
+        
+        return response;
     }
 }

@@ -37,7 +37,7 @@ public class SwapTransaction {
     private Station station;
 
     @ManyToOne
-    @JoinColumn(name = "StaffID", nullable = false)
+    @JoinColumn(name = "StaffID", nullable = true)
     @JsonIgnore
     private User staff;
 

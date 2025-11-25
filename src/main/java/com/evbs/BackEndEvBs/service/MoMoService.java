@@ -1,10 +1,7 @@
 package com.evbs.BackEndEvBs.service;
 
 import com.evbs.BackEndEvBs.config.MoMoConfig;
-import com.evbs.BackEndEvBs.entity.DriverSubscription;
-import com.evbs.BackEndEvBs.entity.Payment;
-import com.evbs.BackEndEvBs.entity.ServicePackage;
-import com.evbs.BackEndEvBs.entity.User;
+import com.evbs.BackEndEvBs.entity.*;
 import com.evbs.BackEndEvBs.exception.exceptions.AuthenticationException;
 import com.evbs.BackEndEvBs.exception.exceptions.NotFoundException;
 import com.evbs.BackEndEvBs.model.response.UpgradeCalculationResponse;
@@ -27,6 +24,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -57,6 +55,9 @@ public class MoMoService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private com.evbs.BackEndEvBs.repository.VehicleRepository vehicleRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -226,82 +227,128 @@ public class MoMoService {
 
             // BUOC 3: Parse extraData
             Map<String, String> extraDataMap = parseExtraData(extraData);
-            Long packageId = extractLong(extraDataMap, "packageId");
-            Long driverId = extractLong(extraDataMap, "driverId");
 
-            if (packageId == null || driverId == null) {
-                throw new RuntimeException("Lỗi mạng!");
-            }
-
-            ServicePackage servicePackage = servicePackageRepository.findById(packageId)
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ ID: " + packageId));
-
-            // BUOC 3.5: Kiểm tra loại thanh toán (NEW PURCHASE hay UPGRADE hay RENEWAL)
+            // BUOC 3.5: Kiểm tra loại thanh toán (NEW, UPGRADE, RENEWAL, DEPOSIT)
             String paymentType = extraDataMap.getOrDefault("type", "NEW");
             boolean isUpgrade = "UPGRADE".equals(paymentType);
             boolean isRenewal = "RENEWAL".equals(paymentType);
+            boolean isDeposit = "DEPOSIT".equals(paymentType);
 
             // BUOC 4: Xử lý kết quả thanh toán
             if ("0".equals(resultCode)) {
                 // THANH TOÁN THÀNH CÔNG
-                log.info(" IPN - Thanh toán MoMo thành công: orderId={}, transId={}, driverId={}, type={}",
-                        orderId, transId, driverId, paymentType);
+                log.info(" IPN - Thanh toán MoMo thành công: orderId={}, transId={}, type={}",
+                        orderId, transId, paymentType);
 
-                DriverSubscription subscription;
+                if (isDeposit) {
+                    // XỬ LÝ THANH TOÁN TIỀN CỌC PIN
+                    log.info("IPN - Processing DEPOSIT payment...");
+                    Long vehicleId = extractLong(extraDataMap, "vehicleId");
+                    Long driverId = extractLong(extraDataMap, "driverId");
 
-                if (isUpgrade) {
-                    // XỬ LÝ UPGRADE GÓI
-                    log.info("IPN - Processing UPGRADE payment...");
-                    subscription = driverSubscriptionService.upgradeSubscriptionAfterPayment(packageId, driverId);
-                } else if (isRenewal) {
-                    // XỬ LÝ RENEWAL/GIA HẠN
-                    log.info("IPN - Processing RENEWAL payment...");
-                    subscription = driverSubscriptionService.renewSubscriptionAfterPayment(packageId, driverId);
+                    if (vehicleId == null || driverId == null) {
+                        throw new RuntimeException("Missing vehicleId or driverId in extraData!");
+                    }
+
+                    // Cập nhật deposit status trong vehicle
+                    Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                            .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với ID: " + vehicleId));
+
+                    vehicle.setDepositStatus("PAID");
+                    vehicle.setStatus(Vehicle.VehicleStatus.PENDING);
+                    vehicleRepository.save(vehicle);
+
+                    log.info("Deposit paid successfully for vehicle ID: {}, changing status to PENDING", vehicleId);
+
+                    // GỬI EMAIL THÔNG BÁO CHO ADMIN
+                    try {
+                        List<User> adminList = userRepository.findByRole(User.Role.ADMIN);
+                        if (!adminList.isEmpty()) {
+                            emailService.sendVehicleRequestToAdmin(adminList, vehicle);
+                            log.info("Sent vehicle request email to {} admins", adminList.size());
+                        }
+                    } catch (Exception e) {
+                        log.error("Lỗi khi gửi email thông báo cho admin: {}", e.getMessage());
+                    }
+
+                    result.put("success", true);
+                    result.put("message", "Thanh toán tiền cọc pin thành công! Xe của bạn đang chờ admin duyệt.");
+                    result.put("paymentType", paymentType);
+                    result.put("vehicleId", vehicleId);
+                    result.put("amount", amount);
+                    result.put("transactionCode", transId);
+                    result.put("depositStatus", "PAID");
+
+                    log.info("IPN - Deposit payment processed successfully for vehicle ID: {}", vehicleId);
+
                 } else {
-                    // XỬ LÝ MUA GÓI MỚI
-                    log.info("IPN - Processing NEW PURCHASE payment...");
-                    subscription = driverSubscriptionService.createSubscriptionAfterPayment(packageId, driverId);
+                    // XỬ LÝ THANH TOÁN GÓI DỊCH VỤ
+                    Long packageId = extractLong(extraDataMap, "packageId");
+                    Long driverId = extractLong(extraDataMap, "driverId");
+
+                    if (packageId == null || driverId == null) {
+                        throw new RuntimeException("Lỗi mạng!");
+                    }
+
+                    ServicePackage servicePackage = servicePackageRepository.findById(packageId)
+                            .orElseThrow(() -> new NotFoundException("Không tìm thấy gói dịch vụ ID: " + packageId));
+
+                    DriverSubscription subscription;
+
+                    if (isUpgrade) {
+                        // XỬ LÝ UPGRADE GÓI
+                        log.info("IPN - Processing UPGRADE payment...");
+                        subscription = driverSubscriptionService.upgradeSubscriptionAfterPayment(packageId, driverId);
+                    } else if (isRenewal) {
+                        // XỬ LÝ RENEWAL/GIA HẠN
+                        log.info("IPN - Processing RENEWAL payment...");
+                        subscription = driverSubscriptionService.renewSubscriptionAfterPayment(packageId, driverId);
+                    } else {
+                        // XỬ LÝ MUA GÓI MỚI
+                        log.info("IPN - Processing NEW PURCHASE payment...");
+                        subscription = driverSubscriptionService.createSubscriptionAfterPayment(packageId, driverId);
+                    }
+
+                    // Lưu Payment record
+                    Payment payment = new Payment();
+                    payment.setSubscription(subscription);
+                    payment.setAmount(new BigDecimal(amount));
+                    payment.setPaymentMethod("MOMO");
+                    payment.setPaymentDate(LocalDateTime.now());
+                    payment.setStatus(Payment.Status.COMPLETED);
+                    paymentRepository.save(payment);
+
+                    log.info("IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
+
+                    // Gửi email thông báo thanh toán thành công
+                    try {
+                        User driver = userRepository.findById(driverId)
+                                .orElseThrow(() -> new NotFoundException("Không tìm thấy driver ID: " + driverId));
+
+                        emailService.sendPaymentSuccessEmail(driver, payment, servicePackage);
+                        log.info(" Email thanh toán thành công đã được gửi cho driver: {}", driver.getEmail());
+
+                    } catch (Exception emailException) {
+                        log.error(" Lỗi khi gửi email thanh toán thành công: {}", emailException.getMessage());
+                        // Không throw exception để không ảnh hưởng đến flow thanh toán chính
+                    }
+
+                    result.put("success", true);
+                    result.put("message", isUpgrade ?
+                            "Nâng cấp gói thành công! Gói mới đã được kích hoạt." :
+                            (isRenewal ?
+                                    "Gia hạn gói thành công! Gói đã được gia hạn." :
+                                    "Thanh toán thành công! Gói dịch vụ đã được kích hoạt."));
+                    result.put("paymentType", paymentType);
+                    result.put("subscriptionId", subscription.getId());
+                    result.put("packageName", servicePackage.getName());
+                    result.put("maxSwaps", servicePackage.getMaxSwaps());
+                    result.put("remainingSwaps", subscription.getRemainingSwaps());
+                    result.put("startDate", subscription.getStartDate().toString());
+                    result.put("endDate", subscription.getEndDate().toString());
+                    result.put("amount", amount);
+                    result.put("transactionCode", transId);
                 }
-
-                // Lưu Payment record
-                Payment payment = new Payment();
-                payment.setSubscription(subscription);
-                payment.setAmount(new BigDecimal(amount));
-                payment.setPaymentMethod("MOMO");
-                payment.setPaymentDate(LocalDateTime.now());
-                payment.setStatus(Payment.Status.COMPLETED);
-                paymentRepository.save(payment);
-
-                log.info("IPN - Đã lưu Payment và tạo Subscription ID: {}", subscription.getId());
-
-                // Gửi email thông báo thanh toán thành công
-                try {
-                    User driver = userRepository.findById(driverId)
-                            .orElseThrow(() -> new NotFoundException("Không tìm thấy driver ID: " + driverId));
-
-                    emailService.sendPaymentSuccessEmail(driver, payment, servicePackage);
-                    log.info(" Email thanh toán thành công đã được gửi cho driver: {}", driver.getEmail());
-
-                } catch (Exception emailException) {
-                    log.error(" Lỗi khi gửi email thanh toán thành công: {}", emailException.getMessage());
-                    // Không throw exception để không ảnh hưởng đến flow thanh toán chính
-                }
-
-                result.put("success", true);
-                result.put("message", isUpgrade ?
-                        "Nâng cấp gói thành công! Gói mới đã được kích hoạt." :
-                        (isRenewal ?
-                                "Gia hạn gói thành công! Gói đã được gia hạn." :
-                                "Thanh toán thành công! Gói dịch vụ đã được kích hoạt."));
-                result.put("paymentType", paymentType);
-                result.put("subscriptionId", subscription.getId());
-                result.put("packageName", servicePackage.getName());
-                result.put("maxSwaps", servicePackage.getMaxSwaps());
-                result.put("remainingSwaps", subscription.getRemainingSwaps());
-                result.put("startDate", subscription.getStartDate().toString());
-                result.put("endDate", subscription.getEndDate().toString());
-                result.put("amount", amount);
-                result.put("transactionCode", transId);
 
             } else {
                 // THANH TOÁN THẤT BẠI
@@ -629,6 +676,138 @@ public class MoMoService {
         } catch (Exception e) {
             log.error("RENEWAL - Exception when calling MoMo API: {}", e.getMessage());
             throw new RuntimeException("Lỗi mạng!", e);
+        }
+    }
+
+    /**
+     * TẠO PAYMENT URL CHO TIỀN CỌC PIN (BATTERY DEPOSIT)
+     *
+     * Số tiền cố định: 400,000 VND
+     * Sau khi thanh toán thành công, vehicle sẽ chuyển sang PENDING (chờ admin duyệt)
+     *
+     * @param vehicleId ID của xe cần đóng cọc
+     * @param customRedirectUrl URL redirect sau khi thanh toán (optional)
+     * @return Map chứa paymentUrl, orderId, requestId
+     */
+    @Transactional
+    public Map<String, String> createDepositPaymentUrl(Long vehicleId, String customRedirectUrl) {
+        User currentDriver = authenticationService.getCurrentUser();
+
+        if (currentDriver.getRole() != User.Role.DRIVER) {
+            throw new AuthenticationException("Chỉ tài xế mới có thể thanh toán tiền cọc!");
+        }
+
+        // Kiểm tra vehicle tồn tại và thuộc về driver hiện tại
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với ID: " + vehicleId));
+
+        if (!vehicle.getDriver().getId().equals(currentDriver.getId())) {
+            throw new AuthenticationException("Xe này không thuộc về bạn!");
+        }
+
+        // Kiểm tra vehicle đang ở trạng thái UNPAID (chưa thanh toán cọc)
+        if (vehicle.getStatus() != Vehicle.VehicleStatus.UNPAID) {
+            throw new IllegalStateException("Xe này không ở trạng thái chưa cọc!");
+        }
+
+        // Cố định số tiền cọc 400k VND
+        long amount = 400000;
+
+        // Chuẩn bị thông tin thanh toán MoMo
+        String orderId = MoMoUtil.generateOrderId();
+        String requestId = MoMoUtil.generateRequestId();
+
+        // LƯU THÔNG TIN DEPOSIT vào extraData
+        // Format: vehicleId=<vehicleId>&driverId=<id>&type=DEPOSIT
+        String extraData = String.format(
+                "vehicleId=%d&driverId=%d&type=DEPOSIT",
+                vehicleId,
+                currentDriver.getId()
+        );
+
+        String finalRedirectUrl = (customRedirectUrl != null && !customRedirectUrl.trim().isEmpty())
+                ? customRedirectUrl
+                : moMoConfig.getRedirectUrl();
+
+        log.info("DEPOSIT - Creating MoMo payment URL: Driver={}, VehicleID={}, Amount={} VND",
+                currentDriver.getEmail(), vehicleId, amount);
+
+        // Build signature parameters
+        Map<String, String> signatureParams = new LinkedHashMap<>();
+        signatureParams.put("accessKey", moMoConfig.getAccessKey());
+        signatureParams.put("amount", String.valueOf(amount));
+        signatureParams.put("extraData", extraData);
+        signatureParams.put("ipnUrl", moMoConfig.getIpnUrl());
+        signatureParams.put("orderId", orderId);
+        signatureParams.put("orderInfo", "Tien coc pin dang ky xe");
+        signatureParams.put("partnerCode", moMoConfig.getPartnerCode());
+        signatureParams.put("redirectUrl", finalRedirectUrl);
+        signatureParams.put("requestId", requestId);
+        signatureParams.put("requestType", moMoConfig.getRequestType());
+
+        String rawSignature = MoMoUtil.buildRawSignature(signatureParams);
+        String signature = MoMoUtil.hmacSHA256(rawSignature, moMoConfig.getSecretKey());
+
+        // Build request body
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("partnerCode", moMoConfig.getPartnerCode());
+        requestBody.put("partnerName", "EVBattery Swap System");
+        requestBody.put("storeId", "EVBatteryStore");
+        requestBody.put("requestId", requestId);
+        requestBody.put("amount", amount);
+        requestBody.put("orderId", orderId);
+        requestBody.put("orderInfo", "Tien coc pin dang ky xe");
+        requestBody.put("redirectUrl", finalRedirectUrl);
+        requestBody.put("ipnUrl", moMoConfig.getIpnUrl());
+        requestBody.put("lang", "vi");
+        requestBody.put("extraData", extraData);
+        requestBody.put("requestType", moMoConfig.getRequestType());
+        requestBody.put("signature", signature);
+
+        // Gọi MoMo API
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    moMoConfig.getEndpoint(),
+                    entity,
+                    Map.class
+            );
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null || !"0".equals(String.valueOf(responseBody.get("resultCode")))) {
+                String errorMessage = responseBody != null
+                        ? (String) responseBody.get("message")
+                        : "Unknown error";
+
+                log.error("DEPOSIT - MoMo payment URL creation failed: {}", errorMessage);
+                throw new RuntimeException("Không thể tạo payment URL: " + errorMessage);
+            }
+
+            String payUrl = (String) responseBody.get("payUrl");
+
+            // LƯU DEPOSIT STATUS vào Vehicle
+            vehicle.setDepositStatus("PENDING");
+            vehicleRepository.save(vehicle);
+
+            log.info("DEPOSIT - Payment URL created successfully: orderId={}, payUrl={}", orderId, payUrl);
+
+            Map<String, String> result = new HashMap<>();
+            result.put("payUrl", payUrl);
+            result.put("orderId", orderId);
+            result.put("requestId", requestId);
+            result.put("amount", String.valueOf(amount));
+            result.put("message", "Redirect driver to this URL to complete deposit payment");
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("DEPOSIT - Exception when calling MoMo API: {}", e.getMessage());
+            throw new RuntimeException("Lỗi kết nối với MoMo: " + e.getMessage(), e);
         }
     }
 }

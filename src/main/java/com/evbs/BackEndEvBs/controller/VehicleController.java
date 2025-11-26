@@ -152,7 +152,8 @@ public class VehicleController {
     public ResponseEntity<Map<String, Object>> payDeposit(
             @PathVariable Long vehicleId,
             @RequestParam(required = false) String redirectUrl) {
-        Map<String, Object> paymentInfo = vehicleService.payDeposit(vehicleId);
+        // Truyền redirectUrl vào service để dùng URL custom từ frontend
+        Map<String, Object> paymentInfo = vehicleService.payDeposit(vehicleId, redirectUrl);
         return ResponseEntity.ok(paymentInfo);
     }
 

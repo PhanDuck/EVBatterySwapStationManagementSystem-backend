@@ -141,12 +141,9 @@ public class VehicleService {
     /**
      * Tạo payment URL để thanh toán cọc pin (400k VND)
      * CHỈ CHO PHÉP xe có status = UNPAID
-     *
-     * @param vehicleId ID của xe cần thanh toán cọc
-     * @return Map chứa paymentUrl, orderId, amount
      */
     @Transactional
-    public Map<String, Object> payDeposit(Long vehicleId) {
+    public Map<String, Object> payDeposit(Long vehicleId, String redirectUrl) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
@@ -162,8 +159,8 @@ public class VehicleService {
             throw new IllegalStateException("Xe không ở trạng thái chưa cọc!");
         }
 
-        // Tạo payment URL
-        Map<String, String> paymentInfo = moMoService.createDepositPaymentUrl(vehicleId, null);
+        // Tạo payment URL (dùng redirectUrl từ frontend hoặc dùng default từ config)
+        Map<String, String> paymentInfo = moMoService.createDepositPaymentUrl(vehicleId, redirectUrl);
 
         // Trả về payment info
         Map<String, Object> result = new HashMap<>();

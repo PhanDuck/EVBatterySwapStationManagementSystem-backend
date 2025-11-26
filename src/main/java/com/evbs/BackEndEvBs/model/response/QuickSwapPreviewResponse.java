@@ -30,8 +30,4 @@ public class QuickSwapPreviewResponse {
     
     // Thông tin lượt swap còn lại
     private Integer remainingSwaps;
-    
-    // Trạng thái
-    private boolean canSwap;
-    private String message;
 }

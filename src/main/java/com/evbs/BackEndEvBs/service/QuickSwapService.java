@@ -88,9 +88,7 @@ public class QuickSwapService {
         
         // Kiểm tra xe đã được phê duyệt
         if (vehicle.getStatus() != Vehicle.VehicleStatus.ACTIVE) {
-            response.setCanSwap(false);
-            response.setMessage("Xe chưa được phê duyệt!");
-            return response;
+            throw new IllegalStateException("Xe chưa được phê duyệt!");
         }
         
         response.setVehicleId(vehicle.getId());
@@ -102,9 +100,7 @@ public class QuickSwapService {
         BatteryType stationBatteryType = station.getBatteryType();
         
         if (!vehicleBatteryType.getId().equals(stationBatteryType.getId())) {
-            response.setCanSwap(false);
-            response.setMessage("Trạm không hỗ trợ loại pin của xe này!");
-            return response;
+            throw new IllegalStateException("Trạm không hỗ trợ loại pin của xe này!");
         }
         
         response.setBatteryTypeName(vehicleBatteryType.getName());
@@ -113,18 +109,10 @@ public class QuickSwapService {
         // 4. Kiểm tra subscription và lượt swap
         DriverSubscription activeSubscription = driverSubscriptionRepository
                 .findActiveSubscriptionByDriver(currentUser, LocalDate.now())
-                .orElse(null);
-        
-        if (activeSubscription == null) {
-            response.setCanSwap(false);
-            response.setMessage("Chưa có gói dịch vụ. Vui lòng mua gói!");
-            return response;
-        }
+                .orElseThrow(() -> new IllegalStateException("Chưa có gói dịch vụ. Vui lòng mua gói!"));
         
         if (activeSubscription.getRemainingSwaps() <= 0) {
-            response.setCanSwap(false);
-            response.setMessage("Gói đã hết lượt. Vui lòng gia hạn!");
-            return response;
+            throw new IllegalStateException("Gói đã hết lượt. Vui lòng gia hạn!");
         }
         
         response.setRemainingSwaps(activeSubscription.getRemainingSwaps());
@@ -147,9 +135,7 @@ public class QuickSwapService {
                 .toList();
         
         if (availableBatteries.isEmpty()) {
-            response.setCanSwap(false);
-            response.setMessage("Trạm hiện không có pin phù hợp. Vui lòng thử lại sau!");
-            return response;
+            throw new NotFoundException("Trạm hiện không có pin phù hợp. Vui lòng thử lại sau!");
         }
         
         Battery newBattery = availableBatteries.get(0);
@@ -157,10 +143,6 @@ public class QuickSwapService {
         response.setNewBatteryModel(newBattery.getModel());
         response.setNewBatteryChargeLevel(newBattery.getChargeLevel());
         response.setNewBatteryHealth(newBattery.getStateOfHealth());
-        
-        // 6. Sẵn sàng đổi pin
-        response.setCanSwap(true);
-        response.setMessage("Sẵn sàng đổi pin!");
         
         return response;
     }
@@ -229,36 +211,37 @@ public class QuickSwapService {
         if (activeSubscription.getRemainingSwaps() <= 0) {
             throw new AuthenticationException("Gói đã hết lượt. Vui lòng gia hạn!");
         }
-            
-        // 6. Tìm pin cũ trên xe (nếu có)
+        
+        // 5. Tìm pin cũ trên xe (nếu có)
         Battery swapInBattery = vehicle.getCurrentBattery();
         
-        // 7. Lấy ĐÚNG pin đã chọn từ Preview (batteryId)
+        // 6. Lấy ĐÚNG pin đã chọn từ Preview (batteryId)
         Battery swapOutBattery = batteryRepository.findById(request.getBatteryId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy pin với ID: " + request.getBatteryId()));
         
-        // 8. VALIDATE pin này có thể đổi được không
-        // Kiểm tra pin phải ở trạm đúng
+        // 7. VALIDATE pin đã chọn có thể đổi được không
+        // 7.1. Kiểm tra pin phải ở trạm đúng
         if (swapOutBattery.getCurrentStation() == null || 
             !swapOutBattery.getCurrentStation().getId().equals(station.getId())) {
             throw new AuthenticationException("Pin không ở trạm này!");
         }
         
-        // Kiểm tra pin phải AVAILABLE
+        // 7.2. Kiểm tra pin phải AVAILABLE
         if (swapOutBattery.getStatus() != Battery.Status.AVAILABLE) {
             throw new AuthenticationException("Pin không sẵn sàng! Trạng thái: " + swapOutBattery.getStatus());
         }
         
-        // Kiểm tra loại pin đúng
+        // 7.3. Kiểm tra loại pin đúng
         if (!swapOutBattery.getBatteryType().getId().equals(vehicleBatteryType.getId())) {
             throw new AuthenticationException("Loại pin không tương thích!");
         }
         
-        // Kiểm tra charge và health đủ tiêu chuẩn
+        // 7.4. Kiểm tra charge đủ tiêu chuẩn (≥ 95%)
         if (swapOutBattery.getChargeLevel().compareTo(BigDecimal.valueOf(95)) < 0) {
             throw new AuthenticationException("Pin chưa đủ sạc! Hiện tại: " + swapOutBattery.getChargeLevel() + "%");
         }
         
+        // 7.5. Kiểm tra health đủ tiêu chuẩn (≥ 70%)
         if (swapOutBattery.getStateOfHealth().compareTo(BigDecimal.valueOf(70)) < 0) {
             throw new AuthenticationException("Pin không đủ sức khỏe! Hiện tại: " + swapOutBattery.getStateOfHealth() + "%");
         }
@@ -266,7 +249,7 @@ public class QuickSwapService {
         log.info("Sẽ đổi ĐÚNG pin đã chọn - Battery ID: {}, Charge: {}%, Health: {}%",
                 swapOutBattery.getId(), swapOutBattery.getChargeLevel(), swapOutBattery.getStateOfHealth());
         
-        // 9. Tạo swap transaction và LƯU SNAPSHOT TRƯỚC KHI THAY ĐỔI
+        // 8. Tạo swap transaction và LƯU SNAPSHOT TRƯỚC KHI THAY ĐỔI
         SwapTransaction transaction = new SwapTransaction();
         transaction.setDriver(driver);
         transaction.setVehicle(vehicle);
@@ -294,7 +277,7 @@ public class QuickSwapService {
         
         SwapTransaction savedTransaction = swapTransactionRepository.save(transaction);
         
-        // 10. SAU KHI LƯU SNAPSHOT → Giảm pin mới xuống dưới 50%
+        // 9. SAU KHI LƯU SNAPSHOT → Giảm pin mới xuống dưới 50%
         // (Mô phỏng việc tài xế sử dụng xe sau khi đổi pin - GIỐNG BOOKING)
         if (swapOutBattery != null) {
             java.util.Random random = new java.util.Random();
@@ -307,7 +290,7 @@ public class QuickSwapService {
                     randomChargeLevel.intValue());
         }
         
-        // 11. Xử lý hoàn chỉnh swap transaction (giống SwapTransactionService)
+        // 10. Xử lý hoàn chỉnh swap transaction (giống SwapTransactionService)
         handleQuickSwapCompletion(savedTransaction, activeSubscription);
         
         log.info("Quick swap hoàn tất - Transaction ID: {}", savedTransaction.getId());

@@ -684,9 +684,6 @@ public class MoMoService {
      *
      * Số tiền cố định: 400,000 VND
      * Sau khi thanh toán thành công, vehicle sẽ chuyển sang PENDING (chờ admin duyệt)
-     *
-     * @param vehicleId ID của xe cần đóng cọc
-     * @param customRedirectUrl URL redirect sau khi thanh toán (optional)
      * @return Map chứa paymentUrl, orderId, requestId
      */
     @Transactional

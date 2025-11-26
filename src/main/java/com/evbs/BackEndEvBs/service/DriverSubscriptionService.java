@@ -241,8 +241,7 @@ public class DriverSubscriptionService {
         BigDecimal refundValue = pricePerSwapOld
                 .multiply(new BigDecimal(remainingSwaps))
                 .setScale(2, RoundingMode.HALF_UP);
-
-        // Bước 2: Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
+// Bước 2: Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
         BigDecimal paymentRequired = newPackage.getPrice()
                 .subtract(refundValue)
                 .max(BigDecimal.ZERO)  // Đảm bảo không âm
@@ -373,7 +372,7 @@ public class DriverSubscriptionService {
      */
     @Transactional
     public DriverSubscription upgradeSubscriptionAfterPayment(Long newPackageId, Long driverId) {
-        // Tìm thông tin tài xế
+// Tìm thông tin tài xế
         User driver = userRepository.findById(driverId)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy tài xế với ID: " + driverId));
 
@@ -457,17 +456,15 @@ public class DriverSubscriptionService {
      * TÍNH TOÁN CHI PHÍ GIA HẠN GÓI (RENEWAL - SAME PACKAGE ONLY)
      *
      * CHỈ CHO PHÉP GIA HẠN CÙNG GÓI HIỆN TẠI!
-     * Nếu muốn đổi gói khác → Dùng chức năng NÂNG CẤP hoặc HẠ CẤP
+     * CHỈ CHO PHÉP GIA HẠN GÓI CÒN HIỆU LỰC (ACTIVE)!
      *
-     * CASE 1: EARLY RENEWAL (còn hạn)
-     * - Stack swaps: totalSwaps = remainingSwaps + newMaxSwaps
-     * - Stack duration: newEndDate = currentEndDate + newDuration
-     * - Discount: 5% (khuyến khích renew sớm)
+     * Nếu muốn đổi gói khác → Dùng chức năng NÂNG CẤP
+     * Nếu gói đã HẾT HẠN → Phải MUA GÓI MỚI (không được renewal)
      *
-     * CASE 2: LATE RENEWAL (hết hạn)
-     * - Reset swaps: totalSwaps = newMaxSwaps (mất lượt cũ)
-     * - Reset duration: newEndDate = today + newDuration
-     * - No discount
+     * EARLY RENEWAL (gia hạn sớm - gói còn hiệu lực):
+     * - Cộng dồn swaps: totalSwaps = remainingSwaps + newMaxSwaps
+     * - Cộng dồn duration: newEndDate = currentEndDate + newDuration
+     * - Giảm giá: 5% (khuyến khích gia hạn sớm)
      *
      * @param renewalPackageId ID của gói muốn gia hạn (PHẢI CÙNG GÓI HIỆN TẠI)
      * @return RenewalCalculationResponse
@@ -499,11 +496,20 @@ public class DriverSubscriptionService {
             );
         }
 
-        // Chỉ cho phép gia hạn nếu gói gần nhất đang ở trạng thái ACTIVE hoặc EXPIRED
-        if (latestSub.getStatus() != DriverSubscription.Status.ACTIVE
-                && latestSub.getStatus() != DriverSubscription.Status.EXPIRED) {
+        // Kiểm tra nếu gói gần nhất đã hết hạn
+        if (latestSub.getStatus() == DriverSubscription.Status.EXPIRED) {
             throw new IllegalArgumentException(
-                    "Không thể gia hạn gói có trạng thái: " + latestSub.getStatus()
+                    "Gói của bạn đã HẾT HẠN. Không thể gia hạn gói đã hết hạn. " +
+                            "Vui lòng MUA GÓI MỚI thay vì gia hạn. " +
+                            "(Gia hạn chỉ dành cho gói CÒN HIỆU LỰC)"
+            );
+        }
+
+        // CHỈ cho phép gia hạn nếu gói đang ACTIVE (còn hiệu lực)
+        if (latestSub.getStatus() != DriverSubscription.Status.ACTIVE) {
+            throw new IllegalArgumentException(
+                    "Không thể gia hạn gói có trạng thái: " + latestSub.getStatus() +
+                            ". Chỉ có thể gia hạn gói đang HOẠT ĐỘNG (ACTIVE)."
             );
         }
 
@@ -524,12 +530,12 @@ public class DriverSubscriptionService {
             );
         }
 
-        // 3. Xác định loại gia hạn: HẾT HẠN (LATE) hoặc SỚM (EARLY)
+        // 3. Gói ACTIVE → Chỉ có EARLY RENEWAL (gia hạn sớm)
         LocalDate today = LocalDate.now();
-        boolean isExpired = currentSub.getEndDate().isBefore(today);
-        String renewalType = isExpired ? "HẾT HẠN" : "GIA HẠN SỚM";
+        boolean isExpired = false; // Luôn false vì đã check ACTIVE ở trên
+        String renewalType = "GIA HẠN SỚM";
 
-        long daysRemaining = isExpired ? 0 : ChronoUnit.DAYS.between(today, currentSub.getEndDate());
+        long daysRemaining = ChronoUnit.DAYS.between(today, currentSub.getEndDate());
         Integer remainingSwaps = currentSub.getRemainingSwaps();
 
         // 4. Luôn gia hạn cùng gói
@@ -551,27 +557,13 @@ public class DriverSubscriptionService {
                 .max(BigDecimal.ZERO)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // 6. TÍNH SAU KHI GIA HẠN
-        Integer totalSwaps;
-        LocalDate newStartDate;
-        LocalDate newEndDate;
-        Integer totalDuration;
-        Integer stackedSwaps = 0;
-
-        if (isExpired) {
-            // GIA HẠN SAU KHI HẾT HẠN - Reset hoàn toàn
-            totalSwaps = renewalPackage.getMaxSwaps();
-            newStartDate = today;
-            newEndDate = today.plusDays(renewalPackage.getDuration());
-            totalDuration = renewalPackage.getDuration();
-        } else {
-            // GIA HẠN SỚM - Cộng dồn lượt swap & thời gian
-            totalSwaps = remainingSwaps + renewalPackage.getMaxSwaps();
-            stackedSwaps = remainingSwaps; // Số lượt được giữ lại
-            newStartDate = today;
-            newEndDate = currentSub.getEndDate().plusDays(renewalPackage.getDuration());
-            totalDuration = (int) ChronoUnit.DAYS.between(today, newEndDate);
-        }
+        // 6. TÍNH SAU KHI GIA HẠN (CHỈ CÓ EARLY RENEWAL - CỘNG DỒN)
+        // Cộng dồn lượt swap & thời gian
+        Integer stackedSwaps = remainingSwaps; // Số lượt được giữ lại
+        Integer totalSwaps = remainingSwaps + renewalPackage.getMaxSwaps();
+        LocalDate newStartDate = today;
+        LocalDate newEndDate = currentSub.getEndDate().plusDays(renewalPackage.getDuration());
+        Integer totalDuration = (int) ChronoUnit.DAYS.between(today, newEndDate);
 
         // 7. Tính giá mỗi lượt & mức tiết kiệm
         BigDecimal pricePerSwap = finalPrice.divide(new BigDecimal(renewalPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
@@ -583,10 +575,11 @@ public class DriverSubscriptionService {
                 totalDiscount, stackedSwaps
         );
 
-        String message = isExpired
-                ? "Gói dịch vụ của bạn đã hết hạn. Hãy gia hạn ngay để tiếp tục sử dụng! (Chỉ được gia hạn cùng gói hiện tại)"
-                : String.format("Bạn có thể gia hạn sớm để nhận ưu đãi! Còn %d ngày và %d lượt swap. (Chỉ được gia hạn cùng gói hiện tại)",
-                daysRemaining, remainingSwaps);
+        String message = String.format(
+                "Bạn có thể gia hạn sớm để nhận ưu đãi! Còn %d ngày và %d lượt swap. " +
+                        "(Chỉ được gia hạn cùng gói hiện tại. Gói đã hết hạn không thể gia hạn - phải mua gói mới)",
+                daysRemaining, remainingSwaps
+        );
 
         // 9. Trả về kết quả
         return RenewalCalculationResponse.builder()
@@ -661,12 +654,20 @@ public class DriverSubscriptionService {
             );
         }
 
-        // Chỉ cho phép gia hạn nếu gói mới nhất đang ở trạng thái ACTIVE hoặc EXPIRED
-        if (oldSubscription != null
-                && oldSubscription.getStatus() != DriverSubscription.Status.ACTIVE
-                && oldSubscription.getStatus() != DriverSubscription.Status.EXPIRED) {
+        // Kiểm tra nếu gói gần nhất đã HẾT HẠN
+        if (oldSubscription != null && oldSubscription.getStatus() == DriverSubscription.Status.EXPIRED) {
             throw new IllegalArgumentException(
-                    "Không thể gia hạn gói có trạng thái: " + oldSubscription.getStatus()
+                    "Gói của bạn đã HẾT HẠN. Không thể gia hạn gói đã hết hạn. " +
+                            "Vui lòng MUA GÓI MỚI thay vì gia hạn. " +
+                            "(Gia hạn chỉ dành cho gói CÒN HIỆU LỰC)"
+            );
+        }
+
+        // CHỈ cho phép gia hạn nếu gói đang ACTIVE (còn hiệu lực)
+        if (oldSubscription != null && oldSubscription.getStatus() != DriverSubscription.Status.ACTIVE) {
+            throw new IllegalArgumentException(
+                    "Không thể gia hạn gói có trạng thái: " + oldSubscription.getStatus() +
+                            ". Chỉ có thể gia hạn gói đang HOẠT ĐỘNG (ACTIVE)."
             );
         }
 
@@ -691,31 +692,25 @@ public class DriverSubscriptionService {
 
         if (oldSubscription != null) {
             ServicePackage oldPackage = oldSubscription.getServicePackage();
-            boolean isExpired = oldSubscription.getEndDate().isBefore(today);
 
-            log.info("GIA HẠN GÓI - Tài xế: {} | Gói cũ: {} (hết hạn: {}, còn lại: {} lượt) | Gói mới: {}",
+            log.info("GIA HẠN SỚM - Tài xế: {} | Gói cũ: {} (còn lại: {} lượt, {} ngày) | Gói mới: {}",
                     driver.getEmail(),
                     oldPackage.getName(),
-                    isExpired,
                     oldSubscription.getRemainingSwaps(),
+                    ChronoUnit.DAYS.between(today, oldSubscription.getEndDate()),
                     renewalPackage.getName()
             );
 
-            if (!isExpired) {
-                // GIA HẠN SỚM - cộng dồn lượt swap và thời hạn
-                stackedSwaps = oldSubscription.getRemainingSwaps();
-                newEndDate = oldSubscription.getEndDate().plusDays(renewalPackage.getDuration());
-            } else {
-                // GIA HẠN TRỄ - reset lại gói mới
-                newEndDate = today.plusDays(renewalPackage.getDuration());
-            }
+            // GIA HẠN SỚM - CỘNG DỒN lượt swap và thời hạn
+            stackedSwaps = oldSubscription.getRemainingSwaps();
+            newEndDate = oldSubscription.getEndDate().plusDays(renewalPackage.getDuration());
 
             // Đánh dấu gói cũ là HẾT HẠN
             oldSubscription.setStatus(DriverSubscription.Status.EXPIRED);
             oldSubscription.setEndDate(today);
             driverSubscriptionRepository.save(oldSubscription);
 
-            log.info("Gói cũ {} đã được đánh dấu hết hạn.", oldSubscription.getId());
+            log.info("Gói cũ {} đã được đánh dấu hết hạn. Lượt chưa dùng được CỘNG DỒN vào gói mới.", oldSubscription.getId());
         } else {
             // Lần đầu mua gói (chưa có subscription cũ)
             newEndDate = today.plusDays(renewalPackage.getDuration());
@@ -744,7 +739,6 @@ public class DriverSubscriptionService {
 
         // Populate names
         populateSubscriptionNames(savedSubscription);
-
         return savedSubscription;
     }
 
@@ -763,22 +757,19 @@ public class DriverSubscriptionService {
 
         rec.append("Phân tích: ");
 
-        if (isExpired) {
-            rec.append("Gói đã hết hạn! Gia hạn ngay để không bỏ lỡ dịch vụ. ");
-        } else {
-            rec.append("Gia hạn sớm! ");
-            if (stackedSwaps > 0) {
-                rec.append(String.format("Bạn sẽ giữ được %d lượt chưa dùng + thêm %d lượt mới = %d lượt! ",
-                        stackedSwaps, renewalPackage.getMaxSwaps(), stackedSwaps + renewalPackage.getMaxSwaps()));
-            }
+        rec.append("Gia hạn sớm - Lựa chọn thông minh! ");
 
-            if (totalDiscount.compareTo(BigDecimal.ZERO) > 0) {
-                rec.append(String.format("Tiết kiệm %,d VNĐ nhờ ưu đãi gia hạn sớm (5%%). ",
-                        totalDiscount.intValue()));
-            }
+        if (stackedSwaps > 0) {
+            rec.append(String.format("Bạn sẽ giữ được %d lượt chưa dùng + thêm %d lượt mới = %d lượt! ",
+                    stackedSwaps, renewalPackage.getMaxSwaps(), stackedSwaps + renewalPackage.getMaxSwaps()));
         }
 
-        rec.append("Gia hạn gói đang dùng - Lựa chọn thông minh! ");
+        if (totalDiscount.compareTo(BigDecimal.ZERO) > 0) {
+            rec.append(String.format("Tiết kiệm %,d VNĐ nhờ ưu đãi gia hạn sớm (5%%). ",
+                    totalDiscount.intValue()));
+        }
+
+        rec.append("Cộng dồn cả lượt và thời gian");
 
         return rec.toString();
     }

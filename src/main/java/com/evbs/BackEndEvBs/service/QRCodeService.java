@@ -48,7 +48,7 @@ public class QRCodeService {
     public byte[] generateQRCode(Long stationId, String baseUrl, int width, int height) 
             throws WriterException, IOException {
         
-        // URL sẽ encode vào QR: https://app.evbs.com/quick-swap?stationId=1
+        // URL sẽ encode vào QR: https://evbatteryswapsystem.com/quick-swap?stationId=1
         String qrContent = baseUrl + "/quick-swap?stationId=" + stationId;
         
         log.info("Generating QR code for station {} with URL: {}", stationId, qrContent);

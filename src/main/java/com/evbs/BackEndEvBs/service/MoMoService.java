@@ -708,7 +708,7 @@ public class MoMoService {
         }
 
         // Cố định số tiền cọc 400k VND
-        long amount = 1000;
+        long amount = 400000;
 //        test trước đã
 
         // Chuẩn bị thông tin thanh toán MoMo

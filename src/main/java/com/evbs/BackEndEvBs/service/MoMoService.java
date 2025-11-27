@@ -260,6 +260,17 @@ public class MoMoService {
 
                     log.info("Deposit paid successfully for vehicle ID: {}, changing status to PENDING", vehicleId);
 
+                    // Lưu Payment record cho tiền cọc xe
+                    Payment depositPayment = new Payment();
+                    depositPayment.setVehicle(vehicle);
+                    depositPayment.setAmount(new BigDecimal(amount));
+                    depositPayment.setPaymentMethod("MOMO");
+                    depositPayment.setPaymentDate(LocalDateTime.now());
+                    depositPayment.setStatus(Payment.Status.COMPLETED);
+                    paymentRepository.save(depositPayment);
+
+                    log.info("Deposit payment record saved: vehicleId={}, amount={} VND", vehicleId, amount);
+
                     // GỬI EMAIL THÔNG BÁO CHO ADMIN
                     try {
                         List<User> adminList = userRepository.findByRole(User.Role.ADMIN);

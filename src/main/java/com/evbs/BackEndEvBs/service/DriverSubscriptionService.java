@@ -236,23 +236,42 @@ public class DriverSubscriptionService {
 
         // Bước 1: Tính giá trị hoàn lại = (Lượt chưa dùng) × (Giá gói cũ / Tổng lượt gói cũ)
         BigDecimal pricePerSwapOld = currentPackage.getPrice()
-                .divide(new BigDecimal(currentPackage.getMaxSwaps()), 2, RoundingMode.HALF_UP);
+                .divide(new BigDecimal(currentPackage.getMaxSwaps()), 0, RoundingMode.HALF_UP);
 
         BigDecimal refundValue = pricePerSwapOld
                 .multiply(new BigDecimal(remainingSwaps))
-                .setScale(2, RoundingMode.HALF_UP);
-// Bước 2: Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
+                .setScale(0, RoundingMode.HALF_UP);
+
+        // VALIDATION 1: Kiểm tra giá trị hoàn > giá trị gói mới
+        if (refundValue.compareTo(newPackage.getPrice()) > 0) {
+            throw new IllegalArgumentException(
+                    "Không thể nâng cấp! Giá trị hoàn lại (" + String.format("%,d", refundValue.longValue()) + 
+                    " VNĐ) lớn hơn giá gói mới (" + String.format("%,d", newPackage.getPrice().longValue()) + 
+                    " VNĐ). Vui lòng chọn gói cao hơn hoặc dùng hết lượt trước."
+            );
+        }
+
+        // Bước 2: Số tiền cần trả = Giá gói mới - Giá trị hoàn lại
         BigDecimal paymentRequired = newPackage.getPrice()
                 .subtract(refundValue)
                 .max(BigDecimal.ZERO)  // Đảm bảo không âm
-                .setScale(2, RoundingMode.HALF_UP);
+                .setScale(0, RoundingMode.HALF_UP);
+
+        // VALIDATION 2: Kiểm tra số tiền thanh toán phải >= 1,000 VNĐ (yêu cầu của MoMo)
+        BigDecimal minimumPayment = new BigDecimal("1000");
+        if (paymentRequired.compareTo(minimumPayment) < 0 && paymentRequired.compareTo(BigDecimal.ZERO) > 0) {
+            throw new IllegalArgumentException(
+                    "Không thể nâng cấp! Số tiền thanh toán (" + String.format("%,d", paymentRequired.longValue()) + 
+                    " VNĐ) phải từ 1,000 VNĐ trở lên (yêu cầu MoMo). Vui lòng chọn gói cao hơn hoặc dùng hết lượt trước."
+            );
+        }
 
         // Ước tính giá trị mất mát (về ngày còn lại - chỉ để hiển thị)
         long totalDays = ChronoUnit.DAYS.between(currentSub.getStartDate(), currentSub.getEndDate());
         BigDecimal estimatedLostValue = totalDays > 0
                 ? currentPackage.getPrice()
                 .multiply(new BigDecimal(daysRemaining))
-                .divide(new BigDecimal(totalDays), 2, RoundingMode.HALF_UP)
+                .divide(new BigDecimal(totalDays), 0, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         // 6. Thông tin sau nâng cấp

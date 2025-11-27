@@ -16,8 +16,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("SELECT p FROM Payment p " +
             "LEFT JOIN p.transaction t " +
             "LEFT JOIN p.subscription s " +
+            "LEFT JOIN p.vehicle v " +
             "WHERE (t IS NOT NULL AND t.driver.id = :driverId) OR " +
-            "(s IS NOT NULL AND s.driver.id = :driverId)")
+            "(s IS NOT NULL AND s.driver.id = :driverId) OR " +
+            "(v IS NOT NULL AND v.driver.id = :driverId)")
     List<Payment> findByDriverId(@Param("driverId") Long driverId);
 
     // Dashboard queries - Tổng doanh thu

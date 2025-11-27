@@ -65,6 +65,10 @@ public class Vehicle {
     @JsonIgnore
     private List<SwapTransaction> swapTransactions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "vehicle")
+    @JsonIgnore
+    private List<Payment> payments = new ArrayList<>();
+
     // Soft delete fields
     @Enumerated(EnumType.STRING)
     @Column(name = "Status", nullable = false, length = 20)

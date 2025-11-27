@@ -33,6 +33,11 @@ public class Payment {
     @JsonIgnore
     private DriverSubscription subscription;
 
+    @ManyToOne
+    @JoinColumn(name = "VehicleID")
+    @JsonIgnore
+    private Vehicle vehicle;
+
     @Column(name = "Amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
@@ -47,7 +52,12 @@ public class Payment {
     private Status status = Status.COMPLETED;
 
     @Transient
+    @com.fasterxml.jackson.annotation.JsonProperty("customerName")
     private String customerName;
+
+    @Transient
+    @com.fasterxml.jackson.annotation.JsonProperty("paymentType")
+    private String paymentType;
 
     public String getCustomerName() {
         if (this.subscription != null && this.subscription.getDriver() != null) {
@@ -56,7 +66,23 @@ public class Payment {
         if (this.transaction != null && this.transaction.getDriver() != null) {
             return this.transaction.getDriver().getFullName();
         }
+        if (this.vehicle != null && this.vehicle.getDriver() != null) {
+            return this.vehicle.getDriver().getFullName();
+        }
         return null;
+    }
+
+    public String getPaymentType() {
+        if (this.subscription != null) {
+            return "Gói dịch vụ: " + this.subscription.getPackageName();
+        }
+        if (this.transaction != null) {
+            return "Giao dịch đổi pin";
+        }
+        if (this.vehicle != null) {
+            return "Cọc xe: " + this.vehicle.getPlateNumber();
+        }
+        return "Khác";
     }
     
 }
